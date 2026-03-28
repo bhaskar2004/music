@@ -1,12 +1,4 @@
-class Track {
-  final String id;
-  final String title;
-  final String artist;
-  final String album;
-  final int duration;
-  final String filename;
-  final String? coverUrl;
-  final String sourceUrl;
+  final String? addedAt;
   final String format;
 
   Track({
@@ -18,24 +10,26 @@ class Track {
     required this.filename,
     this.coverUrl,
     required this.sourceUrl,
+    this.addedAt,
     required this.format,
   });
 
-  factory Track.fromJson(Map<String, dynamic> json) {
+  factory Track.fromMap(Map<String, dynamic> map) {
     return Track(
-      id: json['id'] ?? '',
-      title: json['title'] ?? 'Unknown',
-      artist: json['artist'] ?? 'Unknown',
-      album: json['album'] ?? 'Unknown',
-      duration: json['duration'] ?? 0,
-      filename: json['filename'] ?? '',
-      coverUrl: json['coverUrl'],
-      sourceUrl: json['sourceUrl'] ?? '',
-      format: json['format'] ?? 'mp3',
+      id: map['id'] ?? '',
+      title: map['title'] ?? 'Unknown',
+      artist: map['artist'] ?? 'Unknown',
+      album: map['album'] ?? 'Unknown',
+      duration: map['duration'] ?? 0,
+      filename: map['filename'] ?? '',
+      coverUrl: map['coverUrl'],
+      sourceUrl: map['sourceUrl'] ?? '',
+      addedAt: map['addedAt'],
+      format: map['format'] ?? 'mp3',
     );
   }
 
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toMap() => {
         'id': id,
         'title': title,
         'artist': artist,
@@ -44,6 +38,10 @@ class Track {
         'filename': filename,
         'coverUrl': coverUrl,
         'sourceUrl': sourceUrl,
+        'addedAt': addedAt ?? DateTime.now().toIso8601String(),
         'format': format,
       };
+
+  factory Track.fromJson(Map<String, dynamic> json) => Track.fromMap(json);
+  Map<String, dynamic> toJson() => toMap();
 }

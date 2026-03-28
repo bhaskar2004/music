@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
 import 'api_service.dart';
+import 'database_service.dart';
 
 class DownloadService {
   static final Dio _dio = Dio();
@@ -52,6 +53,10 @@ class DownloadService {
           }
         },
       );
+
+      // 3. Persist metadata to local library database
+      await DatabaseService().insertTrack(track);
+
       return file.path;
     } finally {
       api.dispose();

@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/track.dart';
-import '../../services/api_service.dart';
+import '../../services/database_service.dart';
 import '../../services/audio_service.dart';
 import '../../services/download_service.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -15,7 +16,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ApiService _api = ApiService();
   List<Track> _library = [];
   bool _isLoading = true;
 
@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadLibrary() async {
     try {
-      final tracks = await _api.fetchLibrary();
+      final tracks = await DatabaseService().getTracks();
       if (mounted) {
         setState(() {
           _library = tracks;
@@ -39,71 +39,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showSettingsDialog() async {
-    final currentUrl = await _api.getBaseUrl();
-    final controller = TextEditingController(text: currentUrl);
-
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text('Server Settings', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter your computer\'s IP address to sync your music library.',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Server URL',
-                labelStyle: TextStyle(color: Color(0xFF06C167)),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF06C167))),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await _api.setBaseUrl(controller.text);
-              Navigator.pop(context);
-              _loadLibrary();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF06C167)),
-            child: const Text('Save & Sync', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Library',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -1.0),
+          'Wavelength',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -1.0, color: Color(0xFF06C167)),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white54),
-            onPressed: _showSettingsDialog,
+            icon: const Icon(Icons.search, color: Colors.white),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen())).then((_) => _loadLibrary()),
           ),
           IconButton(
-            icon: const Icon(Icons.sync, color: Color(0xFF06C167)),
+            icon: const Icon(Icons.sync, color: Colors.white54),
             onPressed: _loadLibrary,
           )
         ],
