@@ -9,6 +9,10 @@ import 'database_service.dart';
 class DownloadService {
   static final Dio _dio = Dio();
 
+  static void init() {
+    // No-op for current standalone dio implementation
+  }
+
   /// Downloads the highest quality audio stream directly to the Android physical Music directory.
   /// 100% independent - no Node.js backend required.
   static Future<String?> downloadTrackToDevice(Track track) async {
