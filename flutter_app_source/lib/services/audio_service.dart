@@ -5,11 +5,12 @@ import 'api_service.dart';
 
 class AudioService {
   final AudioPlayer _player = AudioPlayer();
+  final ApiService _api = ApiService();
 
   AudioPlayer get player => _player;
 
   /// Loads a track. If it exists locally in Scoped Storage, play offline.
-  /// Otherwise, stream it from the backend API.
+  /// Otherwise, stream directly from YouTube's servers independent of Next.js.
   Future<void> playTrack(Track track, {String? localPath}) async {
     try {
       AudioSource source;
@@ -23,23 +24,21 @@ class AudioService {
             album: track.album,
             title: track.title,
             artist: track.artist,
-            artUri: track.coverUrl != null 
-                ? Uri.parse('${ApiService.baseUrl}${track.coverUrl}')
-                : null,
+            artUri: track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
           ),
         );
       } else {
-        // Stream from backend
+        // Stream seamlessly direct from YouTube
+        final streamUrl = await _api.getAudioStreamUrl(track.id);
+        
         source = AudioSource.uri(
-          Uri.parse('${ApiService.baseUrl}/stream/${track.id}'),
+          Uri.parse(streamUrl),
           tag: MediaItem(
             id: track.id,
             album: track.album,
             title: track.title,
             artist: track.artist,
-            artUri: track.coverUrl != null 
-                ? Uri.parse('${ApiService.baseUrl}${track.coverUrl}')
-                : null,
+            artUri: track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
           ),
         );
       }
@@ -47,11 +46,15 @@ class AudioService {
       await _player.setAudioSource(source);
       await _player.play();
     } catch (e) {
-      print("Error loading audio source: $e");
+      print("Error loading standalone audio source: $e");
     }
   }
 
   void pause() => _player.pause();
   void resume() => _player.play();
-  void dispose() => _player.dispose();
+  
+  void dispose() {
+    _player.dispose();
+    _api.dispose();
+  }
 }

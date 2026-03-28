@@ -14,12 +14,12 @@ dependencies:
   just_audio: ^0.9.36
   just_audio_background: ^0.0.1+11
   audio_session: ^0.1.16
-  flutter_downloader: ^1.11.6
+  youtube_explode_dart: ^2.2.0   # Added for independent background downloading without Next.js!
+  dio: ^5.4.0                    # Robust HTTP client for large file downloads
   path_provider: ^2.1.2
   permission_handler: ^11.3.0
   google_fonts: ^6.1.0
   cached_network_image: ^3.3.1
-  http: ^1.2.0
   shared_preferences: ^2.2.2
   uuid: ^4.3.3
 
