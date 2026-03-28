@@ -1,3 +1,12 @@
+class Track {
+  final String id;
+  final String title;
+  final String artist;
+  final String album;
+  final int duration;
+  final String filename;
+  final String? coverUrl;
+  final String sourceUrl;
   final String? addedAt;
   final String format;
 
