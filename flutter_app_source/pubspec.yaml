@@ -14,7 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   provider: ^6.1.1
   just_audio: ^0.9.36
-  just_audio_background: ^0.0.1+11
+  just_audio_background: ^0.0.1-beta.15
   audio_session: ^0.1.16
   youtube_explode_dart: ^2.2.0   # Added for independent background downloading without Next.js!
   dio: ^5.4.0                    # Robust HTTP client for large file downloads
