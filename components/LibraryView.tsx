@@ -2,19 +2,48 @@
 
 import { useMusicStore } from '@/store/musicStore';
 import TrackCard from './TrackCard';
-import { Plus, Search, Music2 } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Search, Music2, ArrowUpDown } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Track } from '@/types';
+
+type SortOption = 'recent' | 'title' | 'artist' | 'duration';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'recent', label: 'Recently Added' },
+  { value: 'title', label: 'Title A–Z' },
+  { value: 'artist', label: 'Artist A–Z' },
+  { value: 'duration', label: 'Duration' },
+];
+
+function sortTracks(tracks: Track[], sortBy: SortOption): Track[] {
+  const sorted = [...tracks];
+  switch (sortBy) {
+    case 'title':
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
+    case 'artist':
+      return sorted.sort((a, b) => a.artist.localeCompare(b.artist));
+    case 'duration':
+      return sorted.sort((a, b) => b.duration - a.duration);
+    case 'recent':
+    default:
+      return sorted.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
+  }
+}
 
 export default function LibraryView() {
   const { library, setShowDownloadModal } = useMusicStore();
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('recent');
 
-  const filtered = library.filter(
-    (t) =>
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.artist.toLowerCase().includes(search.toLowerCase()) ||
-      t.album.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    const searched = library.filter(
+      (t) =>
+        t.title.toLowerCase().includes(search.toLowerCase()) ||
+        t.artist.toLowerCase().includes(search.toLowerCase()) ||
+        t.album.toLowerCase().includes(search.toLowerCase())
+    );
+    return sortTracks(searched, sortBy);
+  }, [library, search, sortBy]);
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -28,45 +57,94 @@ export default function LibraryView() {
           gap: 16,
           flexShrink: 0,
           paddingBottom: 0,
+          flexWrap: 'wrap',
         }}
       >
         <div>
-          <h1 style={{ fontWeight: 800, fontSize: 24, letterSpacing: '-0.5px', marginBottom: 2 }}>
+          <h1 style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1px', marginBottom: 4, color: 'var(--text)' }}>
             Library
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>
             {library.length} {library.length === 1 ? 'track' : 'tracks'}
           </p>
         </div>
 
         {library.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              background: 'var(--surface2)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              padding: '9px 14px',
-              flex: '0 0 240px',
-            }}
-          >
-            <Search size={14} color="var(--text-muted)" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search library..."
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {/* Sort dropdown */}
+            <div
               style={{
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: 'var(--text)',
-                fontSize: 13,
-                fontFamily: 'var(--font-sans)',
-                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'var(--surface2)',
+                border: '1px solid transparent',
+                borderRadius: '99px',
+                padding: '8px 16px',
+                transition: 'background 0.2s',
               }}
-            />
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface3)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--surface2)')}
+            >
+              <ArrowUpDown size={13} color="var(--text-muted)" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                aria-label="Sort tracks"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: 'var(--text)',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-sans)',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  paddingRight: 4,
+                }}
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: 'var(--surface2)',
+                border: '1px solid transparent',
+                borderRadius: '99px',
+                padding: '10px 16px',
+                flex: '0 0 240px',
+                transition: 'background 0.2s, border 0.2s',
+              }}
+              onFocus={(e) => { e.currentTarget.style.border = '1px solid color-mix(in srgb, var(--accent) 30%, transparent)'; e.currentTarget.style.background = 'var(--surface)'; }}
+              onBlur={(e) => { e.currentTarget.style.border = '1px solid transparent'; e.currentTarget.style.background = 'var(--surface2)'; }}
+            >
+              <Search size={16} color="var(--text-muted)" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search library..."
+                aria-label="Search tracks"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: 'var(--text)',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  fontFamily: 'var(--font-sans)',
+                  flex: 1,
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

@@ -1,13 +1,14 @@
 'use client';
 
 import { useMusicStore } from '@/store/musicStore';
-import { Library, ListMusic, Download } from 'lucide-react';
+import { Library, ListMusic, Download, Heart } from 'lucide-react';
 
 export default function MobileNav() {
   const { activeView, setActiveView } = useMusicStore();
 
   const navItems = [
     { id: 'library' as const, label: 'Library', icon: Library },
+    { id: 'favorites' as const, label: 'Favorites', icon: Heart },
     { id: 'queue' as const, label: 'Queue', icon: ListMusic },
     { id: 'downloads' as const, label: 'Downloads', icon: Download },
   ];
@@ -15,14 +16,22 @@ export default function MobileNav() {
   return (
     <nav
       className="mobile-only"
+      role="navigation"
+      aria-label="Mobile navigation"
       style={{
-        height: 64,
-        background: 'var(--surface)',
-        borderTop: '1px solid var(--border)',
+        position: 'fixed',
+        bottom: 0, /* We will push this up via NowPlayingBar bottom padding, or NowPlayingBar will just sit above it */
+        left: 0,
+        right: 0,
+        height: 80, /* Increased for touch target and safe area */
+        background: 'color-mix(in srgb, var(--surface) 85%, transparent)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderTop: '1px solid color-mix(in srgb, var(--border) 40%, transparent)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-around',
-        padding: '0 10px',
+        justifyContent: 'space-evenly',
+        paddingBottom: 'env(safe-area-inset-bottom, 16px)', /* iOS safe area */
         zIndex: 100,
       }}
     >
@@ -32,23 +41,43 @@ export default function MobileNav() {
           <button
             key={id}
             onClick={() => setActiveView(id)}
+            aria-label={label}
+            aria-current={active ? 'page' : undefined}
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 4,
               background: 'transparent',
               border: 'none',
-              color: active ? 'var(--accent)' : 'var(--text-muted)',
+              color: active ? 'var(--text)' : 'var(--text-faint)',
               cursor: 'pointer',
               fontSize: 10,
-              fontWeight: active ? 600 : 400,
-              padding: '8px 12px',
-              transition: 'all 0.15s',
+              fontWeight: active ? 700 : 500,
+              height: '100%',
+              minWidth: 64,
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            <Icon size={20} />
-            <span>{label}</span>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 48,
+              height: 32,
+              borderRadius: 16,
+              background: active ? 'var(--accent-dim)' : 'transparent',
+              transition: 'background 0.2s',
+            }}>
+              <Icon size={20} fill={active ? 'currentColor' : 'none'} color="currentColor" />
+            </div>
+            <span style={{ 
+              marginTop: 2,
+              opacity: active ? 1 : 0.8,
+              transform: active ? 'translateY(0)' : 'translateY(2px)',
+              transition: 'all 0.2s'
+            }}>{label}</span>
           </button>
         );
       })}

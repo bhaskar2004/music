@@ -26,8 +26,8 @@ export default function DownloadsView() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontWeight: 800, fontSize: 24, letterSpacing: '-0.5px', marginBottom: 2 }}>Downloads</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+          <h1 style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1px', marginBottom: 4, color: 'var(--text)' }}>Downloads</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>
             {active.length > 0 ? `${active.length} active · ` : ''}{downloads.length} total
           </p>
         </div>

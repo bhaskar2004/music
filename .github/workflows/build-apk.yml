@@ -1,0 +1,87 @@
+name: Build Wavelength APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Prepare Flutter Project Structure
+        run: |
+          cd flutter_app_source
+          # This safely generates the android/ and ios/ folders needed for the build
+          flutter create --org com.wavelength --project-name wavelength_app .
+
+      - name: Inject Android Permissions
+        run: |
+          cd flutter_app_source/android/app/src/main
+          
+          # Python script to safely parse and manipulate AndroidManifest.xml
+          python -c '
+          import xml.etree.ElementTree as ET
+
+          # Register namespace to keep android: prefixes
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+
+          tree = ET.parse("AndroidManifest.xml")
+          root = tree.getroot()
+
+          # Define the permissions we need for downloading, background audio, and internet
+          permissions = [
+              "android.permission.INTERNET",
+              "android.permission.WAKE_LOCK",
+              "android.permission.READ_EXTERNAL_STORAGE",
+              "android.permission.WRITE_EXTERNAL_STORAGE",
+              "android.permission.MANAGE_EXTERNAL_STORAGE",
+              "android.permission.FOREGROUND_SERVICE",
+              "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+          ]
+
+          # Find index of application tag
+          app_index = list(root).index(root.find("application"))
+
+          # Insert permissions before the application tag
+          for p in reversed(permissions):
+              perm = ET.Element("uses-permission")
+              perm.set("{http://schemas.android.com/apk/res/android}name", p)
+              root.insert(app_index, perm)
+
+          tree.write("AndroidManifest.xml", xml_declaration=True, encoding="utf-8")
+          '
+
+      - name: Install Flutter Dependencies
+        run: |
+          cd flutter_app_source
+          flutter pub get
+
+      - name: Compile Release APK
+        run: |
+          cd flutter_app_source
+          flutter build apk --release
+
+      - name: Upload APK to GitHub
+        uses: actions/upload-artifact@v3
+        with:
+          name: Wavelength-App-Release.apk
+          path: flutter_app_source/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7

@@ -2,7 +2,7 @@
 
 import { useMusicStore } from '@/store/musicStore';
 import { formatDuration } from '@/lib/utils';
-import { Play, Music2 } from 'lucide-react';
+import { Play, Music2, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 
 const PLACEHOLDER_COLORS = [
@@ -11,12 +11,14 @@ const PLACEHOLDER_COLORS = [
 ];
 
 export default function QueueView() {
-  const { queue, currentTrack, setCurrentTrack, setIsPlaying } = useMusicStore();
+  const { queue, currentTrack, setCurrentTrack, setIsPlaying, setQueue, library } = useMusicStore();
+
+  const totalDuration = queue.reduce((sum, t) => sum + (t.duration || 0), 0);
 
   if (!queue.length) {
     return (
-      <div style={{ padding: '24px 28px' }}>
-        <h1 style={{ fontWeight: 800, fontSize: 24, letterSpacing: '-0.5px', marginBottom: 24 }}>
+      <div className="responsive-padding" style={{ height: '100%', overflow: 'auto' }}>
+        <h1 style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1px', marginBottom: 24, color: 'var(--text)' }}>
           Queue
         </h1>
         <div
@@ -27,11 +29,41 @@ export default function QueueView() {
             justifyContent: 'center',
             height: 200,
             color: 'var(--text-muted)',
-            gap: 8,
+            gap: 12,
           }}
         >
           <Music2 size={28} color="var(--text-faint)" />
           <p style={{ fontSize: 14 }}>No tracks in queue</p>
+          {library.length > 0 && (
+            <button
+              onClick={() => {
+                setQueue(library);
+                setCurrentTrack(library[0]);
+                setIsPlaying(true);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '9px 18px',
+                background: 'var(--accent)',
+                color: '#000',
+                border: 'none',
+                borderRadius: 'var(--radius)',
+                fontFamily: 'var(--font-sans)',
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'opacity 0.15s',
+                marginTop: 4,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              <Play size={14} />
+              Play All from Library
+            </button>
+          )}
         </div>
       </div>
     );
@@ -42,9 +74,45 @@ export default function QueueView() {
 
   return (
     <div className="responsive-padding" style={{ height: '100%', overflow: 'auto' }}>
-      <h1 style={{ fontWeight: 800, fontSize: 24, letterSpacing: '-0.5px', marginBottom: 24 }}>
-        Queue
-      </h1>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1px', marginBottom: 4, color: 'var(--text)' }}>
+            Queue
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
+            {queue.length} {queue.length === 1 ? 'track' : 'tracks'} · {formatDuration(totalDuration)}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setQueue([]);
+            setCurrentTrack(null);
+            setIsPlaying(false);
+          }}
+          aria-label="Clear queue"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 14px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            color: 'var(--text-muted)',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 500,
+            fontSize: 12,
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'rgba(229,62,62,0.3)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+        >
+          <Trash2 size={12} />
+          Clear Queue
+        </button>
+      </div>
 
       {currentTrack && (
         <div style={{ marginBottom: 28 }}>

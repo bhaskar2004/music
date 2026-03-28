@@ -24,12 +24,14 @@ export default function NowPlayingBar() {
     duration,
     shuffle,
     repeat,
+    favorites,
     setIsPlaying,
     setVolume,
     setCurrentTime,
     setDuration,
     toggleShuffle,
     toggleRepeat,
+    toggleFavorite,
     playNext,
     playPrev,
     setActiveView,
@@ -39,8 +41,9 @@ export default function NowPlayingBar() {
   const progressRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const [localTime, setLocalTime] = useState(0);
-  const [liked, setLiked] = useState(false);
   const [muted, setMuted] = useState(false);
+
+  const isLiked = currentTrack ? favorites.includes(currentTrack.id) : false;
 
   // Sync audio src when track changes
   useEffect(() => {
@@ -152,16 +155,18 @@ export default function NowPlayingBar() {
       <div
         className="now-playing-container"
         style={{
-          height: 80,
-          background: 'var(--surface)',
-          borderTop: '1px solid var(--border)',
+          height: 84, /* Slightly taller for breathing room */
+          background: 'color-mix(in srgb, var(--surface) 92%, transparent)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderTop: '1px solid color-mix(in srgb, var(--border) 40%, transparent)',
           display: 'grid',
           alignItems: 'center',
-          padding: '0 20px',
-          gap: 16,
+          padding: '0 24px',
+          gap: 20,
           flexShrink: 0,
           position: 'relative',
-          zIndex: 10,
+          zIndex: 90,
         }}
       >
         {/* Left — Track info */}
@@ -208,13 +213,14 @@ export default function NowPlayingBar() {
           <div style={{ minWidth: 0 }}>
             <div
               style={{
-                fontWeight: 600,
-                fontSize: 13,
+                fontWeight: 700,
+                fontSize: 14,
                 color: 'var(--text)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 marginBottom: 2,
+                letterSpacing: '-0.2px',
               }}
             >
               {currentTrack.title}
@@ -222,6 +228,7 @@ export default function NowPlayingBar() {
             <div
               style={{
                 fontSize: 12,
+                fontWeight: 500,
                 color: 'var(--text-muted)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -233,13 +240,14 @@ export default function NowPlayingBar() {
           </div>
 
           <button
-            onClick={() => setLiked(!liked)}
+            onClick={() => toggleFavorite(currentTrack.id)}
             className="desktop-only"
+            aria-label={isLiked ? 'Remove from favorites' : 'Add to favorites'}
             style={{
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              color: liked ? 'var(--accent)' : 'var(--text-faint)',
+              color: isLiked ? 'var(--accent)' : 'var(--text-faint)',
               display: 'flex',
               padding: 4,
               transition: 'color 0.15s, transform 0.1s',
@@ -248,7 +256,7 @@ export default function NowPlayingBar() {
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.15)')}
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            <Heart size={15} fill={liked ? 'var(--accent)' : 'none'} />
+            <Heart size={15} fill={isLiked ? 'var(--accent)' : 'none'} />
           </button>
         </div>
 
@@ -260,21 +268,23 @@ export default function NowPlayingBar() {
               onClick={toggleShuffle}
               active={shuffle}
               title="Shuffle"
+              ariaLabel={`Shuffle ${shuffle ? 'on' : 'off'}`}
               className="desktop-only"
             >
               <Shuffle size={14} />
             </ControlBtn>
 
-            <ControlBtn onClick={playPrev} title="Previous">
+            <ControlBtn onClick={playPrev} title="Previous" ariaLabel="Previous track">
               <SkipBack size={16} fill="currentColor" />
             </ControlBtn>
 
             {/* Play/Pause */}
             <button
               onClick={() => setIsPlaying(!isPlaying)}
+              aria-label={isPlaying ? 'Pause' : 'Play'}
               style={{
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 borderRadius: '50%',
                 background: 'var(--text)',
                 border: 'none',
@@ -282,22 +292,23 @@ export default function NowPlayingBar() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'transform 0.1s, background 0.15s',
+                transition: 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s, box-shadow 0.15s',
                 flexShrink: 0,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--text)')}
-              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.92)')}
-              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; }}
+              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
+              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
             >
               {isPlaying ? (
-                <Pause size={16} color="#fff" fill="#fff" />
+                <Pause size={18} color="var(--bg)" fill="var(--bg)" />
               ) : (
-                <Play size={16} color="#fff" fill="#fff" style={{ marginLeft: 2 }} />
+                <Play size={18} color="var(--bg)" fill="var(--bg)" style={{ marginLeft: 3 }} />
               )}
             </button>
 
-            <ControlBtn onClick={playNext} title="Next">
+            <ControlBtn onClick={playNext} title="Next" ariaLabel="Next track">
               <SkipForward size={16} fill="currentColor" />
             </ControlBtn>
 
@@ -305,6 +316,7 @@ export default function NowPlayingBar() {
               onClick={toggleRepeat}
               active={repeat !== 'off'}
               title={`Repeat: ${repeat}`}
+              ariaLabel={`Repeat ${repeat}`}
               className="desktop-only"
             >
               {repeat === 'one' ? <Repeat1 size={14} /> : <Repeat size={14} />}
@@ -340,6 +352,12 @@ export default function NowPlayingBar() {
               ref={progressRef}
               onMouseDown={handleProgressMouseDown}
               onClick={handleProgressClick}
+              role="slider"
+              aria-label="Seek"
+              aria-valuemin={0}
+              aria-valuemax={Math.round(duration)}
+              aria-valuenow={Math.round(displayTime)}
+              tabIndex={0}
               style={{
                 flex: 1,
                 height: 4,
@@ -358,9 +376,9 @@ export default function NowPlayingBar() {
                   top: 0,
                   height: '100%',
                   width: `${progressPct}%`,
-                  background: 'var(--accent)',
+                  background: 'var(--text)',
                   borderRadius: 99,
-                  transition: dragging ? 'none' : 'width 0.1s',
+                  transition: dragging ? 'none' : 'width 0.1s linear',
                 }}
               />
               {/* Thumb */}
@@ -374,8 +392,8 @@ export default function NowPlayingBar() {
                   height: 12,
                   borderRadius: '50%',
                   background: 'var(--text)',
-                  boxShadow: '0 0 0 2px rgba(255,255,255,0.1)',
-                  transition: dragging ? 'none' : 'left 0.1s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  transition: dragging ? 'none' : 'left 0.1s linear',
                   pointerEvents: 'none',
                 }}
               />
@@ -407,6 +425,7 @@ export default function NowPlayingBar() {
         >
           <button
             onClick={() => { setActiveView('queue'); }}
+            aria-label="View queue"
             style={{
               background: 'transparent',
               border: 'none',
@@ -426,6 +445,7 @@ export default function NowPlayingBar() {
 
           <button
             onClick={() => setMuted(!muted)}
+            aria-label={muted ? 'Unmute' : 'Mute'}
             style={{
               background: 'transparent',
               border: 'none',
@@ -452,6 +472,7 @@ export default function NowPlayingBar() {
                 setVolume(parseFloat(e.target.value));
                 if (muted) setMuted(false);
               }}
+              aria-label="Volume"
               style={{ width: '100%', accentColor: 'var(--accent)' }}
             />
           </div>
@@ -466,37 +487,40 @@ function ControlBtn({
   onClick,
   active,
   title,
+  ariaLabel,
   className,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   active?: boolean;
   title?: string;
+  ariaLabel?: string;
   className?: string;
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
+      aria-label={ariaLabel || title}
       className={className}
       style={{
         background: 'transparent',
         border: 'none',
         cursor: 'pointer',
-        color: active ? 'var(--accent)' : 'var(--text-muted)',
+        color: active ? 'var(--text)' : 'var(--text-muted)',
         display: 'flex',
         padding: 8,
-        borderRadius: 6,
-        transition: 'color 0.15s, transform 0.1s',
+        borderRadius: 8,
+        transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
       }}
       onMouseEnter={(e) => {
         if (!active) e.currentTarget.style.color = 'var(--text)';
-        e.currentTarget.style.transform = 'scale(1.1)';
+        e.currentTarget.style.background = 'var(--surface2)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.color = active ? 'var(--accent)' : 'var(--text-muted)';
-        e.currentTarget.style.transform = 'scale(1)';
+        e.currentTarget.style.color = active ? 'var(--text)' : 'var(--text-muted)';
+        e.currentTarget.style.background = 'transparent';
       }}
     >
       {children}

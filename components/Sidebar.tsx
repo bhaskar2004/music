@@ -8,16 +8,18 @@ import {
   Plus,
   Music2,
   Zap,
+  Heart,
 } from 'lucide-react';
 
 const navItems = [
   { id: 'library' as const, label: 'Library', icon: Library },
+  { id: 'favorites' as const, label: 'Favorites', icon: Heart },
   { id: 'queue' as const, label: 'Queue', icon: ListMusic },
   { id: 'downloads' as const, label: 'Downloads', icon: Download },
 ];
 
 export default function Sidebar() {
-  const { activeView, setActiveView, library, downloads, setShowDownloadModal } =
+  const { activeView, setActiveView, library, downloads, favorites, setShowDownloadModal } =
     useMusicStore();
 
   const pendingDownloads = downloads.filter(
@@ -27,132 +29,113 @@ export default function Sidebar() {
   return (
     <aside
       className="desktop-only"
+      aria-label="Main navigation"
       style={{
-        width: 220,
-        minWidth: 220,
-        background: 'var(--surface)',
-        borderRight: '1px solid var(--border)',
+        width: 240, /* Slightly wider for premium feel */
+        minWidth: 240,
+        background: 'var(--surface)',  /* Use surface for the sidebar */
         display: 'flex',
         flexDirection: 'column',
         padding: '0',
         height: '100%',
         overflow: 'hidden',
+        borderRight: '1px solid color-mix(in srgb, var(--border) 50%, transparent)',
       }}
     >
       {/* Logo */}
       <div
         style={{
-          padding: '24px 20px 20px',
-          borderBottom: '1px solid var(--border)',
+          padding: '28px 24px 20px',
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 12,
         }}
       >
         <div
           style={{
-            width: 32,
-            height: 32,
-            background: 'var(--accent)',
-            borderRadius: 8,
+            width: 36,
+            height: 36,
+            background: 'var(--text)',
+            borderRadius: 10,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           }}
         >
-          <Zap size={16} color="#000" fill="#000" />
+          <Zap size={18} color="var(--bg)" fill="var(--bg)" />
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.3px' }}>
+          <div style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-0.4px', color: 'var(--text)' }}>
             Wavelength
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>
             {library.length} tracks
           </div>
         </div>
       </div>
 
-      {/* Add button */}
-      <div style={{ padding: '16px 14px 8px' }}>
-        <button
-          onClick={() => setShowDownloadModal(true)}
-          style={{
-            width: '100%',
-            padding: '10px 14px',
-            background: 'var(--accent)',
-            color: '#000',
-            border: 'none',
-            borderRadius: 'var(--radius)',
-            fontFamily: 'var(--font-sans)',
-            fontWeight: 600,
-            fontSize: 13,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-        >
-          <Plus size={15} />
-          Add from URL
-        </button>
-      </div>
-
       {/* Nav */}
-      <nav style={{ padding: '8px 10px', flex: 1 }}>
+      <nav style={{ padding: '12px', flex: 1 }} role="navigation">
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 12px 12px' }}>
+          Menu
+        </div>
         {navItems.map(({ id, label, icon: Icon }) => {
           const active = activeView === id;
           const badge =
-            id === 'downloads' && pendingDownloads > 0 ? pendingDownloads : null;
+            id === 'downloads' && pendingDownloads > 0
+              ? pendingDownloads
+              : id === 'favorites' && favorites.length > 0
+                ? favorites.length
+                : null;
           return (
             <button
               key={id}
               onClick={() => setActiveView(id)}
+              aria-current={active ? 'page' : undefined}
               style={{
                 width: '100%',
-                padding: '9px 12px',
-                marginBottom: 2,
-                background: active ? 'var(--accent-dim)' : 'transparent',
+                padding: '10px 12px',
+                marginBottom: 4,
+                background: active ? 'var(--surface3)' : 'transparent',
                 border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                color: active ? 'var(--accent)' : 'var(--text-muted)',
+                borderRadius: '8px',
+                color: active ? 'var(--text)' : 'var(--text-muted)',
                 fontFamily: 'var(--font-sans)',
-                fontWeight: active ? 600 : 400,
-                fontSize: 13.5,
+                fontWeight: active ? 600 : 500,
+                fontSize: 14,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                transition: 'all 0.15s',
+                gap: 12,
+                transition: 'all 0.2s ease',
                 textAlign: 'left',
               }}
               onMouseEnter={(e) => {
                 if (!active) {
-                  e.currentTarget.style.background = 'var(--surface2)';
                   e.currentTarget.style.color = 'var(--text)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!active) {
-                  e.currentTarget.style.background = 'transparent';
                   e.currentTarget.style.color = 'var(--text-muted)';
                 }
               }}
             >
-              <Icon size={15} />
+              <Icon size={18} fill={active ? 'currentColor' : 'none'} opacity={active ? 1 : 0.8} />
               <span style={{ flex: 1 }}>{label}</span>
               {badge && (
                 <span
                   style={{
-                    background: 'var(--accent)',
-                    color: '#000',
+                    background: active ? 'var(--text)' : 'transparent',
+                    color: active ? 'var(--bg)' : 'var(--text)',
+                    border: active ? 'none' : '1px solid var(--border)',
                     borderRadius: 99,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: 700,
-                    padding: '1px 6px',
+                    padding: '2px 8px',
                     fontFamily: 'var(--font-mono)',
+                    transition: 'all 0.2s ease',
                   }}
                 >
                   {badge}
@@ -163,21 +146,53 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div
-        style={{
-          padding: '16px 20px',
-          borderTop: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          color: 'var(--text-faint)',
-        }}
-      >
-        <Music2 size={13} />
-        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)' }}>
-          v1.0.0
-        </span>
+      {/* Add button & Footer */}
+      <div style={{ padding: '20px' }}>
+        <button
+          onClick={() => setShowDownloadModal(true)}
+          aria-label="Add music from URL"
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            background: 'var(--text)',
+            color: 'var(--bg)',
+            border: 'none',
+            borderRadius: '12px',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'transform 0.1s, opacity 0.15s',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            marginBottom: 20,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+          onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.97)')}
+          onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+        >
+          <Plus size={18} />
+          Add from URL
+        </button>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            color: 'var(--text-faint)',
+            justifyContent: 'center',
+          }}
+        >
+          <Music2 size={14} />
+          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', fontWeight: 500 }}>
+            Wavelength v2.0
+          </span>
+        </div>
       </div>
     </aside>
   );

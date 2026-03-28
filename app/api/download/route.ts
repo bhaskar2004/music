@@ -25,9 +25,32 @@ function sseEvent(event: string, data: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { url } = await req.json();
-  if (!url || typeof url !== 'string') {
-    return new Response('Invalid URL', { status: 400 });
+  // Validate Content-Type
+  const contentType = req.headers.get('content-type');
+  if (!contentType?.includes('application/json')) {
+    return new Response('Content-Type must be application/json', { status: 400 });
+  }
+
+  let body: { url?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return new Response('Invalid JSON body', { status: 400 });
+  }
+
+  const { url } = body;
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return new Response('Missing or invalid URL', { status: 400 });
+  }
+
+  // Validate URL protocol (only http/https)
+  try {
+    const parsed = new URL(url.trim());
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return new Response('Only http and https URLs are supported', { status: 400 });
+    }
+  } catch {
+    return new Response('Invalid URL format', { status: 400 });
   }
 
   ensureAudioDir();
@@ -45,9 +68,32 @@ export async function POST(req: NextRequest) {
         // ── 1. Fetch metadata ────────────────────────────────────────────
         send('status', { stage: 'metadata', message: 'Fetching track info…' });
 
-        const YT_DLP_PATH = path.join(process.cwd(), 'bin', 'yt-dlp');
-        const ytDlp = fs.existsSync(YT_DLP_PATH) ? new YTDlpWrap(YT_DLP_PATH) : new YTDlpWrap();
-        const metaRaw = await ytDlp.execPromise([url, '--dump-json', '--no-playlist']);
+        const binDir = path.join(process.cwd(), 'bin');
+        const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+        const YT_DLP_PATH = path.join(binDir, binName);
+
+        if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
+
+        if (!fs.existsSync(YT_DLP_PATH)) {
+          send('status', { stage: 'metadata', message: 'Downloading yt-dlp engine (first run only)…' });
+          await YTDlpWrap.downloadFromGithub(YT_DLP_PATH);
+        }
+
+        const ytDlp = new YTDlpWrap(YT_DLP_PATH);
+
+        // Find ffmpeg/ffprobe installed via winget
+        let ffmpegLocation = '';
+        if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
+          const wingetLinks = path.join(process.env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links');
+          if (fs.existsSync(path.join(wingetLinks, 'ffmpeg.exe'))) {
+            ffmpegLocation = wingetLinks;
+          }
+        }
+
+        const argsMeta = [url, '--dump-json', '--no-playlist'];
+        if (ffmpegLocation) Object.assign(argsMeta, [...argsMeta, '--ffmpeg-location', ffmpegLocation]);
+        
+        const metaRaw = await ytDlp.execPromise(argsMeta);
         const meta = JSON.parse(metaRaw);
 
         const title: string   = meta.title    ?? 'Unknown Title';
@@ -62,9 +108,7 @@ export async function POST(req: NextRequest) {
 
         const outputTemplate = path.join(AUDIO_DIR, `${id}.%(ext)s`);
 
-        console.log(`[DOWNLOAD] Starting download for ${url} with ID ${id}`);
-        await new Promise<void>((resolve, reject) => {
-          const emitter = ytDlp.exec([
+        const execArgs = [
             url,
             '--no-playlist',
             '-x',
@@ -72,7 +116,14 @@ export async function POST(req: NextRequest) {
             '--audio-quality', '0',
             '--add-metadata',
             '-o', outputTemplate,
-          ]);
+        ];
+        if (ffmpegLocation) {
+            execArgs.push('--ffmpeg-location', ffmpegLocation);
+        }
+
+        console.log(`[DOWNLOAD] Starting download for ${url} with ID ${id}`);
+        await new Promise<void>((resolve, reject) => {
+          const emitter = ytDlp.exec(execArgs);
 
           emitter.on('progress', (p: { percent?: number; totalSize?: string; currentSpeed?: string; eta?: string }) => {
             send('progress', {
