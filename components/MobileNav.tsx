@@ -24,10 +24,8 @@ export default function MobileNav() {
         left: 0,
         right: 0,
         height: 80, /* Increased for touch target and safe area */
-        background: 'color-mix(in srgb, var(--surface) 85%, transparent)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderTop: '1px solid color-mix(in srgb, var(--border) 40%, transparent)',
+        background: '#000000',
+        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-evenly',
@@ -67,10 +65,10 @@ export default function MobileNav() {
               width: 48,
               height: 32,
               borderRadius: 16,
-              background: active ? 'var(--accent-dim)' : 'transparent',
-              transition: 'background 0.2s',
+              color: active ? 'var(--accent)' : 'var(--text-faint)',
+              transition: 'all 0.2s',
             }}>
-              <Icon size={20} fill={active ? 'currentColor' : 'none'} color="currentColor" />
+              <Icon size={20} fill={active ? 'currentColor' : 'none'} strokeWidth={active ? 2.5 : 2} />
             </div>
             <span style={{ 
               marginTop: 2,

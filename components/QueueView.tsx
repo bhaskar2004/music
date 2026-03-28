@@ -6,8 +6,7 @@ import { Play, Music2, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 
 const PLACEHOLDER_COLORS = [
-  '#1a1a2e', '#16213e', '#0f3460', '#1b1b2f',
-  '#2d1b69', '#11372a', '#1a0533', '#2c1810',
+  '#000000', '#0A0A0A', '#121212', '#1A1A1A'
 ];
 
 export default function QueueView() {
@@ -18,9 +17,9 @@ export default function QueueView() {
   if (!queue.length) {
     return (
       <div className="responsive-padding" style={{ height: '100%', overflow: 'auto' }}>
-        <h1 style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1px', marginBottom: 24, color: 'var(--text)' }}>
-          Queue
-        </h1>
+      <h1 className="brand-text" style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1.5px', marginBottom: 24 }}>
+        Queue
+      </h1>
         <div
           style={{
             display: 'flex',
@@ -41,26 +40,10 @@ export default function QueueView() {
                 setCurrentTrack(library[0]);
                 setIsPlaying(true);
               }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '9px 18px',
-                background: 'var(--accent)',
-                color: '#000',
-                border: 'none',
-                borderRadius: 'var(--radius)',
-                fontFamily: 'var(--font-sans)',
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'opacity 0.15s',
-                marginTop: 4,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              className="tap-active uber-btn-accent"
+              style={{ padding: '10px 24px', fontSize: 13, marginTop: 12 }}
             >
-              <Play size={14} />
+              <Play size={14} fill="currentColor" />
               Play All from Library
             </button>
           )}
@@ -77,7 +60,7 @@ export default function QueueView() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1px', marginBottom: 4, color: 'var(--text)' }}>
+          <h1 className="brand-text" style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1.5px', marginBottom: 4 }}>
             Queue
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
@@ -90,24 +73,24 @@ export default function QueueView() {
             setCurrentTrack(null);
             setIsPlaying(false);
           }}
-          aria-label="Clear queue"
+          className="tap-active"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 6,
             padding: '8px 14px',
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
+            background: 'rgba(229,62,62,0.1)',
+            border: '1px solid rgba(229,62,62,0.2)',
             borderRadius: 'var(--radius)',
-            color: 'var(--text-muted)',
+            color: 'var(--danger)',
             fontFamily: 'var(--font-sans)',
-            fontWeight: 500,
+            fontWeight: 600,
             fontSize: 12,
             cursor: 'pointer',
             transition: 'all 0.15s',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'rgba(229,62,62,0.3)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(229,62,62,0.15)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(229,62,62,0.1)')}
         >
           <Trash2 size={12} />
           Clear Queue
@@ -183,22 +166,15 @@ function QueueRow({
   return (
     <div
       onClick={onPlay}
+      className={`uber-card ${isActive ? 'uber-card-active' : ''}`}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        padding: '10px 12px',
-        borderRadius: 'var(--radius-sm)',
-        background: isActive ? 'var(--accent-dim)' : 'transparent',
-        border: `1px solid ${isActive ? 'rgba(6,193,103,0.2)' : 'transparent'}`,
+        padding: '12px',
+        borderRadius: 12,
         cursor: onPlay ? 'pointer' : 'default',
-        transition: 'background 0.15s',
-      }}
-      onMouseEnter={(e) => {
-        if (!isActive && onPlay) e.currentTarget.style.background = 'var(--surface2)';
-      }}
-      onMouseLeave={(e) => {
-        if (!isActive) e.currentTarget.style.background = 'transparent';
+        marginBottom: 4,
       }}
     >
       {/* Cover */}

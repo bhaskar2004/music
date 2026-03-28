@@ -13,6 +13,8 @@ function readLibrary() {
   catch { return []; }
 }
 function writeLibrary(data: unknown[]) {
+  const dir = path.dirname(LIBRARY_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(LIBRARY_PATH, JSON.stringify(data, null, 2));
 }
 function ensureAudioDir() {
@@ -31,14 +33,14 @@ export async function POST(req: NextRequest) {
     return new Response('Content-Type must be application/json', { status: 400 });
   }
 
-  let body: { url?: string };
+  let body: { url?: string; folderId?: string };
   try {
     body = await req.json();
   } catch {
     return new Response('Invalid JSON body', { status: 400 });
   }
 
-  const { url } = body;
+  const { url, folderId } = body;
   if (!url || typeof url !== 'string' || !url.trim()) {
     return new Response('Missing or invalid URL', { status: 400 });
   }
@@ -65,7 +67,7 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        // ── 1. Fetch metadata ────────────────────────────────────────────
+        // ── 1. Fetch metadata (Resilient) ────────────────────────────────
         send('status', { stage: 'metadata', message: 'Fetching track info…' });
 
         const binDir = path.join(process.cwd(), 'bin');
@@ -73,7 +75,6 @@ export async function POST(req: NextRequest) {
         const YT_DLP_PATH = path.join(binDir, binName);
 
         if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
-
         if (!fs.existsSync(YT_DLP_PATH)) {
           send('status', { stage: 'metadata', message: 'Downloading yt-dlp engine (first run only)…' });
           await YTDlpWrap.downloadFromGithub(YT_DLP_PATH);
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
 
         const ytDlp = new YTDlpWrap(YT_DLP_PATH);
 
-        // Find ffmpeg/ffprobe installed via winget
+        // Find ffmpeg/ffprobe
         let ffmpegLocation = '';
         if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
           const wingetLinks = path.join(process.env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links');
@@ -90,12 +91,33 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const argsMeta = [url, '--dump-json', '--no-playlist'];
-        if (ffmpegLocation) Object.assign(argsMeta, [...argsMeta, '--ffmpeg-location', ffmpegLocation]);
-        
-        const metaRaw = await ytDlp.execPromise(argsMeta);
-        const meta = JSON.parse(metaRaw);
+        const commonArgs = ['--no-playlist', '--no-warnings', '--no-check-certificates'];
+        if (ffmpegLocation) commonArgs.push('--ffmpeg-location', ffmpegLocation);
 
+        let metaRaw: string;
+        try {
+          // Attempt 1: Without cookies (avoid lock issues for public videos)
+          console.log(`[METADATA] Attempting fetch without cookies for ${url}`);
+          metaRaw = await ytDlp.execPromise([url, '--dump-json', ...commonArgs]);
+        } catch (err: any) {
+          const errMsg = err?.message || err?.stderr || '';
+          if (errMsg.includes('Sign in to confirm') || errMsg.includes('registered users') || errMsg.includes('bot')) {
+            console.log(`[METADATA] Bot check/Auth required, attempting fetch with cookies for ${url}`);
+            try {
+              metaRaw = await ytDlp.execPromise([url, '--dump-json', ...commonArgs, '--cookies-from-browser', 'chrome']);
+            } catch (innerErr: any) {
+              const innerMsg = innerErr?.message || innerErr?.stderr || '';
+              if (innerMsg.includes('Could not copy Chrome cookie database')) {
+                throw new Error('Chrome browser is open and locking its cookie database. Please close Chrome or use a private window to download this video.');
+              }
+              throw innerErr;
+            }
+          } else {
+            throw err;
+          }
+        }
+        
+        const meta = JSON.parse(metaRaw);
         const title: string   = meta.title    ?? 'Unknown Title';
         const artist: string  = meta.uploader ?? meta.artist ?? 'Unknown Artist';
         const album: string   = meta.album    ?? meta.playlist ?? 'Unknown Album';
@@ -103,53 +125,60 @@ export async function POST(req: NextRequest) {
 
         send('metadata', { title, artist, album, thumbnail });
 
-        // ── 2. Download audio with live progress ─────────────────────────
+        // ── 2. Download audio (Resilient) ────────────────────────────────
         send('status', { stage: 'downloading', message: 'Downloading audio…' });
 
         const outputTemplate = path.join(AUDIO_DIR, `${id}.%(ext)s`);
-
-        const execArgs = [
+        const baseDlArgs = [
             url,
-            '--no-playlist',
             '-x',
             '--audio-format', 'mp3',
             '--audio-quality', '0',
             '--add-metadata',
             '-o', outputTemplate,
+            ...commonArgs,
         ];
-        if (ffmpegLocation) {
-            execArgs.push('--ffmpeg-location', ffmpegLocation);
-        }
 
-        console.log(`[DOWNLOAD] Starting download for ${url} with ID ${id}`);
-        await new Promise<void>((resolve, reject) => {
-          const emitter = ytDlp.exec(execArgs);
-
-          emitter.on('progress', (p: { percent?: number; totalSize?: string; currentSpeed?: string; eta?: string }) => {
-            send('progress', {
-              percent: isNaN(p.percent ?? NaN) ? 0 : Math.round(p.percent!),
-              totalSize:    p.totalSize    ?? '',
-              currentSpeed: p.currentSpeed ?? '',
-              eta:          p.eta          ?? '',
+        const runDownload = async (useCookies: boolean) => {
+          const args = useCookies ? [...baseDlArgs, '--cookies-from-browser', 'chrome'] : baseDlArgs;
+          return new Promise<void>((resolve, reject) => {
+            const emitter = ytDlp.exec(args);
+            emitter.on('progress', (p: any) => {
+              send('progress', {
+                percent: isNaN(p.percent ?? NaN) ? 0 : Math.round(p.percent!),
+                totalSize: p.totalSize ?? '',
+                currentSpeed: p.currentSpeed ?? '',
+                eta: p.eta ?? '',
+              });
             });
+            emitter.on('ytDlpEvent', (event: string, data: string) => {
+              if (event === 'ffmpeg') send('status', { stage: 'processing', message: 'Converting to MP3…' });
+            });
+            emitter.on('error', (err: any) => reject(err));
+            emitter.on('close', () => resolve());
           });
+        };
 
-          emitter.on('ytDlpEvent', (event: string, data: string) => {
-            console.log(`[DOWNLOAD] yt-dlp event [${event}]:`, data.slice(0, 100));
-            if (event === 'ffmpeg') {
-              send('status', { stage: 'processing', message: 'Converting to MP3…' });
+        try {
+          // Attempt 1: Without cookies
+          await runDownload(false);
+        } catch (err: any) {
+          const errMsg = err?.message || err?.stderr || '';
+          if (errMsg.includes('Sign in to confirm') || errMsg.includes('registered users') || errMsg.includes('bot')) {
+            console.log(`[DOWNLOAD] Auth required, retrying with cookies for ${id}`);
+            try {
+              await runDownload(true);
+            } catch (innerErr: any) {
+              const innerMsg = innerErr?.message || innerErr?.stderr || '';
+              if (innerMsg.includes('Could not copy Chrome cookie database')) {
+                 throw new Error('Chrome browser is open and locking its cookie database. Please close Chrome or use a private window.');
+              }
+              throw innerErr;
             }
-          });
-
-          emitter.on('error', (err) => {
-            console.error(`[DOWNLOAD] yt-dlp error for ${id}:`, err);
-            reject(err);
-          });
-          emitter.on('close', () => {
-            console.log(`[DOWNLOAD] yt-dlp closed for ${id}`);
-            resolve();
-          });
-        });
+          } else {
+            throw err;
+          }
+        }
 
         // ── 6. Persist to library ─────────────────────────────────────────
         console.log(`[DOWNLOAD] Finalizing track ${id}. Looking for files in ${AUDIO_DIR}`);
@@ -193,13 +222,13 @@ export async function POST(req: NextRequest) {
             console.warn(`[DOWNLOAD] Thumbnail download failed for ${id}:`, e.message);
           }
         }
-
         const track = {
           id, title, artist, album, duration, filename,
           coverUrl, sourceUrl: url,
           addedAt: new Date().toISOString(),
           fileSize: stats.size,
           format,
+          ...(folderId ? { folderId } : {})
         };
 
         const library = readLibrary();

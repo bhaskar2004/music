@@ -3,7 +3,7 @@
 import { Track } from '@/types';
 import { useMusicStore } from '@/store/musicStore';
 import { formatDuration, formatDate } from '@/lib/utils';
-import { Play, Pause, MoreHorizontal, Trash2, ExternalLink, Heart } from 'lucide-react';
+import { Play, Pause, MoreHorizontal, Trash2, ExternalLink, Heart, Folder as FolderIcon, ListPlus, PlayCircle, Check, Square } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
 
@@ -13,12 +13,12 @@ interface TrackCardProps {
 }
 
 const PLACEHOLDER_COLORS = [
-  '#1a1a2e', '#16213e', '#0f3460', '#1b1b2f',
-  '#2d1b69', '#11372a', '#1a0533', '#2c1810',
+  '#000000', '#0A0A0A', '#121212', '#1A1A1A'
 ];
 
 export default function TrackCard({ track, index }: TrackCardProps) {
-  const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying, setQueue, library, removeTrack, toggleFavorite, favorites } =
+  const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying, setQueue, library, removeTrack, toggleFavorite, favorites, folders, moveTrack, addToQueue, playNextTrack,
+    isSelectionMode, selectedTrackIds, toggleTrackSelection } =
     useMusicStore();
 
   const [hovered, setHovered] = useState(false);
@@ -28,7 +28,14 @@ export default function TrackCard({ track, index }: TrackCardProps) {
   const isFav = favorites.includes(track.id);
   const bgColor = PLACEHOLDER_COLORS[index % PLACEHOLDER_COLORS.length];
 
-  const handlePlay = () => {
+  const isSelected = selectedTrackIds.includes(track.id);
+
+  const handlePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isSelectionMode) {
+      toggleTrackSelection(track.id);
+      return;
+    }
     if (isActive) {
       setIsPlaying(!isPlaying);
     } else {
@@ -53,23 +60,16 @@ export default function TrackCard({ track, index }: TrackCardProps) {
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
-      className="animate-fade-in"
       style={{
-        background: isActive ? 'var(--surface2)' : 'var(--surface)',
-        borderRadius: '12px', /* More modern radius */
+        borderRadius: '12px',
         padding: 16,
         cursor: 'pointer',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
         animationDelay: `${Math.min(index * 30, 300)}ms`,
         animationFillMode: 'both',
-        transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
-        boxShadow: hovered
-          ? '0 12px 32px rgba(0,0,0,0.15)'
-          : isActive
-          ? '0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent)'
-          : '0 4px 12px rgba(0,0,0,0.02)',
+        zIndex: hovered || menuOpen ? 50 : 1,
       }}
+      className={`animate-fade-in uber-card ${isActive ? 'uber-card-active neon-border' : ''}`}
       onClick={handlePlay}
     >
       {/* Cover Art */}
@@ -109,21 +109,38 @@ export default function TrackCard({ track, index }: TrackCardProps) {
           </div>
         )}
 
-        {/* Play overlay */}
+        {/* Play overlay - Styled like Uber/Spotify */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'rgba(0,0,0,0.45)',
+            background: 'rgba(0,0,0,0.4)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: hovered || isActive ? 1 : 0,
-            transition: 'opacity 0.2s',
+            opacity: hovered || isActive || isSelectionMode ? 1 : 0,
+            transition: 'opacity 0.25s ease',
             borderRadius: 8,
           }}
         >
-          {isActive && isPlaying ? (
+          {isSelectionMode ? (
+            <div
+              className="tap-active"
+              style={{
+                width: 32,
+                height: 32,
+                background: isSelected ? 'var(--accent)' : 'rgba(0,0,0,0.4)',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: `2px solid ${isSelected ? 'var(--accent)' : '#fff'}`,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              }}
+            >
+              {isSelected && <Check size={18} color="#000" strokeWidth={3} />}
+            </div>
+          ) : isActive && isPlaying ? (
             <div style={{ display: 'flex', gap: 3, height: 20, alignItems: 'flex-end' }}>
               <div className="eq-bar" style={{ height: '100%' }} />
               <div className="eq-bar" style={{ height: '100%' }} />
@@ -131,20 +148,21 @@ export default function TrackCard({ track, index }: TrackCardProps) {
             </div>
           ) : (
             <div
+              className="tap-active"
               style={{
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 background: 'var(--text)',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                transform: hovered ? 'scale(1)' : 'scale(0.9)',
-                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                transform: hovered ? 'scale(1)' : 'scale(0.8)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
-              <Play size={20} color="var(--bg)" fill="var(--bg)" style={{ marginLeft: 3 }} />
+              <Play size={18} color="var(--bg)" fill="var(--bg)" style={{ marginLeft: 2 }} />
             </div>
           )}
         </div>
@@ -269,82 +287,109 @@ export default function TrackCard({ track, index }: TrackCardProps) {
               position: 'absolute',
               top: 32,
               right: 0,
-              background: 'var(--surface2)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-sm)',
               minWidth: 170,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-              overflow: 'hidden',
-              zIndex: 50,
+              zIndex: 100,
             }}
-            className="animate-fade-in"
+            className="premium-dropdown"
           >
+            {/* Queue Options */}
+            <div style={{ padding: '8px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase' }}>
+              Queue
+            </div>
+            <button
+              className="dropdown-item"
+              onClick={() => { playNextTrack(track); setMenuOpen(false); }}
+              style={{ border: 'none', background: 'transparent', width: '100%', padding: 0 }}
+            >
+              <div className="dropdown-item" style={{ width: '100%' }}>
+                <PlayCircle size={12} />
+                Play Next
+              </div>
+            </button>
+            <button
+              className="dropdown-item"
+              onClick={() => { addToQueue(track); setMenuOpen(false); }}
+              style={{ border: 'none', background: 'transparent', width: '100%', padding: 0 }}
+            >
+              <div className="dropdown-item" style={{ width: '100%' }}>
+                <ListPlus size={12} />
+                Add to Queue
+              </div>
+            </button>
+            <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+
+            {/* Playlists */}
+            {folders.length > 0 && (
+              <>
+                <div style={{ padding: '8px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase' }}>
+                  Move to Playlist
+                </div>
+                {folders.map(folder => (
+                  <button
+                    key={folder.id}
+                    className="dropdown-item"
+                    onClick={() => { moveTrack(track.id, folder.id); setMenuOpen(false); }}
+                    style={{ border: 'none', background: 'transparent', width: '100%', padding: 0 }}
+                  >
+                    <div className="dropdown-item" style={{ width: '100%', color: track.folderId === folder.id ? 'var(--neon-blue)' : 'inherit' }}>
+                      <FolderIcon size={12} fill={track.folderId === folder.id ? 'currentColor' : 'none'} />
+                      {folder.name}
+                    </div>
+                  </button>
+                ))}
+                {track.folderId && (
+                  <button
+                    onClick={() => { moveTrack(track.id, undefined); setMenuOpen(false); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px',
+                      color: 'var(--text-muted)', fontSize: 12, background: 'transparent', border: 'none', width: '100%',
+                      cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface3)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <FolderIcon size={12} opacity={0.5} />
+                    Remove from Playlist
+                  </button>
+                )}
+                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+              </>
+            )}
+
             {/* Favorite toggle */}
             <button
+              className="dropdown-item"
               onClick={() => { toggleFavorite(track.id); setMenuOpen(false); }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '9px 12px',
-                color: isFav ? 'var(--accent)' : 'var(--text-muted)',
-                fontSize: 12,
-                background: 'transparent',
-                border: 'none',
-                width: '100%',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-                transition: 'all 0.1s',
-                textAlign: 'left',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface3)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              style={{ border: 'none', background: 'transparent', width: '100%', padding: 0 }}
             >
-              <Heart size={12} fill={isFav ? 'currentColor' : 'none'} />
-              {isFav ? 'Remove from Favorites' : 'Add to Favorites'}
+              <div className="dropdown-item" style={{ width: '100%', color: isFav ? 'var(--neon-purple)' : 'inherit' }}>
+                <Heart size={12} fill={isFav ? 'currentColor' : 'none'} />
+                {isFav ? 'Remove from Favorites' : 'Add to Favorites'}
+              </div>
             </button>
+            
             <a
               href={track.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '9px 12px',
-                color: 'var(--text-muted)',
-                fontSize: 12,
-                textDecoration: 'none',
-                transition: 'all 0.1s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface3)'; e.currentTarget.style.color = 'var(--text)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+              className="dropdown-item"
+              style={{ textDecoration: 'none' }}
             >
               <ExternalLink size={12} />
               View Source
             </a>
+            
             <div style={{ height: 1, background: 'var(--border)' }} />
+            
             <button
+              className="dropdown-item danger"
               onClick={handleDelete}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '9px 12px',
-                color: 'var(--danger)',
-                fontSize: 12,
-                background: 'transparent',
-                border: 'none',
-                width: '100%',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-                transition: 'background 0.1s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,77,77,0.08)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              style={{ border: 'none', background: 'transparent', width: '100%', padding: 0 }}
             >
-              <Trash2 size={12} />
-              Remove
+              <div className="dropdown-item danger" style={{ width: '100%' }}>
+                <Trash2 size={12} />
+                Remove
+              </div>
             </button>
           </div>
         )}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useMusicStore } from '@/store/musicStore';
 import Sidebar from '@/components/Sidebar';
+import MobileHeader from '@/components/MobileHeader';
 import MobileNav from '@/components/MobileNav';
 import LibraryView from '@/components/LibraryView';
 import QueueView from '@/components/QueueView';
@@ -48,6 +49,7 @@ export default function Home() {
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           <Sidebar />
           <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+            <MobileHeader />
             {loading ? (
               <LoadingSkeleton />
             ) : (

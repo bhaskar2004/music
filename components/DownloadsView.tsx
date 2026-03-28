@@ -2,14 +2,15 @@
 
 import { useMusicStore } from '@/store/musicStore';
 import { DownloadJob } from '@/types';
-import { CheckCircle2, AlertCircle, Loader2, X, Download, Music2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, X, Download, Music2, RotateCcw } from 'lucide-react';
 import { formatFileSize } from '@/lib/utils';
+import { useDownloadProcessor } from '@/hooks/useDownloadProcessor';
 import Image from 'next/image';
 
 const STATUS_CONFIG = {
   pending:     { label: 'Queued',      color: 'var(--text-muted)' },
-  downloading: { label: 'Downloading', color: '#3b82f6' },
-  processing:  { label: 'Converting',  color: '#f59e0b' },
+  downloading: { label: 'Downloading', color: 'var(--accent)' },
+  processing:  { label: 'Converting',  color: 'var(--neon-blue)' },
   done:        { label: 'Complete',    color: 'var(--accent)' },
   error:       { label: 'Failed',      color: 'var(--danger)' },
 };
@@ -18,6 +19,7 @@ const PLACEHOLDER_COLORS = ['#dbeafe','#dcfce7','#fef9c3','#fce7f3','#ede9fe'];
 
 export default function DownloadsView() {
   const { downloads, removeDownload, setShowDownloadModal } = useMusicStore();
+  const { processDownload } = useDownloadProcessor();
   const active = downloads.filter(d => d.status === 'downloading' || d.status === 'pending' || d.status === 'processing');
   const done   = downloads.filter(d => d.status === 'done' || d.status === 'error');
 
@@ -26,23 +28,23 @@ export default function DownloadsView() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1px', marginBottom: 4, color: 'var(--text)' }}>Downloads</h1>
+          <h1 className="brand-text" style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1.5px', marginBottom: 4 }}>Downloads</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>
             {active.length > 0 ? `${active.length} active · ` : ''}{downloads.length} total
           </p>
         </div>
         <button
           onClick={() => setShowDownloadModal(true)}
+          className="tap-active"
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '9px 16px',
-            background: 'var(--text)', color: 'var(--bg)',
+            padding: '9px 18px',
+            background: 'var(--brand-gradient)', color: '#000',
             border: 'none', borderRadius: 'var(--radius)',
-            fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13,
-            cursor: 'pointer', transition: 'opacity 0.15s',
+            fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: 13,
+            cursor: 'pointer', transition: 'all 0.15s',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
           }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
         >
           <Download size={14} />
           New Download
@@ -59,7 +61,7 @@ export default function DownloadsView() {
               <SectionLabel>Active</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {active.map((job, i) => (
-                  <DownloadRow key={job.id} job={job} index={i} />
+                  <DownloadRow key={job.id} job={job} index={i} onRetry={processDownload} />
                 ))}
               </div>
             </section>
@@ -71,7 +73,7 @@ export default function DownloadsView() {
               <SectionLabel>History</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {done.map((job, i) => (
-                  <DownloadRow key={job.id} job={job} index={i} onRemove={() => removeDownload(job.id)} />
+                  <DownloadRow key={job.id} job={job} index={i} onRemove={() => removeDownload(job.id)} onRetry={processDownload} />
                 ))}
               </div>
             </section>
@@ -94,26 +96,24 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DownloadRow({ job, index, onRemove }: { job: DownloadJob; index: number; onRemove?: () => void }) {
+function DownloadRow({ job, index, onRemove, onRetry }: { 
+  job: DownloadJob; index: number; onRemove?: () => void; onRetry: (url: string, folderId?: string, jobId?: string) => void 
+}) {
   const cfg = STATUS_CONFIG[job.status];
   const isActive = job.status === 'downloading' || job.status === 'pending' || job.status === 'processing';
   const bgColor = PLACEHOLDER_COLORS[index % PLACEHOLDER_COLORS.length];
 
   return (
     <div
-      className="animate-fade-in"
+      className="animate-fade-in uber-card"
       style={{
-        background: 'var(--bg)',
-        border: `1px solid ${
-          job.status === 'done'  ? 'rgba(6,193,103,0.2)'
-          : job.status === 'error' ? 'rgba(229,62,62,0.2)'
-          : isActive ? 'rgba(59,130,246,0.2)'
-          : 'var(--border)'
-        }`,
         borderRadius: 'var(--radius)',
         padding: '16px',
         overflow: 'hidden',
-        transition: 'border-color 0.3s',
+        borderLeft: job.status === 'done' ? '4px solid var(--accent)' 
+                  : job.status === 'error' ? '4px solid var(--danger)'
+                  : isActive ? '4px solid var(--accent)'
+                  : '1px solid var(--border)',
       }}
     >
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -178,7 +178,7 @@ function DownloadRow({ job, index, onRemove }: { job: DownloadJob; index: number
                     : 'Downloading audio'}
                 </span>
                 {job.progress > 0 && job.status === 'downloading' && (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', fontFamily: 'var(--font-mono)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
                     {job.progress}%
                   </span>
                 )}
@@ -190,16 +190,16 @@ function DownloadRow({ job, index, onRemove }: { job: DownloadJob; index: number
                   transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1)',
                   ...(job.status === 'processing' ? {
                     width: '100%',
-                    background: '#f59e0b',
-                    backgroundImage: 'linear-gradient(90deg, #f59e0b 0%, #fcd34d 50%, #f59e0b 100%)',
+                    background: 'var(--accent)',
+                    backgroundImage: 'linear-gradient(90deg, var(--accent) 0%, var(--neon-blue) 50%, var(--accent) 100%)',
                     backgroundSize: '200% 100%',
                     animation: 'shimmer 1.2s infinite',
                   } : job.status === 'pending' ? {
                     width: '4%',
-                    background: 'var(--text-muted)',
+                    background: 'var(--text-faint)',
                   } : {
                     width: `${job.progress}%`,
-                    background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                    background: 'var(--brand-gradient)',
                   }),
                 }} />
               </div>
@@ -224,15 +224,34 @@ function DownloadRow({ job, index, onRemove }: { job: DownloadJob; index: number
 
           {/* Error message */}
           {job.status === 'error' && job.error && (
-            <div style={{
-              fontSize: 12, color: 'var(--danger)',
-              background: 'rgba(229,62,62,0.06)',
-              border: '1px solid rgba(229,62,62,0.15)',
-              borderRadius: 6, padding: '6px 10px', marginTop: 4,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <AlertCircle size={11} style={{ flexShrink: 0 }} />
-              {job.error}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+              <div style={{
+                fontSize: 12, color: 'var(--danger)',
+                background: 'rgba(229,62,62,0.06)',
+                border: '1px solid rgba(229,62,62,0.15)',
+                borderRadius: 6, padding: '6px 10px',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <AlertCircle size={11} style={{ flexShrink: 0 }} />
+                {job.error}
+              </div>
+              <button
+                onClick={() => onRetry(job.url, job.track?.folderId, job.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  alignSelf: 'flex-start',
+                  padding: '6px 12px',
+                  background: 'var(--surface2)', color: 'var(--text)',
+                  border: '1px solid var(--border)', borderRadius: 6,
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface3)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface2)')}
+              >
+                <RotateCcw size={12} />
+                Retry Download
+              </button>
             </div>
           )}
         </div>

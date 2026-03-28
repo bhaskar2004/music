@@ -1,3 +1,9 @@
+export interface Folder {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Track {
   id: string;
   title: string;
@@ -10,6 +16,7 @@ export interface Track {
   addedAt: string;
   fileSize: number; // bytes
   format: string;
+  folderId?: string; // Links track to a custom user folder
 }
 
 export interface DownloadJob {

@@ -2,14 +2,22 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Track, DownloadJob } from '@/types';
+import { Track, DownloadJob, Folder } from '@/types';
+import { v4 as uuidv4 } from 'uuid';
 
 interface MusicStore {
-  // Library
+  // Library & Folders
   library: Track[];
+  folders: Folder[];
+  activeFolderId: string | null;
+  
   setLibrary: (tracks: Track[]) => void;
   addTrack: (track: Track) => void;
   removeTrack: (id: string) => void;
+  addFolder: (name: string) => void;
+  removeFolder: (id: string) => void;
+  moveTrack: (trackId: string, folderId?: string) => void;
+  setActiveFolderId: (id: string | null) => void;
 
   // Favorites
   favorites: string[];
@@ -36,6 +44,10 @@ interface MusicStore {
   setQueue: (tracks: Track[]) => void;
   playNext: () => void;
   playPrev: () => void;
+  addToQueue: (track: Track) => void;
+  playNextTrack: (track: Track) => void;
+  playAll: (tracks: Track[]) => void;
+  shufflePlay: (tracks: Track[]) => void;
 
   // Download
   downloads: DownloadJob[];
@@ -50,12 +62,23 @@ interface MusicStore {
   setShowDownloadModal: (v: boolean) => void;
   selectedTrack: Track | null;
   setSelectedTrack: (t: Track | null) => void;
+
+  // Selection
+  selectedTrackIds: string[];
+  isSelectionMode: boolean;
+  toggleTrackSelection: (id: string) => void;
+  setSelectionMode: (v: boolean) => void;
+  clearSelection: () => void;
+  moveSelectedToFolder: (trackIds: string[], folderId?: string) => void;
 }
 
 export const useMusicStore = create<MusicStore>()(
   persist(
     (set, get) => ({
       library: [],
+      folders: [],
+      activeFolderId: null,
+
       setLibrary: (tracks) => set({ library: tracks }),
       addTrack: (track) => set((s) => ({ library: [track, ...s.library] })),
       removeTrack: (id) =>
@@ -63,6 +86,29 @@ export const useMusicStore = create<MusicStore>()(
           library: s.library.filter((t) => t.id !== id),
           favorites: s.favorites.filter((fid) => fid !== id),
         })),
+        
+      addFolder: (name) => set((s) => ({
+        folders: [...s.folders, { id: uuidv4(), name, createdAt: new Date().toISOString() }],
+      })),
+      removeFolder: (id) => set((s) => ({
+        folders: s.folders.filter((f) => f.id !== id),
+        library: s.library.map((t) => t.folderId === id ? { ...t, folderId: undefined } : t),
+        activeFolderId: s.activeFolderId === id ? null : s.activeFolderId,
+      })),
+      moveTrack: (trackId, folderId) => set((s) => {
+        // Optimistically update memory library
+        const updatedLibrary = s.library.map((t) => t.id === trackId ? { ...t, folderId } : t);
+        
+        // Push the update to the backend library.json so it persists across reloads!
+        fetch('/api/library/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackId, folderId }),
+        }).catch(err => console.error("Failed to sync folder move to backend:", err));
+
+        return { library: updatedLibrary };
+      }),
+      setActiveFolderId: (id) => set({ activeFolderId: id }),
 
       // Favorites
       favorites: [],
@@ -128,6 +174,30 @@ export const useMusicStore = create<MusicStore>()(
         set({ currentTrack: prev, isPlaying: true, currentTime: 0 });
       },
 
+      addToQueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
+      
+      playNextTrack: (track) => set((s) => {
+        const idx = s.queue.findIndex((t) => t.id === s.currentTrack?.id);
+        const newQueue = [...s.queue];
+        if (idx === -1) {
+          newQueue.unshift(track);
+        } else {
+          newQueue.splice(idx + 1, 0, track);
+        }
+        return { queue: newQueue };
+      }),
+
+      playAll: (tracks) => {
+        if (!tracks.length) return;
+        set({ queue: tracks, currentTrack: tracks[0], isPlaying: true, currentTime: 0 });
+      },
+
+      shufflePlay: (tracks) => {
+        if (!tracks.length) return;
+        const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+        set({ queue: shuffled, currentTrack: shuffled[0], isPlaying: true, currentTime: 0 });
+      },
+
       downloads: [],
       addDownload: (job) => set((s) => ({ downloads: [job, ...s.downloads] })),
       updateDownload: (id, updates) =>
@@ -143,6 +213,34 @@ export const useMusicStore = create<MusicStore>()(
       setShowDownloadModal: (v) => set({ showDownloadModal: v }),
       selectedTrack: null,
       setSelectedTrack: (t) => set({ selectedTrack: t }),
+
+      // Selection
+      selectedTrackIds: [],
+      isSelectionMode: false,
+      toggleTrackSelection: (id) => set((s) => ({
+        selectedTrackIds: s.selectedTrackIds.includes(id)
+          ? s.selectedTrackIds.filter(tid => tid !== id)
+          : [...s.selectedTrackIds, id]
+      })),
+      setSelectionMode: (v) => set({ isSelectionMode: v, selectedTrackIds: v ? get().selectedTrackIds : [] }),
+      clearSelection: () => set({ selectedTrackIds: [] }),
+      moveSelectedToFolder: (trackIds, folderId) => set((s) => {
+        const updatedLibrary = s.library.map((t) => 
+          trackIds.includes(t.id) ? { ...t, folderId } : t
+        );
+        
+        // Sync each move to backend (sequential or batch if we had an endpoint, 
+        // using moveTrack's endpoint for now)
+        trackIds.forEach(id => {
+          fetch('/api/library/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ trackId: id, folderId }),
+          }).catch(err => console.error("Failed to sync bulk move:", err));
+        });
+
+        return { library: updatedLibrary, selectedTrackIds: [], isSelectionMode: false };
+      }),
     }),
     {
       name: 'wavelength-settings',
@@ -153,6 +251,7 @@ export const useMusicStore = create<MusicStore>()(
         shuffle: state.shuffle,
         repeat: state.repeat,
         favorites: state.favorites,
+        folders: state.folders,
       }),
     }
   )

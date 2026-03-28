@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
 import 'api_service.dart';
 
@@ -9,14 +11,23 @@ class AudioService {
 
   AudioPlayer get player => _player;
 
-  /// Loads a track. If it exists locally in Scoped Storage, play offline.
-  /// Otherwise, stream directly from YouTube's servers independent of Next.js.
-  Future<void> playTrack(Track track, {String? localPath}) async {
+  /// Loads a track. Prioritizes local storage for offline playback.
+  Future<void> playTrack(Track track) async {
     try {
       AudioSource source;
       
-      if (localPath != null && localPath.isNotEmpty) {
-        // Play local high-quality offline file
+      // Check for local file in Android Music/Wavelength or iOS Documents
+      String localPath = "";
+      if (Platform.isAndroid) {
+        localPath = "/storage/emulated/0/Music/Wavelength/${track.filename}";
+      } else {
+        final docs = await getApplicationDocumentsDirectory();
+        localPath = "${docs.path}/Wavelength/${track.filename}";
+      }
+
+      final localFile = File(localPath);
+      if (await localFile.exists()) {
+        print("Playing local offline file: $localPath");
         source = AudioSource.uri(
           Uri.file(localPath),
           tag: MediaItem(
@@ -29,6 +40,7 @@ class AudioService {
         );
       } else {
         // Stream seamlessly direct from YouTube
+        print("Streaming from YouTube: ${track.title}");
         final streamUrl = await _api.getAudioStreamUrl(track.id);
         
         source = AudioSource.uri(

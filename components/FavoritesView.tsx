@@ -2,10 +2,10 @@
 
 import { useMusicStore } from '@/store/musicStore';
 import TrackCard from './TrackCard';
-import { Heart, Music2 } from 'lucide-react';
+import { Heart, Music2, Play, Shuffle } from 'lucide-react';
 
 export default function FavoritesView() {
-  const { library, favorites } = useMusicStore();
+  const { library, favorites, playAll, shufflePlay } = useMusicStore();
 
   const favoriteTracks = library.filter((t) => favorites.includes(t.id));
 
@@ -24,13 +24,47 @@ export default function FavoritesView() {
         }}
       >
         <div>
-          <h1 style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1px', marginBottom: 4, color: 'var(--text)' }}>
+          <h1 className="brand-text" style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1.5px', marginBottom: 4 }}>
             Favorites
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>
             {favoriteTracks.length} {favoriteTracks.length === 1 ? 'track' : 'tracks'}
           </p>
         </div>
+
+        {favoriteTracks.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => playAll(favoriteTracks)}
+              className="tap-active"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'var(--brand-gradient)', color: '#000', border: 'none',
+                borderRadius: '99px', padding: '8px 18px', fontWeight: 800, fontSize: 13,
+                cursor: 'pointer', transition: 'all 0.15s',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
+              }}
+            >
+              <Play size={14} fill="currentColor" />
+              Play All
+            </button>
+
+            <button
+              onClick={() => shufflePlay(favoriteTracks)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)',
+                borderRadius: '99px', padding: '8px 18px', fontWeight: 600, fontSize: 13,
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface3)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface2)'; e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              <Shuffle size={14} />
+              Shuffle
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
