@@ -36,80 +36,58 @@ jobs:
 
       - name: Inject Android Manifest Configuration
         run: |
-          cd flutter_app_source/android/app/src/main
-          
-          # Python script to safely parse and manipulate AndroidManifest.xml
-          python -c '
-          import xml.etree.ElementTree as ET
+          cat <<EOF > flutter_app_source/android/app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.wavelength.wavelength_app">
+              
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.WAKE_LOCK"/>
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+              <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
 
-          # Register namespace to keep android: prefixes
-          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+             <application
+                  android:label="Wavelength"
+                  android:name="\${applicationName}"
+                  android:icon="@mipmap/ic_launcher">
+                  <activity
+                      android:name="io.flutter.embedding.android.FlutterActivity"
+                      android:exported="true"
+                      android:launchMode="singleTop"
+                      android:theme="@style/LaunchTheme"
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                      android:hardwareAccelerated="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <meta-data
+                        android:name="io.flutter.embedding.android.NormalThemes"
+                        android:resource="@style/NormalTheme"
+                        />
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
 
-          tree = ET.parse("AndroidManifest.xml")
-          root = tree.getroot()
-          ns = {"android": "http://schemas.android.com/apk/res/android"}
+                  <service android:name="com.ryanheise.audioservice.AudioService"
+                           android:foregroundServiceType="mediaPlayback"
+                           android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <action android:name="android.intent.action.VIEW" />
+                          <category android:name="android.intent.category.DEFAULT" />
+                          <category android:name="android.intent.category.BROWSABLE" />
+                          <action android:name="com.ryanheise.audioservice.NOTIFICATION_CLICK" />
+                      </intent-filter>
+                  </service>
 
-          # 1. Add Permissions
-          permissions = [
-              "android.permission.INTERNET",
-              "android.permission.WAKE_LOCK",
-              "android.permission.READ_EXTERNAL_STORAGE",
-              "android.permission.WRITE_EXTERNAL_STORAGE",
-              "android.permission.MANAGE_EXTERNAL_STORAGE",
-              "android.permission.FOREGROUND_SERVICE",
-              "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
-          ]
-
-          app_tag = root.find("application")
-          app_index = list(root).index(app_tag)
-
-          for p in reversed(permissions):
-              perm = ET.Element("uses-permission")
-              perm.set("{http://schemas.android.com/apk/res/android}name", p)
-              root.insert(app_index, perm)
-
-          # 2. Configure MainActivity properly for just_audio_background
-          # Ensure we use the full class name and set the launchMode correctly
-          # We search for the activity that currently has the MAIN action
-          for activity in app_tag.findall("activity"):
-              intent_filter = activity.find("intent-filter")
-              if intent_filter is not None:
-                  action = intent_filter.find("action")
-                  if action is not None and action.get("{http://schemas.android.com/apk/res/android}name") == "android.intent.action.MAIN":
-                      activity.set("{http://schemas.android.com/apk/res/android}name", "com.wavelength.wavelength_app.MainActivity")
-                      activity.set("{http://schemas.android.com/apk/res/android}launchMode", "singleTop")
-                      
-                      # Ensure Flutter 2.0+ embedding meta-data is present
-                      meta = ET.SubElement(activity, "meta-data")
-                      meta.set("{http://schemas.android.com/apk/res/android}name", "io.flutter.embedding.android.NormalThemes")
-                      meta.set("{http://schemas.android.com/apk/res/android}resource", "@style/NormalTheme")
-
-          # 3. Add AudioService declaration inside <application>
-          service = ET.SubElement(app_tag, "service")
-          service.set("{http://schemas.android.com/apk/res/android}name", "com.ryanheise.audioservice.AudioService")
-          service.set("{http://schemas.android.com/apk/res/android}foregroundServiceType", "mediaPlayback")
-          service.set("{http://schemas.android.com/apk/res/android}exported", "true")
-
-          intent_filter = ET.SubElement(service, "intent-filter")
-          actions = [
-              "android.intent.action.MAIN",
-              "android.intent.action.VIEW",
-              "com.ryanheise.audioservice.NOTIFICATION_CLICK"
-          ]
-          for a in actions:
-              action_elem = ET.SubElement(intent_filter, "action")
-              action_elem.set("{http://schemas.android.com/apk/res/android}name", a)
-          
-          categories = [
-              "android.intent.category.DEFAULT",
-              "android.intent.category.BROWSABLE"
-          ]
-          for c in categories:
-              category_elem = ET.SubElement(intent_filter, "category")
-              category_elem.set("{http://schemas.android.com/apk/res/android}name", c)
-
-          tree.write("AndroidManifest.xml", xml_declaration=True, encoding="utf-8")
-          '
+                  <meta-data
+                      android:name="flutterEmbedding"
+                      android:value="2" />
+              </application>
+          </manifest>
+          EOF
 
       - name: Install Flutter Dependencies
         run: |
