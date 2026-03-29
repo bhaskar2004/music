@@ -69,11 +69,20 @@ jobs:
               root.insert(app_index, perm)
 
           # 2. Configure MainActivity properly for just_audio_background
-          activity = app_tag.find("activity")
-          if activity is not None:
-              # Using the built-in FlutterActivity directly solves many "wrong FlutterEngine" errors
-              activity.set("{http://schemas.android.com/apk/res/android}name", "io.flutter.embedding.android.FlutterActivity")
-              activity.set("{http://schemas.android.com/apk/res/android}launchMode", "singleTop")
+          # Ensure we use the full class name and set the launchMode correctly
+          # We search for the activity that currently has the MAIN action
+          for activity in app_tag.findall("activity"):
+              intent_filter = activity.find("intent-filter")
+              if intent_filter is not None:
+                  action = intent_filter.find("action")
+                  if action is not None and action.get("{http://schemas.android.com/apk/res/android}name") == "android.intent.action.MAIN":
+                      activity.set("{http://schemas.android.com/apk/res/android}name", "com.wavelength.wavelength_app.MainActivity")
+                      activity.set("{http://schemas.android.com/apk/res/android}launchMode", "singleTop")
+                      
+                      # Ensure Flutter 2.0+ embedding meta-data is present
+                      meta = ET.SubElement(activity, "meta-data")
+                      meta.set("{http://schemas.android.com/apk/res/android}name", "io.flutter.embedding.android.NormalThemes")
+                      meta.set("{http://schemas.android.com/apk/res/android}resource", "@style/NormalTheme")
 
           # 3. Add AudioService declaration inside <application>
           service = ET.SubElement(app_tag, "service")
