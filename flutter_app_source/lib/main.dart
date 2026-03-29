@@ -7,29 +7,42 @@ import 'services/audio_service.dart';
 import 'ui/screens/home_screen.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Background Audio Session
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.wavelength.audio',
-    androidNotificationChannelName: 'Audio playback',
-    androidNotificationOngoing: true,
-  );
+    // Initialize Background Audio Session
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.wavelength.audio',
+      androidNotificationChannelName: 'Audio playback',
+      androidNotificationOngoing: true,
+    );
 
-  // Initialize Background Downloader
-  DownloadService.init();
+    // Initialize Background Downloader
+    DownloadService.init();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        Provider<AudioService>(
-          create: (_) => AudioService(),
-          dispose: (_, service) => service.dispose(),
+    runApp(
+      MultiProvider(
+        providers: [
+          Provider<AudioService>(
+            create: (_) => AudioService(),
+            dispose: (_, service) => service.dispose(),
+          ),
+        ],
+        child: const WavelengthApp(),
+      ),
+    );
+  } catch (e, stackTrace) {
+    debugPrint("Initialization error: $e");
+    debugPrint("Stack trace: $stackTrace");
+    // Optionally show a basic error app if needed
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Text("App failed to start: $e"),
         ),
-      ],
-      child: const WavelengthApp(),
-    ),
-  );
+      ),
+    ));
+  }
 }
 
 class WavelengthApp extends StatelessWidget {
