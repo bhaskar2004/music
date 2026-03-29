@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -32,7 +34,7 @@ jobs:
           # This safely generates the android/ and ios/ folders needed for the build
           flutter create --org com.wavelength --project-name wavelength_app .
 
-      - name: Inject Android Permissions
+      - name: Inject Android Manifest Configuration
         run: |
           cd flutter_app_source/android/app/src/main
           
@@ -45,8 +47,9 @@ jobs:
 
           tree = ET.parse("AndroidManifest.xml")
           root = tree.getroot()
+          ns = {"android": "http://schemas.android.com/apk/res/android"}
 
-          # Define the permissions we need for downloading, background audio, and internet
+          # 1. Add Permissions
           permissions = [
               "android.permission.INTERNET",
               "android.permission.WAKE_LOCK",
@@ -57,14 +60,37 @@ jobs:
               "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
           ]
 
-          # Find index of application tag
-          app_index = list(root).index(root.find("application"))
+          app_tag = root.find("application")
+          app_index = list(root).index(app_tag)
 
-          # Insert permissions before the application tag
           for p in reversed(permissions):
               perm = ET.Element("uses-permission")
               perm.set("{http://schemas.android.com/apk/res/android}name", p)
               root.insert(app_index, perm)
+
+          # 2. Add AudioService declaration inside <application>
+          service = ET.SubElement(app_tag, "service")
+          service.set("{http://schemas.android.com/apk/res/android}name", "com.ryanheise.audioservice.AudioService")
+          service.set("{http://schemas.android.com/apk/res/android}foregroundServiceType", "mediaPlayback")
+          service.set("{http://schemas.android.com/apk/res/android}exported", "true")
+
+          intent_filter = ET.SubElement(service, "intent-filter")
+          actions = [
+              "android.intent.action.MAIN",
+              "android.intent.action.VIEW",
+              "com.ryanheise.audioservice.NOTIFICATION_CLICK"
+          ]
+          for a in actions:
+              action_elem = ET.SubElement(intent_filter, "action")
+              action_elem.set("{http://schemas.android.com/apk/res/android}name", a)
+          
+          categories = [
+              "android.intent.category.DEFAULT",
+              "android.intent.category.BROWSABLE"
+          ]
+          for c in categories:
+              category_elem = ET.SubElement(intent_filter, "category")
+              category_elem.set("{http://schemas.android.com/apk/res/android}name", c)
 
           tree.write("AndroidManifest.xml", xml_declaration=True, encoding="utf-8")
           '
