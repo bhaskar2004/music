@@ -4,11 +4,8 @@
 /windows/
 /web/
 .metadata
-pubspec.lock
 .idea/
 *.iml
-analysis_options.yaml
-test/
 README.md
 .dart_tool/
 build/
