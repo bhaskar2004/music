@@ -134,10 +134,24 @@ class _TrackTileState extends State<TrackTile> {
               ),
               onPressed: () async {
                 if (!_isDownloaded) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Starting download: ${widget.track.title}')));
-                  await DownloadService.downloadTrackToDevice(widget.track);
-                  _checkDownloadStatus();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Download complete!')));
+                  try {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Starting download: ${widget.track.title}'), duration: const Duration(seconds: 2)),
+                    );
+                    await DownloadService.downloadTrackToDevice(widget.track);
+                    await _checkDownloadStatus();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Download complete!'), backgroundColor: Color(0xFF06C167)),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Download failed: ${e.toString().split('\n')[0]}'), backgroundColor: Colors.redAccent),
+                      );
+                    }
+                  }
                 } else {
                   audioService.playTrack(widget.track);
                 }

@@ -46,9 +46,20 @@ class ApiService {
 
   /// Fetches the direct audio stream URL for a specific video ID 
   Future<String> getAudioStreamUrl(String videoId) async {
-    final manifest = await _yt.videos.streamsClient.getManifest(videoId);
-    final audioStreamInfo = manifest.audioOnly.withHighestBitrate();
-    return audioStreamInfo.url.toString();
+    try {
+      final manifest = await _yt.videos.streamsClient.getManifest(videoId);
+      final audioStreams = manifest.audioOnly;
+      
+      if (audioStreams.isEmpty) {
+        throw Exception("No available audio streams found for this track.");
+      }
+      
+      final audioStreamInfo = audioStreams.withHighestBitrate();
+      return audioStreamInfo.url.toString();
+    } catch (e) {
+      print("Error fetching audio stream for $videoId: $e");
+      rethrow;
+    }
   }
 
   void dispose() {

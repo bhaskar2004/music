@@ -16,24 +16,35 @@ class DownloadService {
   /// Downloads the highest quality audio stream directly to the Android physical Music directory.
   /// 100% independent - no Node.js backend required.
   static Future<String?> downloadTrackToDevice(Track track) async {
-    if (Platform.isAndroid) {
-      if (await Permission.manageExternalStorage.request().isGranted ||
-          await Permission.storage.request().isGranted) {
-        // Permissions granted
-      } else {
-        throw Exception("Storage permission required to download songs directly.");
-      }
-    }
-
     Directory? customDir;
-    if (Platform.isAndroid) {
-      customDir = Directory('/storage/emulated/0/Music/Wavelength');
-    } else {
-      customDir = Directory((await getApplicationDocumentsDirectory()).path + '/Wavelength');
-    }
+    bool usingInternalStorage = false;
 
-    if (!await customDir.exists()) {
-      await customDir.create(recursive: true);
+    if (Platform.isAndroid) {
+      // 1. Try to get Permission.manageExternalStorage (All Files Access)
+      var status = await Permission.manageExternalStorage.status;
+      if (status.isDenied) {
+        status = await Permission.manageExternalStorage.request();
+      }
+
+      if (status.isGranted) {
+        customDir = Directory('/storage/emulated/0/Music/Wavelength');
+      } else {
+        // 2. Fallback to basic storage/audio permissions for Android 10 and below or scoped storage
+        if (await Permission.audio.request().isGranted || 
+            await Permission.storage.request().isGranted) {
+           // For scoped storage, /storage/emulated/0/Music might still work if it's a media folder
+           customDir = Directory('/storage/emulated/0/Music/Wavelength');
+        } else {
+          // 3. Last fallback: Internal App Storage (No permissions needed)
+          print("Permissions denied. Falling back to internal app storage.");
+          final docs = await getApplicationDocumentsDirectory();
+          customDir = Directory('${docs.path}/Wavelength');
+          usingInternalStorage = true;
+        }
+      }
+    } else {
+      final docs = await getApplicationDocumentsDirectory();
+      customDir = Directory('${docs.path}/Wavelength');
     }
 
     final file = File('${customDir.path}/${track.filename}');
@@ -44,24 +55,30 @@ class DownloadService {
 
     final api = ApiService();
     try {
-      // 1. Get the direct stream URL from YouTube without any backend
+      print("Attempting to get stream URL for: ${track.id}");
       final streamUrl = await api.getAudioStreamUrl(track.id);
+      print("Found stream URL, starting download to: ${file.path}");
       
-      // 2. Download the file streams robustly
       await _dio.download(
         streamUrl,
         file.path,
         onReceiveProgress: (received, total) {
           if (total != -1) {
-             print('Download progress: ${(received / total * 100).toStringAsFixed(0)}%');
+             print('Download progress [${track.title}]: ${(received / total * 100).toStringAsFixed(0)}%');
           }
         },
       );
 
-      // 3. Persist metadata to local library database
+      print("Download completed successfully for: ${track.title}");
       await DatabaseService().insertTrack(track);
-
       return file.path;
+    } catch (e) {
+      print("Fatal download error for ${track.title}: $e");
+      // Clean up partial file if download failed
+      if (await file.exists()) {
+        await file.delete();
+      }
+      rethrow;
     } finally {
       api.dispose();
     }

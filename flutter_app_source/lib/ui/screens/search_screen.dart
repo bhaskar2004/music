@@ -38,13 +38,23 @@ class _SearchScreenState extends State<SearchScreen> {
     try {
       final track = await _api.getTrackFromUrl(url);
       if (track != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Found: ${track.title}. Starting download...')),
-        );
-        await DownloadService.downloadTrackToDevice(track);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Download complete!')),
+            SnackBar(
+              content: Text('Found: ${track.title}. Starting download...'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        
+        await DownloadService.downloadTrackToDevice(track);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Download complete! Click Library to refresh.'),
+              backgroundColor: Color(0xFF06C167),
+            ),
           );
           _urlController.clear();
         }
@@ -54,6 +64,15 @@ class _SearchScreenState extends State<SearchScreen> {
             const SnackBar(content: Text('Could not fetch video metadata. Verify the URL.')),
           );
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: ${e.toString().split('\n')[0]}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isFetchingUrl = false);
