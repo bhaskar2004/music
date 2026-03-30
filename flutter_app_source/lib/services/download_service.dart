@@ -1,6 +1,6 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
-import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
 import 'api_service.dart';

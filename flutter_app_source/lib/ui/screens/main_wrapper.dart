@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/permission_service.dart';
-import '../services/audio_service.dart';
+import '../../services/permission_service.dart';
+import '../../services/audio_service.dart';
 import 'home_screen.dart';
 import 'favorites_screen.dart';
 import 'search_screen.dart';
