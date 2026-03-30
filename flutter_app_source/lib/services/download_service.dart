@@ -22,7 +22,7 @@ class DownloadService {
 
   /// Downloads the highest quality audio stream directly to the Android physical Music directory.
   /// 100% independent - no Node.js backend required.
-  static Future<String?> downloadTrackToDevice(Track track) async {
+  static Future<String?> downloadTrackToDevice(Track track, {Function(double)? onProgress}) async {
     Directory? customDir;
     bool usingInternalStorage = false;
 
@@ -54,7 +54,11 @@ class DownloadService {
       customDir = Directory('${docs.path}/Wavelength');
     }
 
-    final file = File('${customDir.path}/${track.filename}');
+    if (customDir != null && !await customDir.exists()) {
+      await customDir.create(recursive: true);
+    }
+
+    final file = File('${customDir!.path}/${track.filename}');
     if (await file.exists()) {
       print("File already exists locally.");
       return file.path;
@@ -82,7 +86,12 @@ class DownloadService {
       await for (final data in stream) {
         received += data.length;
         fileStream.add(data);
-        // Optional: reduce print frequency
+        
+        if (onProgress != null) {
+          onProgress(received / total);
+        }
+
+        // Optional log
         if (received % (1024 * 1024) == 0 || received == total) { 
            print('Download progress [${track.title}]: ${(received / total * 100).toStringAsFixed(0)}%');
         }
@@ -97,7 +106,7 @@ class DownloadService {
     } catch (e) {
       print("Fatal download error for ${track.title}: $e");
       if (await file.exists()) {
-        await file.delete();
+        await file.delete(); // Delete partial file
       }
       rethrow;
     } finally {

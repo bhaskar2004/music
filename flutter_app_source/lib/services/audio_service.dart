@@ -45,6 +45,7 @@ class AudioService {
 
   /// Plays a single track instantly (clears the queue)
   Future<void> playTrack(Track track) async {
+    currentTrack.value = track; // Update UI immediately
     _queue.clear();
     _playlist.clear();
     await addToQueue(track);

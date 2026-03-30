@@ -18,6 +18,7 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Track> _results = [];
   bool _isSearching = false;
   bool _isFetchingUrl = false;
+  double _downloadProgress = 0;
 
   void _onSearch() async {
     if (_searchController.text.trim().isEmpty) return;
@@ -34,7 +35,10 @@ class _SearchScreenState extends State<SearchScreen> {
     final url = _urlController.text.trim();
     if (url.isEmpty) return;
     
-    setState(() => _isFetchingUrl = true);
+    setState(() {
+      _isFetchingUrl = true;
+      _downloadProgress = 0;
+    });
     try {
       final track = await _api.getTrackFromUrl(url);
       if (track != null) {
@@ -47,7 +51,12 @@ class _SearchScreenState extends State<SearchScreen> {
           );
         }
         
-        await DownloadService.downloadTrackToDevice(track);
+        await DownloadService.downloadTrackToDevice(
+          track,
+          onProgress: (p) {
+            if (mounted) setState(() => _downloadProgress = p);
+          },
+        );
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -75,7 +84,12 @@ class _SearchScreenState extends State<SearchScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isFetchingUrl = false);
+      if (mounted) {
+        setState(() {
+          _isFetchingUrl = false;
+          _downloadProgress = 0;
+        });
+      }
     }
   }
 
@@ -171,7 +185,19 @@ class _SearchScreenState extends State<SearchScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: _isFetchingUrl
-                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _downloadProgress > 0 
+                                    ? '${(_downloadProgress * 100).toStringAsFixed(0)}%' 
+                                    : 'Fetching...',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            )
                           : const Text('Download Audio', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
                   ),
