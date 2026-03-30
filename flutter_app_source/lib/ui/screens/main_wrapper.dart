@@ -20,6 +20,27 @@ class _MainWrapperState extends State<MainWrapper> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final audioService = Provider.of<AudioService>(context, listen: false);
+      audioService.playbackError.addListener(() {
+        final error = audioService.playbackError.value;
+        if (error != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(error),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+            ),
+          );
+        }
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(

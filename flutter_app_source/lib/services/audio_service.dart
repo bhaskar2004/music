@@ -43,14 +43,25 @@ class AudioService {
   AudioPlayer get player => _player;
   List<Track> get queue => List.unmodifiable(_queue);
 
+  final ValueNotifier<String?> playbackError = ValueNotifier<String?>(null);
+
   /// Plays a single track instantly (clears the queue)
   Future<void> playTrack(Track track) async {
-    currentTrack.value = track; // Update UI immediately
-    _queue.clear();
-    _playlist.clear();
-    await addToQueue(track);
-    await _player.setAudioSource(_playlist);
-    await _player.play();
+    currentTrack.value = track; 
+    playbackError.value = null;
+
+    try {
+      _queue.clear();
+      _playlist.clear();
+      await addToQueue(track);
+      await _player.setAudioSource(_playlist);
+      await _player.play();
+    } catch (e) {
+      print('Play error: $e');
+      playbackError.value = "Failed to load stream. Please try again.";
+      // Optional: keep currentTrack to show what failed, or clear it
+      // currentTrack.value = null;
+    }
   }
 
   /// Adds a track to the end of the queue

@@ -126,37 +126,55 @@ class _TrackTileState extends State<TrackTile> {
               },
             ),
             // Download/Play Actions
-            IconButton(
-              icon: Icon(
-                _isDownloaded ? Icons.play_arrow_rounded : Icons.download_for_offline_rounded,
-                color: _isDownloaded ? const Color(0xFF06C167) : Colors.white24,
-                size: 28,
-              ),
-              onPressed: () async {
-                if (!_isDownloaded) {
-                  try {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Starting download: ${widget.track.title}'), duration: const Duration(seconds: 2)),
-                    );
-                    await DownloadService.downloadTrackToDevice(widget.track);
-                    await _checkDownloadStatus();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Download complete!'), backgroundColor: Color(0xFF06C167)),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Download failed: ${e.toString().split('\n')[0]}'), backgroundColor: Colors.redAccent),
-                      );
-                    }
-                  }
-                } else {
-                  audioService.playTrack(widget.track);
+            ValueListenableBuilder<Set<String>>(
+              valueListenable: DownloadService.activeDownloadsNotifier,
+              builder: (context, activeDownloads, child) {
+                final isCurrentlyDownloading = activeDownloads.contains(widget.track.id);
+
+                if (isCurrentlyDownloading) {
+                  return const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF06C167)),
+                    ),
+                  );
                 }
+
+                return IconButton(
+                  icon: Icon(
+                    _isDownloaded ? Icons.play_arrow_rounded : Icons.download_for_offline_rounded,
+                    color: _isDownloaded ? const Color(0xFF06C167) : Colors.white24,
+                    size: 28,
+                  ),
+                  onPressed: () async {
+                    if (!_isDownloaded) {
+                      try {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Starting download: ${widget.track.title}'), duration: const Duration(seconds: 2)),
+                        );
+                        await DownloadService.downloadTrackToDevice(widget.track);
+                        await _checkDownloadStatus();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Download complete!'), backgroundColor: Color(0xFF06C167)),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Download failed: ${e.toString().split('\n')[0]}'), backgroundColor: Colors.redAccent),
+                          );
+                        }
+                      }
+                    } else {
+                      audioService.playTrack(widget.track);
+                    }
+                  },
+                );
               },
-            )
+            ),
           ],
         ),
       ),

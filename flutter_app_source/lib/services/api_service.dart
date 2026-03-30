@@ -2,31 +2,39 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/track.dart';
 
 class ApiService {
+  static final ApiService _instance = ApiService._internal();
+  factory ApiService() => _instance;
+  ApiService._internal();
+
   final YoutubeExplode _yt = YoutubeExplode();
 
-  /// Searches YouTube directly from the device (No Next.js backend needed)
+  /// Searches YouTube directly from the device
   Future<List<Track>> searchTracks(String query) async {
-    final searchResults = await _yt.search.search(query);
-    
-    return searchResults.map((video) {
-      return Track(
-        id: video.id.value,
-        title: video.title,
-        artist: video.author,
-        album: 'Unknown',
-        duration: video.duration?.inSeconds ?? 0,
-        filename: '${video.id.value}.mp3',
-        coverUrl: video.thumbnails.highResUrl,
-        sourceUrl: video.url,
-        format: 'mp3',
-      );
-    }).toList();
+    try {
+      final searchResults = await _yt.search.search(query);
+      return searchResults.map((video) {
+        return Track(
+          id: video.id.value,
+          title: video.title,
+          artist: video.author,
+          album: 'Unknown',
+          duration: video.duration?.inSeconds ?? 0,
+          filename: '${video.id.value}.mp3',
+          coverUrl: video.thumbnails.highResUrl,
+          sourceUrl: video.url,
+          format: 'mp3',
+        );
+      }).toList();
+    } catch (e) {
+      print("Search error: $e");
+      return [];
+    }
   }
 
   /// Fetches track metadata from a direct YouTube URL
   Future<Track?> getTrackFromUrl(String url) async {
     try {
-      final video = await _yt.videos.get(url);
+      final video = await _yt.videos.get(url).timeout(const Duration(seconds: 15));
       return Track(
         id: video.id.value,
         title: video.title,
@@ -46,7 +54,10 @@ class ApiService {
 
   /// Fetches the audio manifest for a specific video ID
   Future<StreamManifest> getAudioManifest(String videoId) async {
-    return await _yt.videos.streamsClient.getManifest(videoId);
+    return await _yt.videos.streamsClient.getManifest(videoId)
+        .timeout(const Duration(seconds: 15), onTimeout: () {
+          throw Exception("Metadata fetch timed out. Check your connection.");
+        });
   }
 
   /// Fetches the actual audio stream for a specific StreamInfo
@@ -64,7 +75,8 @@ class ApiService {
         throw Exception("No available audio streams found for this track.");
       }
       
-      final audioStreamInfo = audioStreams.reduce((curr, next) => curr.bitrate.bitsPerSecond > next.bitrate.bitsPerSecond ? curr : next);
+      final audioStreamInfo = audioStreams.reduce((curr, next) => 
+        curr.bitrate.bitsPerSecond > next.bitrate.bitsPerSecond ? curr : next);
       return audioStreamInfo.url.toString();
     } catch (e) {
       print("Error fetching audio stream for $videoId: $e");
@@ -73,6 +85,7 @@ class ApiService {
   }
 
   void dispose() {
-    _yt.close();
+    // Note: In singleton, we usually don't close until app exit
+    // _yt.close(); 
   }
 }
