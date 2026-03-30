@@ -64,6 +64,7 @@ class AudioService {
   Future<void> playTrack(Track track) async {
     playbackError.value = null; // Clear previous errors
     currentTrack.value = track;
+    await _player.stop(); // Immediately stop the previous track while loading
     _queue.clear();
     await _playlist.clear();
 

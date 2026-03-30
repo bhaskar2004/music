@@ -129,43 +129,54 @@ class _TrackTileState extends State<TrackTile> {
 
             // ── Track info ─────────────────────────────────────────────────
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.track.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
+              child: ValueListenableBuilder<Track?>(
+                valueListenable: audioService.currentTrack,
+                builder: (context, currentTrack, _) {
+                  final isPlaying = currentTrack?.id == widget.track.id;
+                  
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (_isDownloaded)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 6),
-                          child: Icon(Icons.check_circle,
-                              size: 14, color: Color(0xFF06C167)),
+                      Text(
+                        widget.track.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: isPlaying ? const Color(0xFF06C167) : Colors.white,
+                          letterSpacing: -0.3,
                         ),
-                      Expanded(
-                        child: Text(
-                          widget.track.artist,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          if (isPlaying)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 6),
+                              child: Icon(Icons.equalizer_rounded,
+                                  size: 14, color: Color(0xFF06C167)),
+                            )
+                          else if (_isDownloaded)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 6),
+                              child: Icon(Icons.check_circle,
+                                  size: 14, color: Color(0xFF06C167)),
+                            ),
+                          Expanded(
+                            child: Text(
+                              widget.track.artist,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.6),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                   // Download progress bar
                   if (_isDownloading) ...[
                     const SizedBox(height: 6),
@@ -180,10 +191,12 @@ class _TrackTileState extends State<TrackTile> {
                     ),
                   ],
                 ],
-              ),
-            ),
+              );
+            },
+          ),
+        ),
 
-            // ── Favorite toggle ────────────────────────────────────────────
+        // ── Favorite toggle ────────────────────────────────────────────
             IconButton(
               icon: Icon(
                 widget.track.isFavorite ? Icons.favorite : Icons.favorite_border,
