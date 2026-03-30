@@ -7,7 +7,14 @@ import 'api_service.dart';
 import 'database_service.dart';
 
 class DownloadService {
-  static final Dio _dio = Dio();
+  static final Dio _dio = Dio(BaseOptions(
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': '*/*',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Connection': 'keep-alive',
+    },
+  ));
 
   static void init() {
     // No-op for current standalone dio implementation
