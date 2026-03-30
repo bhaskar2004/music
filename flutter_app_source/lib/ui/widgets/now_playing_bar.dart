@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/audio_service.dart';
 import '../../models/track.dart';
+import '../screens/player_screen.dart';
 import 'package:just_audio/just_audio.dart';
 
 class NowPlayingBar extends StatelessWidget {
@@ -19,7 +20,10 @@ class NowPlayingBar extends StatelessWidget {
 
         return GestureDetector(
           onTap: () {
-            // Future: Open full-screen player
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PlayerScreen()),
+            );
           },
           child: Container(
             height: 64,
