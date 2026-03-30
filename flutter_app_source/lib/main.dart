@@ -46,7 +46,7 @@ Future<void> main() async {
 }
 
 class WavelengthApp extends StatelessWidget {
-  const WavelengthApp({Key? key}) : super(key: key);
+  const WavelengthApp({super.key});
 
   @override
   Widget build(BuildContext context) {

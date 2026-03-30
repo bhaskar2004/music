@@ -5,7 +5,7 @@ import '../../models/track.dart';
 import '../widgets/track_tile.dart';
 
 class QueueView extends StatelessWidget {
-  const QueueView({Key? key}) : super(key: key);
+  const QueueView({super.key});
 
   @override
   Widget build(BuildContext context) {

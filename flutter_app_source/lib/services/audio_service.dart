@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
@@ -23,8 +24,7 @@ class AudioService {
 
   // Queue management
   final List<Track> _queue = [];
-  final ConcatenatingAudioSource _playlist =
-      ConcatenatingAudioSource(children: []);
+  final ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
 
   // Observable state
   final ValueNotifier<Track?> currentTrack = ValueNotifier<Track?>(null);
@@ -170,7 +170,9 @@ class AudioService {
     if (oldIndex < newIndex) newIndex -= 1;
     final item = _queue.removeAt(oldIndex);
     _queue.insert(newIndex, item);
+    
     await _playlist.move(oldIndex, newIndex);
+    
     queueNotifier.value = List.from(_queue);
   }
 

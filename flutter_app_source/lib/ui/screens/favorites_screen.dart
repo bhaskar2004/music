@@ -4,7 +4,7 @@ import '../../services/database_service.dart';
 import '../widgets/track_tile.dart';
 
 class FavoritesScreen extends StatefulWidget {
-  const FavoritesScreen({Key? key}) : super(key: key);
+  const FavoritesScreen({super.key});
 
   @override
   State<FavoritesScreen> createState() => _FavoritesScreenState();
@@ -54,16 +54,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.favorite_border, size: 64, color: Colors.white.withOpacity(0.1)),
+                        Icon(Icons.favorite_border, size: 64, color: Colors.white.withValues(alpha: 0.1)),
                         const SizedBox(height: 16),
                         Text(
                           'No favorites yet',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 18, fontWeight: FontWeight.w500),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 18, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Tap the heart to save your favorite songs',
-                          style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 14),
                         ),
                       ],
                     ),

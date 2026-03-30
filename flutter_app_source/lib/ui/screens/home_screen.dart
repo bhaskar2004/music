@@ -4,7 +4,7 @@ import '../../services/database_service.dart';
 import '../widgets/track_tile.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -79,16 +79,16 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.music_note_outlined, size: 64, color: Colors.white.withOpacity(0.1)),
+          Icon(Icons.music_note_outlined, size: 64, color: Colors.white.withValues(alpha: 0.1)),
           const SizedBox(height: 16),
           Text(
             'Your library is empty',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 18, fontWeight: FontWeight.w500),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 18, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
           Text(
             'Search for music to add to your library',
-            style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 14),
           ),
         ],
       ),

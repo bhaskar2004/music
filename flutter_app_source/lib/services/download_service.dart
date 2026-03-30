@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -124,24 +123,7 @@ class DownloadService {
           'to ${file.path}');
 
       sink = file.openWrite();
-      
-      final dio = Dio();
-      final response = await dio.get<ResponseBody>(
-        streamInfo.url.toString(),
-        options: Options(
-          responseType: ResponseType.stream,
-          headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': '*/*',
-            'Origin': 'https://www.youtube.com',
-            'Referer': 'https://www.youtube.com/',
-          },
-        ),
-      );
-
-      final stream = response.data!.stream;
+      final stream = api.getAudioStream(streamInfo);
 
       await for (final chunk in stream) {
         sink.add(chunk);

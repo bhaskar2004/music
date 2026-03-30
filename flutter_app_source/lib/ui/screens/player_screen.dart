@@ -7,7 +7,7 @@ import '../../models/track.dart';
 import 'queue_view.dart';
 
 class PlayerScreen extends StatelessWidget {
-  const PlayerScreen({Key? key}) : super(key: key);
+  const PlayerScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +47,7 @@ class PlayerScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.6),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
@@ -82,7 +82,7 @@ class PlayerScreen extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             track.artist,
-                            style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.6)),
+                            style: TextStyle(fontSize: 18, color: Colors.white.withValues(alpha: 0.6)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

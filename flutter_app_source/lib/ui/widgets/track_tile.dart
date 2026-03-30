@@ -12,11 +12,11 @@ class TrackTile extends StatefulWidget {
   final VoidCallback? onFavoriteToggle;
 
   const TrackTile({
-    Key? key,
+    super.key,
     required this.track,
     this.onDelete,
     this.onFavoriteToggle,
-  }) : super(key: key);
+  });
 
   @override
   State<TrackTile> createState() => _TrackTileState();

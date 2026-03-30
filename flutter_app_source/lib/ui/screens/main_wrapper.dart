@@ -8,7 +8,7 @@ import 'search_screen.dart';
 import '../widgets/now_playing_bar.dart';
 
 class MainWrapper extends StatefulWidget {
-  const MainWrapper({Key? key}) : super(key: key);
+  const MainWrapper({super.key});
 
   @override
   State<MainWrapper> createState() => _MainWrapperState();

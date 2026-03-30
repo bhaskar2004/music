@@ -7,7 +7,7 @@ import '../screens/player_screen.dart';
 import 'package:just_audio/just_audio.dart';
 
 class NowPlayingBar extends StatelessWidget {
-  const NowPlayingBar({Key? key}) : super(key: key);
+  const NowPlayingBar({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +34,7 @@ class NowPlayingBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -80,7 +80,7 @@ class NowPlayingBar extends StatelessWidget {
                       Text(
                         track.artist,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 12,
                         ),
                         maxLines: 1,

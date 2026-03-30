@@ -5,7 +5,7 @@ import '../../services/download_service.dart';
 import '../widgets/track_tile.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({Key? key}) : super(key: key);
+  const SearchScreen({super.key});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -70,7 +70,7 @@ class _SearchScreenState extends State<SearchScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not fetch video metadata. Verify the URL.')),
+            const SnackBar(content: Text('Could not fetch video metadata (timed out or invalid URL). Verify yours is a standard YouTube link.')),
           );
         }
       }

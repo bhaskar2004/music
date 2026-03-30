@@ -35,7 +35,9 @@ class ApiService {
   /// Fetches track metadata from a direct YouTube URL
   Future<Track?> getTrackFromUrl(String url) async {
     try {
-      final video = await _yt.videos.get(url).timeout(const Duration(seconds: 15));
+      // Use VideoId.parseVideoId to handle various URL formats and tracking parameters
+      final videoId = VideoId.parseVideoId(url);
+      final video = await _yt.videos.get(videoId).timeout(const Duration(seconds: 45));
       return Track(
         id: video.id.value,
         title: video.title,
@@ -48,7 +50,7 @@ class ApiService {
         format: 'mp3',
       );
     } catch (e) {
-      debugPrint("Error fetching video from URL: $e");
+      debugPrint("Error fetching video from URL ($url): $e");
       return null;
     }
   }
@@ -56,8 +58,8 @@ class ApiService {
   /// Fetches the audio manifest for a specific video ID
   Future<StreamManifest> getAudioManifest(String videoId) async {
     return await _yt.videos.streamsClient.getManifest(videoId)
-        .timeout(const Duration(seconds: 15), onTimeout: () {
-          throw Exception("Metadata fetch timed out. Check your connection.");
+        .timeout(const Duration(seconds: 45), onTimeout: () {
+          throw Exception("Metadata fetch timed out (45s). Check your connection.");
         });
   }
 
