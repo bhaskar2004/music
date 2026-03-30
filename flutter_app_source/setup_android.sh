@@ -28,6 +28,9 @@ tree = ET.parse(manifest_path)
 root = tree.getroot()
 ns = {"android": "http://schemas.android.com/apk/res/android"}
 
+# Set the package attribute explicitly to ensure correct Activity linking
+root.set("package", "com.wavelength.wavelength_app")
+
 # 1. Add Permissions
 permissions = [
     "android.permission.INTERNET",
@@ -57,7 +60,7 @@ for activity in app_tag.findall("activity"):
     if intent_filter is not None:
         action = intent_filter.find("action")
         if action is not None and action.get("{http://schemas.android.com/apk/res/android}name") == "android.intent.action.MAIN":
-            activity.set("{http://schemas.android.com/apk/res/android}name", "com.wavelength.wavelength_app.MainActivity")
+            activity.set("{http://schemas.android.com/apk/res/android}name", ".MainActivity")
             activity.set("{http://schemas.android.com/apk/res/android}launchMode", "singleTop")
             
             # Ensure Flutter 2.0+ embedding meta-data is present
