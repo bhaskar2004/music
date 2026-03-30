@@ -64,7 +64,7 @@ class ApiService {
         throw Exception("No available audio streams found for this track.");
       }
       
-      final audioStreamInfo = audioStreams.withHighestBitrate();
+      final audioStreamInfo = audioStreams.reduce((curr, next) => curr.bitrate > next.bitrate ? curr : next);
       return audioStreamInfo.url.toString();
     } catch (e) {
       print("Error fetching audio stream for $videoId: $e");

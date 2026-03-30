@@ -70,7 +70,7 @@ class DownloadService {
         throw Exception("No available audio streams found for this track.");
       }
       
-      final streamInfo = audioStreams.withHighestBitrate();
+      final streamInfo = audioStreams.reduce((curr, next) => curr.bitrate > next.bitrate ? curr : next);
       final stream = api.getAudioStream(streamInfo);
       final fileStream = file.openWrite();
       
