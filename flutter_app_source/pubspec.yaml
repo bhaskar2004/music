@@ -16,10 +16,11 @@ dependencies:
   just_audio: ^0.10.5
   just_audio_background: ^0.0.1-beta.15
   audio_session: ^0.2.3
-  youtube_explode_dart: ^3.0.5   # Added for independent background downloading without Next.js!
-  dio: ^5.4.0                    # Robust HTTP client for large file downloads
+  youtube_explode_dart: ^3.0.5
+  dio: ^5.4.0
   path_provider: ^2.1.2
   permission_handler: ^12.0.1
+  device_info_plus: ^10.1.0      # NEW: runtime Android SDK detection for permissions
   google_fonts: ^8.0.2
   cached_network_image: ^3.3.1
   shared_preferences: ^2.2.2

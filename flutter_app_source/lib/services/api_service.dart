@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/track.dart';
 
@@ -26,7 +27,7 @@ class ApiService {
         );
       }).toList();
     } catch (e) {
-      print("Search error: $e");
+      debugPrint("Search error: $e");
       return [];
     }
   }
@@ -47,7 +48,7 @@ class ApiService {
         format: 'mp3',
       );
     } catch (e) {
-      print("Error fetching video from URL: $e");
+      debugPrint("Error fetching video from URL: $e");
       return null;
     }
   }
@@ -79,7 +80,7 @@ class ApiService {
         curr.bitrate.bitsPerSecond > next.bitrate.bitsPerSecond ? curr : next);
       return audioStreamInfo.url.toString();
     } catch (e) {
-      print("Error fetching audio stream for $videoId: $e");
+      debugPrint("Error fetching audio stream for $videoId: $e");
       rethrow;
     }
   }

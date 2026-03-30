@@ -1,95 +1,157 @@
 import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/track.dart';
 import 'api_service.dart';
 import 'database_service.dart';
-import 'permission_service.dart';
 
 class DownloadService {
-  static final Dio _dio = Dio();
-  static final Set<String> _activeDownloads = {};
-  static final ValueNotifier<Set<String>> activeDownloadsNotifier = ValueNotifier({});
+  static void init() {
+    // No-op — kept for compatibility with main.dart call
+  }
 
-  static void init() {}
+  // ─────────────────────────────────────────────────────────────────────────
+  // Path helpers — SINGLE SOURCE OF TRUTH used by audio_service & track_tile
+  // ─────────────────────────────────────────────────────────────────────────
 
-  static bool isDownloading(String trackId) => _activeDownloads.contains(trackId);
-
-  static Future<String?> downloadTrackToDevice(Track track, {Function(double)? onProgress}) async {
-    if (_activeDownloads.contains(track.id)) return null;
-    
-    // Proactive permission check
-    if (!await PermissionService.checkPermissions()) {
-      if (!await PermissionService.requestStoragePermissions()) {
-        throw Exception("Storage permissions are required to download.");
-      }
+  /// Returns the root directory where Wavelength saves audio files.
+  /// Uses path_provider so no dangerous permissions are required.
+  static Future<Directory> getSaveDirectory() async {
+    final Directory base;
+    if (Platform.isAndroid) {
+      // getExternalStorageDirectory → /sdcard/Android/data/<pkg>/files
+      // Readable/writable by the app with zero extra permissions on all
+      // Android versions including 13+.
+      base = (await getExternalStorageDirectory())!;
+    } else {
+      base = await getApplicationDocumentsDirectory();
     }
 
-    _activeDownloads.add(track.id);
-    activeDownloadsNotifier.value = Set.from(_activeDownloads);
+    final saveDir = Directory('${base.path}/Wavelength');
+    if (!await saveDir.exists()) {
+      await saveDir.create(recursive: true);
+    }
+    return saveDir;
+  }
 
-    Directory? customDir;
+  /// Returns the full path to a track's local file if it exists, else null.
+  /// Use this everywhere instead of building paths manually.
+  static Future<String?> getLocalFilePath(Track track) async {
+    final dir = await getSaveDirectory();
+    final file = File('${dir.path}/${track.filename}');
+    return (await file.exists()) ? file.path : null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Permissions
+  // ─────────────────────────────────────────────────────────────────────────
+
+  static Future<void> _requestStoragePermission() async {
+    if (!Platform.isAndroid) return;
+
+    int sdkInt = 0;
     try {
-      if (Platform.isAndroid) {
-        // We still need the path determination, but simplified
-        customDir = Directory('/storage/emulated/0/Music/Wavelength');
-        // Fallback if the path is inaccessible for some reason despite permissions
-        try {
-           if (!await customDir.exists()) await customDir.create(recursive: true);
-        } catch (e) {
-           final docs = await getApplicationDocumentsDirectory();
-           customDir = Directory('${docs.path}/Wavelength');
-        }
-      } else {
-        final docs = await getApplicationDocumentsDirectory();
-        customDir = Directory('${docs.path}/Wavelength');
+      final info = await DeviceInfoPlugin().androidInfo;
+      sdkInt = info.version.sdkInt;
+    } catch (_) {}
+
+    if (sdkInt >= 33) {
+      // Android 13+: READ_MEDIA_AUDIO covers reading audio; we use app-scoped
+      // storage so no write permission is needed at all.
+      final status = await Permission.audio.request();
+      if (status.isDenied) {
+        debugPrint('[DownloadService] Audio permission denied on Android 13+. '
+            'Downloads will still work (app-scoped storage).');
       }
-
-      if (customDir != null && !await customDir.exists()) {
-        await customDir.create(recursive: true);
+    } else if (sdkInt >= 29) {
+      // Android 10–12: scoped storage; no permission needed for app dir.
+    } else {
+      // Android 9 and below
+      final status = await Permission.storage.request();
+      if (status.isDenied) {
+        throw Exception('Storage permission is required to download songs.');
       }
+    }
+  }
 
-      final file = File('${customDir!.path}/${track.filename}');
-      if (await file.exists()) return file.path;
+  // ─────────────────────────────────────────────────────────────────────────
+  // Download
+  // ─────────────────────────────────────────────────────────────────────────
 
-      final api = ApiService();
-      print("Attempting to get stream manifest for: ${track.id}");
+  /// Downloads the highest-quality audio stream for [track] to local storage.
+  ///
+  /// [onProgress] receives values from 0.0 → 1.0.
+  static Future<String?> downloadTrackToDevice(
+    Track track, {
+    Function(double)? onProgress,
+  }) async {
+    await _requestStoragePermission();
+
+    final saveDir = await getSaveDirectory();
+    final file = File('${saveDir.path}/${track.filename}');
+
+    if (await file.exists()) {
+      debugPrint('[DownloadService] Already downloaded: ${file.path}');
+      return file.path;
+    }
+
+    final api = ApiService();
+    IOSink? sink;
+
+    try {
+      debugPrint('[DownloadService] Fetching manifest for ${track.id}');
       final manifest = await api.getAudioManifest(track.id);
       final audioStreams = manifest.audioOnly;
-      
-      if (audioStreams.isEmpty) throw Exception("No available audio streams found.");
-      
-      final streamInfo = audioStreams.reduce((curr, next) => 
-        curr.bitrate.bitsPerSecond > next.bitrate.bitsPerSecond ? curr : next);
-      
-      // Fixed: youtube_explode stream client can sometimes hang. 
-      // We use a timeout on the stream acquisition.
-      final stream = api.getAudioStream(streamInfo).timeout(const Duration(seconds: 20), onTimeout: (sink) {
-        sink.addError(Exception("Download stream timed out."));
-      });
 
-      final fileStream = file.openWrite();
-      int received = 0;
-      final total = streamInfo.size.totalBytes;
-      
-      await for (final data in stream) {
-        received += data.length;
-        fileStream.add(data);
-        if (onProgress != null) onProgress(received / total);
+      if (audioStreams.isEmpty) {
+        throw Exception('No audio streams found for "${track.title}".');
       }
 
-      await fileStream.flush();
-      await fileStream.close();
+      // Pick the highest bitrate stream
+      final streamInfo = audioStreams.reduce(
+        (a, b) =>
+            a.bitrate.bitsPerSecond > b.bitrate.bitsPerSecond ? a : b,
+      );
 
+      final totalBytes = streamInfo.size.totalBytes;
+      int received = 0;
+
+      debugPrint('[DownloadService] Downloading ${track.title} '
+          '(${(totalBytes / 1024 / 1024).toStringAsFixed(1)} MB) '
+          'to ${file.path}');
+
+      sink = file.openWrite();
+      final stream = api.getAudioStream(streamInfo);
+
+      await for (final chunk in stream) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (onProgress != null && totalBytes > 0) {
+          onProgress(received / totalBytes);
+        }
+      }
+
+      await sink.flush();
+      await sink.close();
+      sink = null;
+
+      // Save metadata to SQLite
       await DatabaseService().insertTrack(track);
+
+      debugPrint('[DownloadService] ✓ Complete: ${track.title}');
       return file.path;
     } catch (e) {
-      print("Download error: $e");
+      debugPrint('[DownloadService] ✗ Error downloading "${track.title}": $e');
+      // Clean up partial file so we don't mistake it for a complete download
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {}
       rethrow;
     } finally {
-      _activeDownloads.remove(track.id);
-      activeDownloadsNotifier.value = Set.from(_activeDownloads);
+      await sink?.close();
+      api.dispose();
     }
   }
 }

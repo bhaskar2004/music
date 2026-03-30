@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../models/track.dart';
 import '../../services/audio_service.dart';
 import '../../services/database_service.dart';
@@ -26,6 +24,8 @@ class TrackTile extends StatefulWidget {
 
 class _TrackTileState extends State<TrackTile> {
   bool _isDownloaded = false;
+  bool _isDownloading = false;
+  double _downloadProgress = 0;
 
   @override
   void initState() {
@@ -33,16 +33,59 @@ class _TrackTileState extends State<TrackTile> {
     _checkDownloadStatus();
   }
 
+  /// Uses the single shared path helper — consistent with AudioService.
   Future<void> _checkDownloadStatus() async {
-    String localPath = "";
-    if (Platform.isAndroid) {
-      localPath = "/storage/emulated/0/Music/Wavelength/${widget.track.filename}";
-    } else {
-      final docs = await getApplicationDocumentsDirectory();
-      localPath = "${docs.path}/Wavelength/${widget.track.filename}";
+    final path = await DownloadService.getLocalFilePath(widget.track);
+    if (mounted) setState(() => _isDownloaded = path != null);
+  }
+
+  Future<void> _handleDownload(BuildContext context) async {
+    if (_isDownloading) return;
+
+    setState(() {
+      _isDownloading = true;
+      _downloadProgress = 0;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Downloading "${widget.track.title}"…'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF1E1E1E),
+      ),
+    );
+
+    try {
+      await DownloadService.downloadTrackToDevice(
+        widget.track,
+        onProgress: (p) {
+          if (mounted) setState(() => _downloadProgress = p);
+        },
+      );
+
+      await _checkDownloadStatus();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Download complete!'),
+            backgroundColor: Color(0xFF06C167),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: ${e.toString().split('\n').first}'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
     }
-    final exists = await File(localPath).exists();
-    if (mounted) setState(() => _isDownloaded = exists);
   }
 
   @override
@@ -56,12 +99,12 @@ class _TrackTileState extends State<TrackTile> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: const Color(0xFF121212),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            // Cover Art
+            // ── Cover art ──────────────────────────────────────────────────
             Container(
               width: 56,
               height: 56,
@@ -75,20 +118,28 @@ class _TrackTileState extends State<TrackTile> {
                     ? CachedNetworkImage(
                         imageUrl: widget.track.coverUrl!,
                         fit: BoxFit.cover,
-                        errorWidget: (context, url, error) => const Icon(Icons.music_note, color: Colors.white24),
+                        errorWidget: (_, __, ___) =>
+                            const Icon(Icons.music_note, color: Colors.white24),
                       )
                     : const Icon(Icons.music_note, color: Colors.white24),
               ),
             ),
+
             const SizedBox(width: 16),
-            // Text Info
+
+            // ── Track info ─────────────────────────────────────────────────
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     widget.track.title,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: Colors.white,
+                      letterSpacing: -0.3,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -98,83 +149,88 @@ class _TrackTileState extends State<TrackTile> {
                       if (_isDownloaded)
                         const Padding(
                           padding: EdgeInsets.only(right: 6),
-                          child: Icon(Icons.check_circle, size: 14, color: Color(0xFF06C167)),
+                          child: Icon(Icons.check_circle,
+                              size: 14, color: Color(0xFF06C167)),
                         ),
                       Expanded(
                         child: Text(
                           widget.track.artist,
-                          style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Colors.white.withOpacity(0.6)),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
+                  // Download progress bar
+                  if (_isDownloading) ...[
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(99),
+                      child: LinearProgressIndicator(
+                        value: _downloadProgress > 0 ? _downloadProgress : null,
+                        backgroundColor: Colors.white10,
+                        valueColor: const AlwaysStoppedAnimation(Color(0xFF06C167)),
+                        minHeight: 3,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            // Favorite Button
+
+            // ── Favorite toggle ────────────────────────────────────────────
             IconButton(
               icon: Icon(
                 widget.track.isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: widget.track.isFavorite ? const Color(0xFF06C167) : Colors.white24,
+                color: widget.track.isFavorite
+                    ? const Color(0xFF06C167)
+                    : Colors.white24,
                 size: 20,
               ),
               onPressed: () async {
                 await DatabaseService().toggleFavorite(widget.track);
-                if (widget.onFavoriteToggle != null) widget.onFavoriteToggle!();
+                widget.onFavoriteToggle?.call();
               },
             ),
-            // Download/Play Actions
-            ValueListenableBuilder<Set<String>>(
-              valueListenable: DownloadService.activeDownloadsNotifier,
-              builder: (context, activeDownloads, child) {
-                final isCurrentlyDownloading = activeDownloads.contains(widget.track.id);
 
-                if (isCurrentlyDownloading) {
-                  return const Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF06C167)),
-                    ),
-                  );
-                }
-
-                return IconButton(
-                  icon: Icon(
-                    _isDownloaded ? Icons.play_arrow_rounded : Icons.download_for_offline_rounded,
-                    color: _isDownloaded ? const Color(0xFF06C167) : Colors.white24,
-                    size: 28,
+            // ── Download / play action ─────────────────────────────────────
+            if (_isDownloading)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    value: _downloadProgress > 0 ? _downloadProgress : null,
+                    strokeWidth: 2,
+                    color: const Color(0xFF06C167),
                   ),
-                  onPressed: () async {
-                    if (!_isDownloaded) {
-                      try {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Starting download: ${widget.track.title}'), duration: const Duration(seconds: 2)),
-                        );
-                        await DownloadService.downloadTrackToDevice(widget.track);
-                        await _checkDownloadStatus();
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Download complete!'), backgroundColor: Color(0xFF06C167)),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Download failed: ${e.toString().split('\n')[0]}'), backgroundColor: Colors.redAccent),
-                          );
-                        }
-                      }
-                    } else {
-                      audioService.playTrack(widget.track);
-                    }
-                  },
-                );
-              },
-            ),
+                ),
+              )
+            else
+              IconButton(
+                icon: Icon(
+                  _isDownloaded
+                      ? Icons.play_arrow_rounded
+                      : Icons.download_for_offline_rounded,
+                  color: _isDownloaded
+                      ? const Color(0xFF06C167)
+                      : Colors.white24,
+                  size: 28,
+                ),
+                onPressed: () async {
+                  if (_isDownloaded) {
+                    await audioService.playTrack(widget.track);
+                  } else {
+                    await _handleDownload(context);
+                  }
+                },
+              ),
           ],
         ),
       ),
