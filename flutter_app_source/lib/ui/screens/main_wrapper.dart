@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/permission_service.dart';
+import '../services/audio_service.dart';
 import 'home_screen.dart';
 import 'favorites_screen.dart';
 import 'search_screen.dart';
@@ -22,6 +25,7 @@ class _MainWrapperState extends State<MainWrapper> {
   @override
   void initState() {
     super.initState();
+    _initPermissions();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final audioService = Provider.of<AudioService>(context, listen: false);
       audioService.playbackError.addListener(() {
@@ -38,6 +42,22 @@ class _MainWrapperState extends State<MainWrapper> {
         }
       });
     });
+  }
+
+  Future<void> _initPermissions() async {
+    final granted = await PermissionService.requestStoragePermissions();
+    if (!granted && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Storage permissions are required to download songs.'),
+          action: SnackBarAction(
+            label: 'Settings', 
+            onPressed: () => PermissionService.openAppInfo(),
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   @override

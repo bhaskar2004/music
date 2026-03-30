@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
 import 'api_service.dart';
 import 'database_service.dart';
+import 'permission_service.dart';
 
 class DownloadService {
   static final Dio _dio = Dio();
@@ -18,21 +19,27 @@ class DownloadService {
   static Future<String?> downloadTrackToDevice(Track track, {Function(double)? onProgress}) async {
     if (_activeDownloads.contains(track.id)) return null;
     
+    // Proactive permission check
+    if (!await PermissionService.checkPermissions()) {
+      if (!await PermissionService.requestStoragePermissions()) {
+        throw Exception("Storage permissions are required to download.");
+      }
+    }
+
     _activeDownloads.add(track.id);
     activeDownloadsNotifier.value = Set.from(_activeDownloads);
 
     Directory? customDir;
     try {
       if (Platform.isAndroid) {
-        var status = await Permission.manageExternalStorage.status;
-        if (status.isDenied) status = await Permission.manageExternalStorage.request();
-        if (status.isGranted) {
-          customDir = Directory('/storage/emulated/0/Music/Wavelength');
-        } else if (await Permission.audio.request().isGranted || await Permission.storage.request().isGranted) {
-          customDir = Directory('/storage/emulated/0/Music/Wavelength');
-        } else {
-          final docs = await getApplicationDocumentsDirectory();
-          customDir = Directory('${docs.path}/Wavelength');
+        // We still need the path determination, but simplified
+        customDir = Directory('/storage/emulated/0/Music/Wavelength');
+        // Fallback if the path is inaccessible for some reason despite permissions
+        try {
+           if (!await customDir.exists()) await customDir.create(recursive: true);
+        } catch (e) {
+           final docs = await getApplicationDocumentsDirectory();
+           customDir = Directory('${docs.path}/Wavelength');
         }
       } else {
         final docs = await getApplicationDocumentsDirectory();
