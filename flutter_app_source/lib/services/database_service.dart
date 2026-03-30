@@ -37,7 +37,8 @@ class DatabaseService {
         coverUrl TEXT,
         sourceUrl TEXT,
         addedAt TEXT,
-        format TEXT
+        format TEXT,
+        isFavorite INTEGER DEFAULT 0
       )
     ''');
   }
@@ -57,6 +58,41 @@ class DatabaseService {
     return List.generate(maps.length, (i) {
       return Track.fromMap(maps[i]);
     });
+  }
+
+  Future<void> toggleFavorite(Track track) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'tracks',
+      where: 'id = ?',
+      whereArgs: [track.id],
+    );
+
+    if (maps.isEmpty) {
+      // Insert new track as favorite
+      final newTrack = Track(
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.duration,
+        filename: track.filename,
+        coverUrl: track.coverUrl,
+        sourceUrl: track.sourceUrl,
+        format: track.format,
+        isFavorite: true,
+      );
+      await insertTrack(newTrack);
+    } else {
+      // Toggle existing
+      final bool currentStatus = (maps.first['isFavorite'] ?? 0) == 1;
+      await db.update(
+        'tracks',
+        {'isFavorite': currentStatus ? 0 : 1},
+        where: 'id = ?',
+        whereArgs: [track.id],
+      );
+    }
   }
 
   Future<void> deleteTrack(String id) async {

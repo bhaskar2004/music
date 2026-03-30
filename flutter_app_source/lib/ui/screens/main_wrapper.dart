@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
+import 'favorites_screen.dart';
 import 'search_screen.dart';
 import '../widgets/now_playing_bar.dart';
 
@@ -14,6 +15,7 @@ class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
   final List<Widget> _screens = [
     const HomeScreen(),
+    const FavoritesScreen(),
     const SearchScreen(),
   ];
 
@@ -44,6 +46,11 @@ class _MainWrapperState extends State<MainWrapper> {
             icon: Icon(Icons.library_music_outlined),
             activeIcon: Icon(Icons.library_music),
             label: 'Library',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_border),
+            activeIcon: Icon(Icons.favorite),
+            label: 'Favorites',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.search_outlined),

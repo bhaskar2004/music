@@ -9,6 +9,7 @@ class Track {
   final String sourceUrl;
   final String? addedAt;
   final String format;
+  final bool isFavorite;
 
   Track({
     required this.id,
@@ -21,6 +22,7 @@ class Track {
     required this.sourceUrl,
     this.addedAt,
     required this.format,
+    this.isFavorite = false,
   });
 
   factory Track.fromMap(Map<String, dynamic> map) {
@@ -35,6 +37,7 @@ class Track {
       sourceUrl: map['sourceUrl'] ?? '',
       addedAt: map['addedAt'],
       format: map['format'] ?? 'mp3',
+      isFavorite: (map['isFavorite'] ?? 0) == 1,
     );
   }
 
@@ -49,6 +52,7 @@ class Track {
         'sourceUrl': sourceUrl,
         'addedAt': addedAt ?? DateTime.now().toIso8601String(),
         'format': format,
+        'isFavorite': isFavorite ? 1 : 0,
       };
 
   factory Track.fromJson(Map<String, dynamic> json) => Track.fromMap(json);

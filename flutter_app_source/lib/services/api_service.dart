@@ -23,6 +23,27 @@ class ApiService {
     }).toList();
   }
 
+  /// Fetches track metadata from a direct YouTube URL
+  Future<Track?> getTrackFromUrl(String url) async {
+    try {
+      final video = await _yt.videos.get(url);
+      return Track(
+        id: video.id.value,
+        title: video.title,
+        artist: video.author,
+        album: 'Unknown',
+        duration: video.duration?.inSeconds ?? 0,
+        filename: '${video.id.value}.mp3',
+        coverUrl: video.thumbnails.highResUrl,
+        sourceUrl: video.url,
+        format: 'mp3',
+      );
+    } catch (e) {
+      print("Error fetching video from URL: $e");
+      return null;
+    }
+  }
+
   /// Fetches the direct audio stream URL for a specific video ID 
   Future<String> getAudioStreamUrl(String videoId) async {
     final manifest = await _yt.videos.streamsClient.getManifest(videoId);
