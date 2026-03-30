@@ -62,26 +62,40 @@ class DownloadService {
 
     final api = ApiService();
     try {
-      print("Attempting to get stream URL for: ${track.id}");
-      final streamUrl = await api.getAudioStreamUrl(track.id);
-      print("Found stream URL, starting download to: ${file.path}");
+      print("Attempting to get stream manifest for: ${track.id}");
+      final manifest = await api.getAudioManifest(track.id);
+      final audioStreams = manifest.audioOnly;
       
-      await _dio.download(
-        streamUrl,
-        file.path,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-             print('Download progress [${track.title}]: ${(received / total * 100).toStringAsFixed(0)}%');
-          }
-        },
-      );
+      if (audioStreams.isEmpty) {
+        throw Exception("No available audio streams found for this track.");
+      }
+      
+      final streamInfo = audioStreams.withHighestBitrate();
+      final stream = api.getAudioStream(streamInfo);
+      final fileStream = file.openWrite();
+      
+      print("Starting native stream download to: ${file.path}");
+      
+      int received = 0;
+      final total = streamInfo.size.totalBytes;
+      
+      await for (final data in stream) {
+        received += data.length;
+        fileStream.add(data);
+        // Optional: reduce print frequency
+        if (received % (1024 * 1024) == 0 || received == total) { 
+           print('Download progress [${track.title}]: ${(received / total * 100).toStringAsFixed(0)}%');
+        }
+      }
+
+      await fileStream.flush();
+      await fileStream.close();
 
       print("Download completed successfully for: ${track.title}");
       await DatabaseService().insertTrack(track);
       return file.path;
     } catch (e) {
       print("Fatal download error for ${track.title}: $e");
-      // Clean up partial file if download failed
       if (await file.exists()) {
         await file.delete();
       }

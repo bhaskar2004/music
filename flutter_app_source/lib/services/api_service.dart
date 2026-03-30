@@ -44,10 +44,20 @@ class ApiService {
     }
   }
 
+  /// Fetches the audio manifest for a specific video ID
+  Future<StreamManifest> getAudioManifest(String videoId) async {
+    return await _yt.videos.streamsClient.getManifest(videoId);
+  }
+
+  /// Fetches the actual audio stream for a specific StreamInfo
+  Stream<List<int>> getAudioStream(StreamInfo streamInfo) {
+    return _yt.videos.streamsClient.get(streamInfo);
+  }
+
   /// Fetches the direct audio stream URL for a specific video ID 
   Future<String> getAudioStreamUrl(String videoId) async {
     try {
-      final manifest = await _yt.videos.streamsClient.getManifest(videoId);
+      final manifest = await getAudioManifest(videoId);
       final audioStreams = manifest.audioOnly;
       
       if (audioStreams.isEmpty) {
