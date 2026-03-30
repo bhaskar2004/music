@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/track.dart';
 import '../../services/api_service.dart';
 import '../../services/download_service.dart';
+import '../widgets/track_tile.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
