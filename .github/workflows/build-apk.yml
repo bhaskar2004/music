@@ -28,11 +28,6 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Prepare and Patch Android Environment
-        run: |
-          chmod +x flutter_app_source/setup_android.sh
-          ./flutter_app_source/setup_android.sh
-
       - name: Install Flutter Dependencies
         run: |
           cd flutter_app_source
