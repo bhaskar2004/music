@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'services/download_service.dart';
 import 'services/audio_service.dart';
-import 'ui/screens/home_screen.dart';
+import 'ui/screens/main_wrapper.dart';
 
 Future<void> main() async {
   try {
@@ -78,7 +78,7 @@ class WavelengthApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const HomeScreen(),
+      home: const MainWrapper(),
     );
   }
 }

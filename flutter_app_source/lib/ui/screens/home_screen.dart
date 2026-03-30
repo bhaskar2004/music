@@ -50,10 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen())).then((_) => _loadLibrary()),
-          ),
-          IconButton(
             icon: const Icon(Icons.sync, color: Colors.white54),
             onPressed: _loadLibrary,
           )
@@ -65,8 +61,27 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: const Color(0xFF121212),
         child: _isLoading && _library.isEmpty
             ? const Center(child: CircularProgressIndicator(color: Color(0xFF06C167)))
-            : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            : _library.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.music_note_outlined, size: 64, color: Colors.white.withOpacity(0.1)),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Your library is empty',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 18, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Search for music to add to your library',
+                          style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
                 itemCount: _library.length,
                 itemBuilder: (context, index) {
                   final track = _library[index];

@@ -9,10 +9,13 @@ class AudioService {
   final AudioPlayer _player = AudioPlayer();
   final ApiService _api = ApiService();
 
+  final ValueNotifier<Track?> currentTrack = ValueNotifier<Track?>(null);
+
   AudioPlayer get player => _player;
 
   /// Loads a track. Prioritizes local storage for offline playback.
   Future<void> playTrack(Track track) async {
+    currentTrack.value = track;
     try {
       AudioSource source;
       

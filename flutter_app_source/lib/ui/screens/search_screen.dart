@@ -53,7 +53,7 @@ class _SearchScreenState extends State<SearchScreen> {
       body: _isSearching
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF06C167)))
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
               itemCount: _results.length,
               itemBuilder: (context, index) {
                 final track = _results[index];
