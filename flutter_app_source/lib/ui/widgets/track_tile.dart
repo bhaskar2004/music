@@ -3,47 +3,72 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/track.dart';
+
 import '../../providers/app_state.dart';
 import '../../services/audio_service.dart';
 import '../../services/download_service.dart';
+import '../../services/download_manager.dart';
 
 
 class TrackTile extends StatefulWidget {
   final Track track;
-  final int index;
+  final bool isSelected;
+  final bool isSelectionMode;
 
-  const TrackTile({super.key, required this.track, required this.index});
+  const TrackTile({
+    super.key,
+    required this.track,
+    this.isSelected = false,
+    this.isSelectionMode = false,
+  });
 
   @override
   State<TrackTile> createState() => _TrackTileState();
 }
 
 class _TrackTileState extends State<TrackTile> {
-  static const _accent = Color(0xFF06C167);
-  static const _bgColors = [
-    Color(0xFF000000),
-    Color(0xFF0A0A0A),
-    Color(0xFF111111),
-    Color(0xFF0D0D0D),
-  ];
-
+  bool _isPlaying = false;
   bool _isDownloaded = false;
 
   @override
   void initState() {
     super.initState();
-    _checkLocal();
+    _checkDownloadStatus();
   }
 
-  Future<void> _checkLocal() async {
-    final p = await DownloadService.getLocalFilePath(widget.track);
-    if (mounted) setState(() => _isDownloaded = p != null);
+  Future<void> _checkDownloadStatus() async {
+    final exists = await DownloadService.isDownloaded(widget.track);
+    if (mounted) setState(() => _isDownloaded = exists);
   }
 
-  void _onTap(BuildContext context) {
+  void _handleTap() {
     final appState = context.read<AppState>();
-    if (appState.isSelectionMode) {
+    if (widget.isSelectionMode) {
       appState.toggleTrackSelection(widget.track.id);
+      return;
+    }
+    // Block playback if file not on disk
+    if (!_isDownloaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.download_rounded, color: Colors.black, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '"${widget.track.title}" — tap ⋯ then Download to save it first.',
+                  style: const TextStyle(color: Colors.black, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF06C167),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 90, left: 16, right: 16),
+          duration: const Duration(seconds: 3),
+        ),
+      );
       return;
     }
     final audio = context.read<AudioService>();
@@ -51,394 +76,220 @@ class _TrackTileState extends State<TrackTile> {
     audio.playAll(library, startIndex: library.indexOf(widget.track));
   }
 
-  void _showContextMenu(BuildContext context) {
+  void _showMenu() {
     final appState = context.read<AppState>();
     final audio = context.read<AudioService>();
-    final track = widget.track;
     final playlists = appState.playlists;
-    final isFav = track.isFavorite;
+    final track = widget.track;
+    final isFav = appState.favorites.contains(track.id);
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => ChangeNotifierProvider.value(
-        value: appState,
-        child: _TrackMenu(
-          track: track,
-          playlists: playlists,
-          isFavorite: isFav,
-          isDownloaded: _isDownloaded,
-          onPlayNext: () {
-            audio.playNextTrack(track);
-            Navigator.pop(context);
-          },
-          onAddToQueue: () {
-            audio.addToQueue(track);
-            Navigator.pop(context);
-          },
-          onToggleFavorite: () {
-            appState.toggleFavorite(track.id);
-            Navigator.pop(context);
-          },
-          onMoveToPlaylist: (pid) {
-            appState.moveTrackToPlaylist(track.id, pid);
-            Navigator.pop(context);
-          },
-          onRemoveFromPlaylist: () {
-            appState.moveTrackToPlaylist(track.id, null);
-            Navigator.pop(context);
-          },
-          onDelete: () async {
-            Navigator.pop(context);
-            // Stop if playing
-            if (audio.currentTrack.value?.id == track.id) {
-              audio.pause();
-            }
-            // Delete file
-            final dir = await DownloadService.getSaveDirectory();
-            final file = File('${dir.path}/${track.filename}');
-            if (await file.exists()) await file.delete();
-            await appState.removeTrack(track.id);
-          },
-        ),
+      isScrollControlled: true,
+      builder: (ctx) => _TrackMenu(
+        track: track,
+        playlists: playlists,
+        isFavorite: isFav,
+        isDownloaded: _isDownloaded,
+        onDownload: () {
+          Navigator.pop(context);
+          DownloadManager().processJob(track.sourceUrl, appState);
+          appState.setActiveView(ActiveView.downloads);
+        },
+        onPlayNext: () {
+          audio.playNextTrack(track);
+          Navigator.pop(context);
+        },
+        onAddToQueue: () {
+          audio.addToQueue(track);
+          Navigator.pop(context);
+        },
+        onToggleFavorite: () {
+          appState.toggleFavorite(track.id);
+          Navigator.pop(context);
+        },
+        onMoveToPlaylist: (pid) {
+          appState.moveTrackToPlaylist(track.id, pid);
+          Navigator.pop(context);
+        },
+        onDelete: () async {
+          Navigator.pop(context);
+          if (audio.currentTrack.value?.id == track.id) {
+            audio.pause();
+          }
+          final dir = await DownloadService.getSaveDirectory();
+          final file = File('${dir.path}/${track.filename}');
+          if (await file.exists()) await file.delete();
+          appState.removeTrack(track.id);
+          setState(() => _isDownloaded = false);
+        },
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final audio = Provider.of<AudioService>(context, listen: false);
-    final isSelected = appState.selectedIds.contains(widget.track.id);
-    final isSelectionMode = appState.isSelectionMode;
-    final bg = _bgColors[widget.index % _bgColors.length];
+    final audio = context.watch<AudioService>();
+    _isPlaying = audio.currentTrack.value?.id == widget.track.id;
 
-    return ValueListenableBuilder<Track?>(
-      valueListenable: audio.currentTrack,
-      builder: (ctx, currentTrack, _) {
-        final isPlaying = currentTrack?.id == widget.track.id;
+    return GestureDetector(
+      onLongPress: () => context.read<AppState>().setSelectionMode(true),
+      onTap: _handleTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: widget.isSelected
+              ? const Color(0xFF06C167).withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: widget.isSelected
+                ? const Color(0xFF06C167).withValues(alpha: 0.3)
+                : Colors.transparent,
+          ),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  // Cover
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121212),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        if (_isPlaying)
+                          BoxShadow(
+                            color: const Color(0xFF06C167).withValues(alpha: 0.2),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: widget.track.coverUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: widget.track.coverUrl!,
+                            fit: BoxFit.cover,
+                            height: double.infinity,
+                            width: double.infinity,
+                          )
+                        : const Center(
+                            child: Icon(Icons.music_note,
+                                color: Color(0xFF333333), size: 40)),
+                  ),
 
-        return GestureDetector(
-          onTap: () => _onTap(context),
-          onLongPress: () {
-            if (!isSelectionMode) {
-              appState.setSelectionMode(true);
-              appState.toggleTrackSelection(widget.track.id);
-            }
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A0A0A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isPlaying
-                    ? _accent.withValues(alpha: 0.5)
-                    : isSelected
-                        ? _accent.withValues(alpha: 0.6)
-                        : const Color(0xFF1E1E1E),
-              ),
-              boxShadow: isPlaying
-                  ? [
-                      BoxShadow(
-                          color: _accent.withValues(alpha: 0.15),
-                          blurRadius: 12)
-                    ]
-                  : null,
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Cover art
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Container(
-                        width: double.infinity,
+                  // Selection Checkbox
+                  if (widget.isSelectionMode)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
                         decoration: BoxDecoration(
-                          color: bg,
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: widget.track.coverUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: widget.track.coverUrl!,
-                                  fit: BoxFit.cover,
-                                  errorWidget: (_, __, ___) => _Placeholder(
-                                      title: widget.track.title),
-                                )
-                              : _Placeholder(title: widget.track.title),
+                        child: Icon(
+                          widget.isSelected
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_outlined,
+                          color: widget.isSelected
+                              ? const Color(0xFF06C167)
+                              : Colors.white70,
+                          size: 24,
                         ),
                       ),
-
-                      // Play overlay / EQ animation
-                      if (isPlaying || isSelectionMode)
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: isSelectionMode
-                                  ? _SelectionCheckbox(selected: isSelected)
-                                  : isPlaying
-                                      ? const _EqIndicator()
-                                      : null,
-                            ),
-                          ),
-                        ),
-
-                      // Favorite badge
-                      if (widget.track.isFavorite)
-                        Positioned(
-                          top: 6,
-                          left: 6,
-                          child: Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                            child: const Icon(Icons.favorite_rounded,
-                                size: 12, color: _accent),
-                          ),
-                        ),
-
-                      // Playing dot
-                      if (isPlaying)
-                        Positioned(
-                          top: 6,
-                          right: 6,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: _accent,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-
-                      // Context menu button
-                      if (!isSelectionMode)
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () => _showContextMenu(context),
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: Colors.white.withValues(
-                                        alpha: 0.1)),
-                              ),
-                              child: const Icon(Icons.more_horiz_rounded,
-                                  size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // Title
-                Text(
-                  widget.track.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: isPlaying ? _accent : Colors.white,
-                    letterSpacing: -0.2,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-
-                // Artist
-                Text(
-                  widget.track.artist,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF888888),
-                      fontWeight: FontWeight.w500),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-                const SizedBox(height: 6),
-
-                // Duration row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatDuration(widget.track.duration),
-                      style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF555555),
-                          fontFamily: 'monospace'),
                     ),
-                    if (_isDownloaded)
-                      const Icon(Icons.check_circle,
-                          size: 12, color: _accent)
-                    else
-                      const Icon(Icons.cloud_download_outlined,
-                          size: 12, color: Color(0xFF444444)),
-                  ],
-                ),
-              ],
+
+                  // Play Overlay / EQ
+                  if (_isPlaying)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black38,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: _EqualizerAnimation(),
+                        ),
+                      ),
+                    ),
+
+                  // Download Status Indicator (Bottom Right)
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isDownloaded ? Icons.check_circle_rounded : Icons.download_rounded,
+                        color: const Color(0xFF06C167),
+                        size: 14,
+                      ),
+                    ),
+                  ),
+
+                  // Menu Button
+                  if (!widget.isSelectionMode)
+                    Positioned(
+                      top: 2,
+                      right: 2,
+                      child: IconButton(
+                        icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                        onPressed: _showMenu,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  String _formatDuration(int seconds) {
-    final m = seconds ~/ 60;
-    final s = seconds % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
-}
-
-// ─── Sub-widgets ──────────────────────────────────────────────────────────────
-
-class _Placeholder extends StatelessWidget {
-  final String title;
-  const _Placeholder({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: Container(
-        color: const Color(0xFF0A0A0A),
-        child: Center(
-          child: Text(
-            title.isNotEmpty
-                ? title[0].toUpperCase()
-                : '?',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: Colors.white.withValues(alpha: 0.1),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.track.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: _isPlaying ? const Color(0xFF06C167) : Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.track.artist,
+                    style: const TextStyle(color: Color(0xFF888888), fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
-
-class _SelectionCheckbox extends StatelessWidget {
-  final bool selected;
-  const _SelectionCheckbox({required this.selected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: selected
-            ? const Color(0xFF06C167)
-            : Colors.black.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: selected
-              ? const Color(0xFF06C167)
-              : Colors.white70,
-          width: 2,
-        ),
-      ),
-      child: selected
-          ? const Icon(Icons.check_rounded,
-              size: 16, color: Colors.black)
-          : null,
-    );
-  }
-}
-
-class _EqIndicator extends StatefulWidget {
-  const _EqIndicator();
-
-  @override
-  State<_EqIndicator> createState() => _EqIndicatorState();
-}
-
-class _EqIndicatorState extends State<_EqIndicator>
-    with TickerProviderStateMixin {
-  late final List<AnimationController> _controllers;
-  late final List<Animation<double>> _animations;
-
-  @override
-  void initState() {
-    super.initState();
-    _controllers = List.generate(
-      3,
-      (i) => AnimationController(
-        vsync: this,
-        duration: Duration(milliseconds: 600 + i * 150),
-      )..repeat(reverse: true),
-    );
-    _animations = _controllers
-        .map((c) => Tween(begin: 0.2, end: 1.0).animate(c))
-        .toList();
-  }
-
-  @override
-  void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: List.generate(3, (i) {
-        return AnimatedBuilder(
-          animation: _animations[i],
-          builder: (_, __) => Container(
-            width: 3,
-            height: 14 * _animations[i].value,
-            margin: const EdgeInsets.symmetric(horizontal: 1.5),
-            decoration: BoxDecoration(
-              color: const Color(0xFF06C167),
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-}
-
-// ─── Context menu ─────────────────────────────────────────────────────────────
 
 class _TrackMenu extends StatelessWidget {
   final Track track;
   final List playlists;
   final bool isFavorite;
   final bool isDownloaded;
+  final VoidCallback onDownload;
   final VoidCallback onPlayNext;
   final VoidCallback onAddToQueue;
   final VoidCallback onToggleFavorite;
-  final void Function(String) onMoveToPlaylist;
-  final VoidCallback onRemoveFromPlaylist;
+  final Function(String?) onMoveToPlaylist;
   final VoidCallback onDelete;
 
   const _TrackMenu({
@@ -446,11 +297,11 @@ class _TrackMenu extends StatelessWidget {
     required this.playlists,
     required this.isFavorite,
     required this.isDownloaded,
+    required this.onDownload,
     required this.onPlayNext,
     required this.onAddToQueue,
     required this.onToggleFavorite,
     required this.onMoveToPlaylist,
-    required this.onRemoveFromPlaylist,
     required this.onDelete,
   });
 
@@ -458,141 +309,131 @@ class _TrackMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF111111),
+        color: Color(0xFF121212),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Drag handle
-          const SizedBox(height: 12),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFF404040),
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Track info header
+          // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                if (track.coverUrl != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: CachedNetworkImage(
-                      imageUrl: track.coverUrl!,
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                else
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(Icons.music_note,
-                        color: Colors.white24, size: 20),
-                  ),
-                const SizedBox(width: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: track.coverUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: track.coverUrl!,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          width: 48,
+                          height: 48,
+                          color: const Color(0xFF1E1E1E),
+                          child: const Icon(Icons.music_note, color: Colors.white24),
+                        ),
+                ),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(track.title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                       Text(track.artist,
-                          style: const TextStyle(
-                              color: Color(0xFF888888), fontSize: 12),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
+                          style: const TextStyle(color: Color(0xFF888888), fontSize: 14)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 12),
           const Divider(color: Color(0xFF1E1E1E), height: 1),
 
-          // Queue section
-          _MenuSection(label: 'QUEUE'),
-          _MenuItem(
-            icon: Icons.skip_next_rounded,
-            label: 'Play Next',
-            onTap: onPlayNext,
-          ),
-          _MenuItem(
-            icon: Icons.queue_music_rounded,
-            label: 'Add to Queue',
-            onTap: onAddToQueue,
-          ),
-
-          const Divider(color: Color(0xFF1E1E1E), height: 1),
-
-          // Playlists section
-          if (playlists.isNotEmpty) ...[
-            _MenuSection(label: 'MOVE TO PLAYLIST'),
-            ...playlists.map((p) => _MenuItem(
-                  icon: Icons.folder_rounded,
-                  label: p.name,
-                  isActive: track.playlistId == p.id,
-                  onTap: () => onMoveToPlaylist(p.id),
-                )),
-            if (track.playlistId != null)
-              _MenuItem(
-                icon: Icons.folder_off_rounded,
-                label: 'Remove from Playlist',
-                onTap: onRemoveFromPlaylist,
-              ),
-            const Divider(color: Color(0xFF1E1E1E), height: 1),
-          ],
-
-          // Favorite
-          _MenuItem(
-            icon: isFavorite
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
-            label:
-                isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
-            isActive: isFavorite,
-            activeColor: const Color(0xFF06C167),
-            onTap: onToggleFavorite,
-          ),
-
-          // Source URL
-          if (track.sourceUrl.isNotEmpty)
+          // Download / Already downloaded indicator
+          if (!isDownloaded)
             _MenuItem(
-              icon: Icons.open_in_new_rounded,
-              label: 'View Source',
-              onTap: () {
-                Navigator.pop(context);
-                // In a real app, launch URL
-              },
+              icon: Icons.download_rounded,
+              label: 'Download to Device',
+              isActive: true,
+              activeColor: const Color(0xFF06C167),
+              onTap: onDownload,
+            )
+          else
+            _MenuItem(
+              icon: Icons.check_circle_rounded,
+              label: 'Downloaded',
+              isActive: true,
+              activeColor: const Color(0xFF06C167),
+              onTap: () {},
             ),
 
           const Divider(color: Color(0xFF1E1E1E), height: 1),
 
+          // Queue section — only makes sense when downloaded
+          if (isDownloaded) ...[
+            _MenuSection(label: 'QUEUE'),
+            _MenuItem(
+              icon: Icons.skip_next_rounded,
+              label: 'Play Next',
+              onTap: onPlayNext,
+            ),
+            _MenuItem(
+              icon: Icons.queue_music_rounded,
+              label: 'Add to Queue',
+              onTap: onAddToQueue,
+            ),
+            const Divider(color: Color(0xFF1E1E1E), height: 1),
+          ],
+
+          // Playlists section
+          if (playlists.isNotEmpty) ...[
+            _MenuSection(label: 'PLAYLISTS'),
+            _MenuItem(
+              icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+              label: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+              isActive: isFavorite,
+              onTap: onToggleFavorite,
+            ),
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                leading: const Icon(Icons.playlist_add, color: Colors.white70),
+                title: const Text('Move to Playlist',
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                children: [
+                  _MenuItem(
+                    icon: Icons.library_music_outlined,
+                    label: 'Library (Remove from Playlist)',
+                    onTap: () => onMoveToPlaylist(null),
+                  ),
+                  ...playlists.map((p) => _MenuItem(
+                        icon: Icons.folder_outlined,
+                        label: p.name,
+                        onTap: () => onMoveToPlaylist(p.id),
+                        isActive: track.playlistId == p.id,
+                      )),
+                ],
+              ),
+            ),
+            const Divider(color: Color(0xFF1E1E1E), height: 1),
+          ],
+
+          // Dangerous section
           _MenuItem(
-            icon: Icons.delete_outline_rounded,
-            label: 'Remove from Library',
-            isDanger: true,
+            icon: Icons.delete_outline,
+            label: 'Delete from Device',
+            danger: true,
             onTap: onDelete,
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -605,15 +446,17 @@ class _MenuSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Text(
         label,
         style: const TextStyle(
-            color: Color(0xFF555555),
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8),
+          color: Color(0xFF444444),
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
@@ -622,44 +465,102 @@ class _MenuSection extends StatelessWidget {
 class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String label;
-  final bool isDanger;
-  final bool isActive;
-  final Color activeColor;
   final VoidCallback onTap;
+  final bool danger;
+  final bool isActive;
+  final Color? activeColor;
 
   const _MenuItem({
     required this.icon,
     required this.label,
-    this.isDanger = false,
-    this.isActive = false,
-    this.activeColor = const Color(0xFF06C167),
     required this.onTap,
+    this.danger = false,
+    this.isActive = false,
+    this.activeColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isDanger
+    final color = danger
         ? const Color(0xFFE53E3E)
-        : isActive
-            ? activeColor
-            : Colors.white70;
+        : (isActive ? (activeColor ?? const Color(0xFF06C167)) : Colors.white);
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 14),
-            Text(label,
-                style: TextStyle(
-                    color: color,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500)),
-          ],
+    return ListTile(
+      leading: Icon(icon, color: color.withValues(alpha: 0.7), size: 20),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 14,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         ),
       ),
+      onTap: onTap,
+    );
+  }
+}
+
+class _EqualizerAnimation extends StatefulWidget {
+  const _EqualizerAnimation();
+
+  @override
+  State<_EqualizerAnimation> createState() => _EqualizerAnimationState();
+}
+
+class _EqualizerAnimationState extends State<_EqualizerAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(4, (index) {
+        return _Bar(index: index, controller: _controller);
+      }),
+    );
+  }
+}
+
+class _Bar extends StatelessWidget {
+  final int index;
+  final AnimationController controller;
+
+  const _Bar({required this.index, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        final double h = (index == 0 || index == 3)
+            ? 12 + 8 * (index == 0 ? controller.value : 1 - controller.value)
+            : 8 + 16 * (index == 1 ? controller.value : 1 - controller.value);
+
+        return Container(
+          width: 3,
+          height: h,
+          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+          decoration: BoxDecoration(
+            color: const Color(0xFF06C167),
+            borderRadius: BorderRadius.circular(10),
+          ),
+        );
+      },
     );
   }
 }

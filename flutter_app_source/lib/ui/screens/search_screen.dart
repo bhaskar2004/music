@@ -198,7 +198,6 @@ class _SearchScreenState extends State<SearchScreen>
                         itemCount: _results.length,
                         itemBuilder: (ctx, i) => TrackTile(
                           track: _results[i],
-                          index: i,
                         ),
                       ),
               ),

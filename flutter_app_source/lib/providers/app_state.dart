@@ -3,19 +3,17 @@ import 'package:uuid/uuid.dart';
 import '../models/track.dart';
 import '../models/playlist.dart';
 import '../models/download_job.dart';
-import '../services/database_service.dart';
+import '../services/storage_service.dart';
 
 enum SortOption { recent, title, artist, duration }
 
 enum ActiveView { library, favorites, queue, downloads }
 
 class AppState extends ChangeNotifier {
-  // ─── Data ──────────────────────────────────────────────────────────────────
   List<Track> _library = [];
   List<Playlist> _playlists = [];
-  final List<DownloadJob> _downloads = [];
+  List<DownloadJob> _downloads = [];
 
-  // ─── UI State ──────────────────────────────────────────────────────────────
   ActiveView _activeView = ActiveView.library;
   String? _activePlaylistId;
   SortOption _sortBy = SortOption.recent;
@@ -23,9 +21,9 @@ class AppState extends ChangeNotifier {
   bool _isSelectionMode = false;
   final Set<String> _selectedIds = {};
   bool _isAddingSongs = false;
-  bool _showDownloadSheet = false;
 
-  // ─── Getters ───────────────────────────────────────────────────────────────
+  // ─── Getters ──────────────────────────────────────────────────────────────
+
   List<Track> get library => List.unmodifiable(_library);
   List<Playlist> get playlists => List.unmodifiable(_playlists);
   List<DownloadJob> get downloads => List.unmodifiable(_downloads);
@@ -36,7 +34,8 @@ class AppState extends ChangeNotifier {
   bool get isSelectionMode => _isSelectionMode;
   Set<String> get selectedIds => Set.unmodifiable(_selectedIds);
   bool get isAddingSongs => _isAddingSongs;
-  bool get showDownloadSheet => _showDownloadSheet;
+  int get pendingDownloadsCount =>
+      _downloads.where((d) => d.isActive).length;
 
   List<String> get favorites =>
       _library.where((t) => t.isFavorite).map((t) => t.id).toList();
@@ -44,11 +43,8 @@ class AppState extends ChangeNotifier {
   Playlist? get activePlaylist => _activePlaylistId != null
       ? _playlists.cast<Playlist?>().firstWhere(
             (p) => p?.id == _activePlaylistId,
-            orElse: () => null,
-          )
+            orElse: () => null)
       : null;
-
-  int get pendingDownloadsCount => _downloads.where((d) => d.isActive).length;
 
   List<Track> get filteredTracks {
     List<Track> tracks = [..._library];
@@ -74,33 +70,29 @@ class AppState extends ChangeNotifier {
     switch (_sortBy) {
       case SortOption.title:
         tracks.sort((a, b) => a.title.compareTo(b.title));
-        break;
       case SortOption.artist:
         tracks.sort((a, b) => a.artist.compareTo(b.artist));
-        break;
       case SortOption.duration:
         tracks.sort((a, b) => b.duration.compareTo(a.duration));
-        break;
       case SortOption.recent:
-        tracks.sort(
-            (a, b) => (b.addedAt ?? '').compareTo(a.addedAt ?? ''));
-        break;
+        tracks.sort((a, b) => (b.addedAt ?? '').compareTo(a.addedAt ?? ''));
     }
 
     return tracks;
   }
 
-  List<Track> get favoriteTracks =>
-      _library.where((t) => t.isFavorite).toList();
+  List<Track> get favoriteTracks => _library.where((t) => t.isFavorite).toList();
 
-  // ─── Initialization ────────────────────────────────────────────────────────
+  // ─── Init ─────────────────────────────────────────────────────────────────
+
   Future<void> initialize() async {
-    _library = await DatabaseService().getTracks();
-    _playlists = await DatabaseService().getPlaylists();
+    _library = await StorageService().getTracks();
+    _playlists = await StorageService().getPlaylists();
     notifyListeners();
   }
 
-  // ─── Navigation ────────────────────────────────────────────────────────────
+  // ─── Navigation ───────────────────────────────────────────────────────────
+
   void setActiveView(ActiveView view) {
     _activeView = view;
     if (view != ActiveView.library) {
@@ -122,12 +114,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setShowDownloadSheet(bool val) {
-    _showDownloadSheet = val;
-    notifyListeners();
-  }
+  // ─── Sort & Search ────────────────────────────────────────────────────────
 
-  // ─── Sort & Search ─────────────────────────────────────────────────────────
   void setSortBy(SortOption sort) {
     _sortBy = sort;
     notifyListeners();
@@ -138,7 +126,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ─── Selection Mode ────────────────────────────────────────────────────────
+  // ─── Selection ────────────────────────────────────────────────────────────
+
   void setSelectionMode(bool enabled) {
     _isSelectionMode = enabled;
     if (!enabled) _selectedIds.clear();
@@ -173,16 +162,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ─── Library ───────────────────────────────────────────────────────────────
+  // ─── Library ──────────────────────────────────────────────────────────────
+
   void addTrack(Track track) {
-    // Avoid duplicates
     _library.removeWhere((t) => t.id == track.id);
     _library.insert(0, track);
     notifyListeners();
   }
 
   Future<void> removeTrack(String id) async {
-    await DatabaseService().deleteTrack(id);
+    await StorageService().deleteTrack(id);
     _library.removeWhere((t) => t.id == id);
     notifyListeners();
   }
@@ -190,28 +179,24 @@ class AppState extends ChangeNotifier {
   Future<void> toggleFavorite(String trackId) async {
     final idx = _library.indexWhere((t) => t.id == trackId);
     if (idx < 0) return;
-    final track = _library[idx];
-    await DatabaseService().toggleFavorite(track);
-    _library[idx] = track.copyWith(isFavorite: !track.isFavorite);
+    await StorageService().toggleFavorite(trackId);
+    _library[idx] = _library[idx].copyWith(isFavorite: !_library[idx].isFavorite);
     notifyListeners();
   }
 
   Future<void> moveTrackToPlaylist(String trackId, String? playlistId) async {
-    await DatabaseService().updateTrackPlaylist(trackId, playlistId);
+    await StorageService().updateTrackPlaylist(trackId, playlistId);
     final idx = _library.indexWhere((t) => t.id == trackId);
     if (idx >= 0) {
-      if (playlistId == null) {
-        _library[idx] = _library[idx].copyWith(clearPlaylistId: true);
-      } else {
-        _library[idx] = _library[idx].copyWith(playlistId: playlistId);
-      }
+      _library[idx] = playlistId == null
+          ? _library[idx].copyWith(clearPlaylistId: true)
+          : _library[idx].copyWith(playlistId: playlistId);
     }
     notifyListeners();
   }
 
   Future<void> bulkMoveToPlaylist(String? playlistId) async {
-    final ids = Set<String>.from(_selectedIds);
-    for (final id in ids) {
+    for (final id in Set<String>.from(_selectedIds)) {
       await moveTrackToPlaylist(id, playlistId);
     }
     _selectedIds.clear();
@@ -220,29 +205,31 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ─── Playlists ─────────────────────────────────────────────────────────────
+  // ─── Playlists ────────────────────────────────────────────────────────────
+
   Future<Playlist> createPlaylist(String name) async {
     final p = Playlist(
       id: const Uuid().v4(),
       name: name,
       createdAt: DateTime.now().toIso8601String(),
     );
-    await DatabaseService().insertPlaylist(p);
+    await StorageService().insertPlaylist(p);
     _playlists.add(p);
     notifyListeners();
     return p;
   }
 
   Future<void> deletePlaylist(String id) async {
-    await DatabaseService().deletePlaylist(id);
-    // Refresh library since tracks' playlistId got nulled in DB
-    _library = await DatabaseService().getTracks();
+    await StorageService().deletePlaylist(id);
+    // Reload library since tracks' playlistIds were cleared in storage
+    _library = await StorageService().getTracks();
     _playlists.removeWhere((p) => p.id == id);
     if (_activePlaylistId == id) _activePlaylistId = null;
     notifyListeners();
   }
 
-  // ─── Downloads ─────────────────────────────────────────────────────────────
+  // ─── Downloads ────────────────────────────────────────────────────────────
+
   DownloadJob createDownloadJob(String url, {String? playlistId}) {
     final job = DownloadJob(
       id: const Uuid().v4(),
@@ -286,10 +273,9 @@ class AppState extends ChangeNotifier {
   void retryDownload(String jobId) {
     final idx = _downloads.indexWhere((d) => d.id == jobId);
     if (idx < 0) return;
-    final job = _downloads[idx];
-    job.status = DownloadStatus.pending;
-    job.progress = 0;
-    job.error = null;
+    _downloads[idx].status = DownloadStatus.pending;
+    _downloads[idx].progress = 0;
+    _downloads[idx].error = null;
     notifyListeners();
   }
 }

@@ -1,19 +1,17 @@
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter/foundation.dart';
+
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/track.dart';
 
 class DownloadService {
-  /// Called once from main() — no-op, kept for compatibility
   static void init() {}
 
-  // ─── Directory ──────────────────────────────────────────────────────────────
+  // ─── Save directory ────────────────────────────────────────────────────────
 
-  /// Returns the directory Wavelength saves audio files to.
-  /// Uses app-scoped external storage so no dangerous permissions are needed
-  /// on Android 10+ or iOS.
+  /// Android  → /sdcard/Android/data/<pkg>/files/Wavelength/
+  /// iOS      → <documentsDir>/Wavelength/
   static Future<Directory> getSaveDirectory() async {
     final Directory base;
     if (Platform.isAndroid) {
@@ -26,35 +24,30 @@ class DownloadService {
     return dir;
   }
 
-  /// Returns the full path to a track's downloaded file, or null if not found.
+  /// Full path to a track's audio file if it exists on disk, else null.
   static Future<String?> getLocalFilePath(Track track) async {
     final dir = await getSaveDirectory();
     final file = File('${dir.path}/${track.filename}');
     return (await file.exists()) ? file.path : null;
   }
 
-  // ─── Permissions ────────────────────────────────────────────────────────────
+  static Future<bool> isDownloaded(Track track) async =>
+      (await getLocalFilePath(track)) != null;
+
+  // ─── Permissions ───────────────────────────────────────────────────────────
 
   static Future<void> requestStoragePermission() async {
     if (!Platform.isAndroid) return;
-
     int sdk = 0;
     try {
       sdk = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
     } catch (_) {}
 
     if (sdk >= 33) {
-      final s = await Permission.audio.request();
-      if (s.isDenied) {
-        debugPrint('[DownloadService] Audio permission denied — downloads '
-            'still work via app-scoped storage.');
-      }
+      await Permission.audio.request();
     } else if (sdk < 29) {
       final s = await Permission.storage.request();
-      if (s.isDenied) {
-        throw Exception('Storage permission required to download tracks.');
-      }
+      if (s.isDenied) throw Exception('Storage permission required.');
     }
-    // Android 10-12: app-scoped storage needs no permission
   }
 }

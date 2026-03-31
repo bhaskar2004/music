@@ -203,7 +203,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       delegate: SliverChildBuilderDelegate(
                         (ctx, i) => TrackTile(
                           track: tracks[i],
-                          index: i,
                         ),
                         childCount: tracks.length,
                       ),

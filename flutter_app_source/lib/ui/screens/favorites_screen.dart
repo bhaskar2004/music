@@ -108,7 +108,6 @@ class FavoritesScreen extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (ctx, i) => TrackTile(
                       track: favorites[i],
-                      index: i,
                     ),
                     childCount: favorites.length,
                   ),

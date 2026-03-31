@@ -14,7 +14,6 @@ dependencies:
   provider: ^6.1.1
 
   # Database
-  sqflite: ^2.3.2
   path: ^1.9.0
 
   # Audio playback
@@ -41,7 +40,6 @@ dependencies:
   # Utilities
   shared_preferences: ^2.2.2
   uuid: ^4.3.3
-  sqflite_common_ffi: ^2.4.0+2
 
 dev_dependencies:
   flutter_test:
