@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../models/track.dart';
 import '../models/download_job.dart';
 import '../providers/app_state.dart';
@@ -55,82 +57,123 @@ class DownloadManager {
   }
 
   Future<void> _executeJob(DownloadJob job, AppState state) async {
-    try {
-      await DownloadService.requestStoragePermission();
+    int attempts = 0;
+    const maxAttempts = 3;
+    bool success = false;
+    dynamic lastError;
 
-      // ── 1. Fetch metadata ────────────────────────────────────────────────
-      state.updateDownload(job.id, status: DownloadStatus.fetchingMeta);
-      final track = await _api.getTrackFromUrl(job.url);
-      if (track == null) {
-        throw Exception(
-            'Could not fetch video info. Check the URL and try again.');
-      }
+    while (attempts < maxAttempts && !success) {
+      attempts++;
+      try {
+        await DownloadService.requestStoragePermission();
 
-      state.updateDownload(
-          job.id, title: track.title, artist: track.artist, coverUrl: track.coverUrl);
+        // ── 1. Fetch metadata ────────────────────────────────────────────────
+        state.updateDownload(job.id, status: DownloadStatus.fetchingMeta);
+        final track = await _api.getTrackFromUrl(job.url);
+        if (track == null) {
+          throw Exception('Could not fetch video info. Check the URL.');
+        }
 
-      // ── 2. Skip if already on disk ───────────────────────────────────────
-      final saveDir = await DownloadService.getSaveDirectory();
-      final filename = '${track.id}.mp3';
-      final file = File('${saveDir.path}/$filename');
+        state.updateDownload(job.id,
+            title: track.title, artist: track.artist, coverUrl: track.coverUrl);
 
-      if (!await file.exists()) {
-        // ── 3. Fetch audio stream → write to local file ──────────────────
-        state.updateDownload(job.id, status: DownloadStatus.downloading, progress: 0);
+        // ── 2. Check disk ───────────────────────────────────────────────────
+        final saveDir = await DownloadService.getSaveDirectory();
+        final filename = '${track.id}.mp3';
+        final file = File('${saveDir.path}/$filename');
 
-        final manifest = await _api.getAudioManifest(track.id);
-        final audioStreams = manifest.audioOnly;
-        if (audioStreams.isEmpty) throw Exception('No audio streams available.');
+        if (await file.exists()) {
+          success = true;
+          debugPrint('[DL] Already on disk: ${file.path}');
+        } else {
+          // ── 3. Download logic ──────────────────────────────────────────────
+          state.updateDownload(job.id, status: DownloadStatus.downloading, progress: 0);
 
-        final streamInfo = audioStreams.reduce(
-            (a, b) => a.bitrate.bitsPerSecond > b.bitrate.bitsPerSecond ? a : b);
+          final manifest = await _api.getAudioManifest(track.id);
+          final audioStreams = manifest.audioOnly.toList();
+          
+          if (audioStreams.isEmpty) throw Exception('No audio streams available.');
 
-        final total = streamInfo.size.totalBytes;
-        int received = 0;
-        final sink = file.openWrite();
-        try {
-          await for (final chunk in _api.getAudioStream(streamInfo)) {
-            sink.add(chunk);
-            received += chunk.length;
-            if (total > 0) {
-              state.updateDownload(job.id, progress: received / total);
+          // Sort streams: Priority is MP4 (often more stable DNS/CDN) then WebM/Opus,
+          // within containers sort by bitrate descending.
+          audioStreams.sort((a, b) {
+            final aIsMp4 = a.container == yt.StreamContainer.mp4;
+            final bIsMp4 = b.container == yt.StreamContainer.mp4;
+            if (aIsMp4 && !bIsMp4) return -1;
+            if (!aIsMp4 && bIsMp4) return 1;
+            return b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond);
+          });
+
+          // Try each stream until one works
+          bool streamSuccess = false;
+          for (final streamInfo in audioStreams) {
+            final total = streamInfo.size.totalBytes;
+            int received = 0;
+            final tmpFile = File('${file.path}.part');
+            final sink = tmpFile.openWrite();
+
+            try {
+              final stream = _api.getAudioStream(streamInfo as yt.StreamInfo);
+              await for (final chunk in stream.timeout(const Duration(seconds: 30))) {
+                sink.add(chunk);
+                received += chunk.length;
+                if (total > 0) {
+                  state.updateDownload(job.id, progress: (received / total).clamp(0.0, 1.0));
+                }
+              }
+              await sink.flush();
+              await sink.close();
+              await tmpFile.rename(file.path);
+              streamSuccess = true;
+              break; // Success with this stream
+            } catch (e) {
+              await sink.close();
+              if (await tmpFile.exists()) await tmpFile.delete();
+              debugPrint('[DL] Stream failed (attempt $attempts): $e');
+              lastError = e;
+              continue; // Try next stream
             }
           }
-          await sink.flush();
-        } finally {
-          await sink.close();
+
+          if (!streamSuccess) throw lastError ?? Exception('All streams failed.');
+          success = true;
+          debugPrint('[DL] ✓ ${track.title} downloaded.');
         }
-        debugPrint('[DL] ✓ ${track.title} → ${file.path}');
-      } else {
-        debugPrint('[DL] Already on disk: ${file.path}');
-        state.updateDownload(job.id, progress: 1.0);
+
+        // ── 4. Persist ──────────────────────────────────────────────────────
+        final finalTrack = Track(
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          duration: track.duration,
+          filename: filename,
+          coverUrl: track.coverUrl,
+          sourceUrl: track.sourceUrl,
+          addedAt: DateTime.now().toIso8601String(),
+          format: 'mp3',
+          playlistId: job.playlistId,
+        );
+        await StorageService().insertTrack(finalTrack);
+
+        state.updateDownload(job.id,
+            status: DownloadStatus.done, progress: 1.0, completedTrack: finalTrack);
+      } catch (e) {
+        lastError = e;
+        debugPrint('[DL] Attempt $attempts failed: $e');
+        if (attempts < maxAttempts) {
+          state.updateDownload(job.id, error: 'Retrying... ($attempts/$maxAttempts)');
+          await Future.delayed(Duration(seconds: 2 * attempts)); // Exponential backoff
+        } else {
+          state.updateDownload(
+            job.id,
+            status: DownloadStatus.error,
+            error: e.toString().contains('SocketException') 
+                ? 'Network Error: DNS fallback failed. Try again on Wi-Fi.'
+                : e.toString().split('Exception: ').last.split('\n').first,
+          );
+        }
       }
-
-      // ── 4. Persist metadata to local JSON (no SQLite) ────────────────────
-      final finalTrack = Track(
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        duration: track.duration,
-        filename: filename,
-        coverUrl: track.coverUrl,
-        sourceUrl: track.sourceUrl,
-        addedAt: DateTime.now().toIso8601String(),
-        format: 'mp3',
-        playlistId: job.playlistId,
-      );
-      await StorageService().insertTrack(finalTrack);
-
-      state.updateDownload(job.id,
-          status: DownloadStatus.done, progress: 1.0, completedTrack: finalTrack);
-    } catch (e) {
-      debugPrint('[DL] ✗ ${job.url}: $e');
-      state.updateDownload(
-        job.id,
-        status: DownloadStatus.error,
-        error: e.toString().split('Exception: ').last.split('\n').first,
-      );
     }
   }
 
