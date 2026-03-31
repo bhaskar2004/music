@@ -98,10 +98,10 @@ export default function LibraryView() {
         }}
       >
         <div>
-          <h1 className="brand-text" style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1.5px', marginBottom: 4 }}>
+          <h1 className="brand-text font-display" style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1.5px', marginBottom: 4 }}>
             {activeFolder ? activeFolder.name : 'Library'}
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>
+          <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>
             {filtered.length} {filtered.length === 1 ? 'track' : 'tracks'}
           </p>
         </div>
@@ -403,7 +403,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <Music2 size={32} color="var(--text-faint)" />
       </div>
       <div>
-        <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 6, letterSpacing: '-0.3px' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, marginBottom: 6, letterSpacing: '-0.3px' }}>
           Your library is empty
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 280 }}>

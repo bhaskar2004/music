@@ -1,17 +1,32 @@
 @import "tailwindcss";
 
+@theme {
+  --font-display: var(--font-display), "Outfit", sans-serif;
+  --font-sans: var(--font-sans), "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@layer base {
+  html, body {
+    @apply font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-[var(--text)];
+  }
+}
+
 :root {
   --bg: #ffffff;
-  --surface: #f6f6f6;
-  --surface2: #eeeeee;
-  --surface3: #e0e0e0;
+  --surface: #f8f9fa; /* slightly refined light mode surface */
+  --surface2: #e9ecef;
+  --surface3: #dee2e6;
   --border: #e5e5e5;
   --border-hover: #d1d1d1;
-  --text: #000000;
-  --text-muted: #5e5e5e;
-  --text-faint: #a6a6a6;
-  --accent: #06C167; /* Uber-like primary accent */
-  --accent-secondary: #06C167; /* Uber Eats / Spotify green */
+  --text: #0f1419; /* premium off-black */
+  --text-muted: #536471;
+  --text-faint: #8b98a5;
+  --accent: #06C167; 
+  --accent-secondary: #06C167; 
   --accent-dim: rgba(6, 193, 103, 0.1);
   --accent-glow: rgba(6, 193, 103, 0.15);
   --danger: #e53e3e;
@@ -340,24 +355,43 @@ input[type='range']:hover::-moz-range-thumb {
   opacity: 0.8;
 }
 
-/* Uber Style Components */
-.uber-card {
-  background: linear-gradient(165deg, #0A0A0A 0%, #000000 100%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+/* Premium Music Cards */
+.premium-card {
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-.uber-card:hover {
-  background: linear-gradient(165deg, #121212 0%, #0A0A0A 100%);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-4px);
-  box-shadow: 0 16px 32px rgba(0,0,0,0.4);
+.premium-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.uber-card-active {
-  background: linear-gradient(135deg, #0A0A0A 0%, #000000 100%);
+.premium-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  border-color: color-mix(in srgb, var(--border) 100%, transparent);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+.premium-card:hover::before {
+  opacity: 1;
+}
+
+.premium-card-active {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent) 0%, color-mix(in srgb, var(--surface) 90%, transparent) 100%);
   border-color: var(--accent);
-  box-shadow: 0 0 30px rgba(6, 193, 103, 0.25);
+  box-shadow: 0 0 30px var(--accent-glow);
 }
 
 .uber-btn-primary {

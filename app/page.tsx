@@ -9,6 +9,7 @@ import LibraryView from '@/components/LibraryView';
 import QueueView from '@/components/QueueView';
 import DownloadsView from '@/components/DownloadsView';
 import FavoritesView from '@/components/FavoritesView';
+import SearchView from '@/components/SearchView';
 import NowPlayingBar from '@/components/NowPlayingBar';
 import DownloadModal from '@/components/DownloadModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -55,6 +56,7 @@ export default function Home() {
             ) : (
               <>
                 {activeView === 'library' && <LibraryView />}
+                {activeView === 'search' && <SearchView />}
                 {activeView === 'favorites' && <FavoritesView />}
                 {activeView === 'queue' && <QueueView />}
                 {activeView === 'downloads' && <DownloadsView />}

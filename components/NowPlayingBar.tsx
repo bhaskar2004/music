@@ -215,6 +215,7 @@ export default function NowPlayingBar() {
               style={{
                 fontWeight: 700,
                 fontSize: 14,
+                fontFamily: 'var(--font-sans)',
                 color: 'var(--text)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -229,6 +230,7 @@ export default function NowPlayingBar() {
               style={{
                 fontSize: 12,
                 fontWeight: 500,
+                fontFamily: 'var(--font-sans)',
                 color: 'var(--text-muted)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',

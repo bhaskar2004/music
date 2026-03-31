@@ -11,16 +11,19 @@ import {
   Heart,
   Folder as FolderIcon,
   Trash2,
+  Search,
 } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
 
 const navItems = [
   { id: 'library' as const, label: 'Library', icon: Library },
+  { id: 'search' as const, label: 'Search', icon: Search },
   { id: 'favorites' as const, label: 'Favorites', icon: Heart },
   { id: 'queue' as const, label: 'Queue', icon: ListMusic },
   { id: 'downloads' as const, label: 'Downloads', icon: Download },
 ];
+
 
 export default function Sidebar() {
   const { activeView, setActiveView, library, downloads, favorites, setShowDownloadModal, folders, addFolder, removeFolder, activeFolderId, setActiveFolderId } =
@@ -74,7 +77,7 @@ export default function Sidebar() {
           />
         </div>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-0.4px', color: 'var(--text)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, letterSpacing: '-0.4px', color: 'var(--text)' }}>
             Wavelength
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>
@@ -85,7 +88,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav style={{ padding: '12px', flex: 1 }} role="navigation">
-        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 12px 12px' }}>
+        <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 12px 12px' }}>
           Menu
         </div>
         {navItems.map(({ id, label, icon: Icon }) => {
@@ -159,7 +162,7 @@ export default function Sidebar() {
       {/* Folders Section */}
       <div style={{ padding: '0 12px 12px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 12px' }}>
+          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 12px' }}>
             Playlists
           </div>
           <button 
@@ -195,7 +198,8 @@ export default function Sidebar() {
               }}
               style={{
                 flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', 
-                borderRadius: 6, padding: '6px 10px', color: 'var(--text)', fontSize: 13, outline: 'none'
+                borderRadius: 6, padding: '6px 10px', color: 'var(--text)', fontSize: 13, outline: 'none',
+                fontFamily: 'var(--font-sans)'
               }}
             />
           </div>
@@ -219,7 +223,7 @@ export default function Sidebar() {
                   }}
                 >
                   <FolderIcon size={16} fill={isFolderActive ? 'currentColor' : 'none'} />
-                  <span style={{ fontSize: 13, fontWeight: isFolderActive ? 800 : 500 }}>{folder.name}</span>
+                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: isFolderActive ? 800 : 500 }}>{folder.name}</span>
                 </div>
                 {isFolderActive && (
                   <button onClick={() => removeFolder(folder.id)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }} title="Delete Folder">

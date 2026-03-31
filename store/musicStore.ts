@@ -56,8 +56,8 @@ interface MusicStore {
   removeDownload: (id: string) => void;
 
   // UI
-  activeView: 'library' | 'queue' | 'downloads' | 'favorites';
-  setActiveView: (v: 'library' | 'queue' | 'downloads' | 'favorites') => void;
+  activeView: 'library' | 'search' | 'queue' | 'downloads' | 'favorites';
+  setActiveView: (v: 'library' | 'search' | 'queue' | 'downloads' | 'favorites') => void;
   showDownloadModal: boolean;
   setShowDownloadModal: (v: boolean) => void;
   selectedTrack: Track | null;

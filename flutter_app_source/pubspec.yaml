@@ -1,7 +1,7 @@
 name: wavelength_app
 description: "Wavelength Premium Music Player"
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -9,20 +9,36 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # State management
+  provider: ^6.1.1
+
+  # Database
   sqflite: ^2.3.2
   path: ^1.9.0
-  cupertino_icons: ^1.0.6
-  provider: ^6.1.1
+
+  # Audio playback
   just_audio: ^0.10.5
   just_audio_background: ^0.0.1-beta.15
   audio_session: ^0.2.3
+
+  # YouTube extraction (replaces yt-dlp on mobile)
   youtube_explode_dart: ^3.0.5
+
+  # Networking / file I/O
   dio: ^5.4.0
   path_provider: ^2.1.2
+
+  # Permissions
   permission_handler: ^12.0.1
-  device_info_plus: ^10.1.0      # NEW: runtime Android SDK detection for permissions
+  device_info_plus: ^10.1.0
+
+  # UI
   google_fonts: ^8.0.2
   cached_network_image: ^3.3.1
+  cupertino_icons: ^1.0.6
+
+  # Utilities
   shared_preferences: ^2.2.2
   uuid: ^4.3.3
 

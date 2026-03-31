@@ -1,13 +1,14 @@
 'use client';
 
 import { useMusicStore } from '@/store/musicStore';
-import { Library, ListMusic, Download, Heart } from 'lucide-react';
+import { Library, ListMusic, Download, Heart, Search } from 'lucide-react';
 
 export default function MobileNav() {
   const { activeView, setActiveView } = useMusicStore();
 
   const navItems = [
     { id: 'library' as const, label: 'Library', icon: Library },
+    { id: 'search' as const, label: 'Search', icon: Search },
     { id: 'favorites' as const, label: 'Favorites', icon: Heart },
     { id: 'queue' as const, label: 'Queue', icon: ListMusic },
     { id: 'downloads' as const, label: 'Downloads', icon: Download },
@@ -51,6 +52,7 @@ export default function MobileNav() {
               border: 'none',
               color: active ? 'var(--text)' : 'var(--text-faint)',
               cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
               fontSize: 10,
               fontWeight: active ? 700 : 500,
               height: '100%',
@@ -72,6 +74,7 @@ export default function MobileNav() {
             </div>
             <span style={{ 
               marginTop: 2,
+              fontFamily: 'var(--font-sans)',
               opacity: active ? 1 : 0.8,
               transform: active ? 'translateY(0)' : 'translateY(2px)',
               transition: 'all 0.2s'

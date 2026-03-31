@@ -6,8 +6,6 @@ import '../models/track.dart';
 import 'api_service.dart';
 import 'download_service.dart';
 
-/// Headers required for YouTube CDN URLs.
-/// Without these, YouTube returns 403 and just_audio silently buffers forever.
 const _youtubeHeaders = {
   'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -22,18 +20,19 @@ class AudioService {
   final AudioPlayer _player = AudioPlayer();
   final ApiService _api = ApiService();
 
-  // Queue management
   final List<Track> _queue = [];
-  final ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
+  final ConcatenatingAudioSource _playlist =
+      ConcatenatingAudioSource(children: []);
 
-  // Observable state
   final ValueNotifier<Track?> currentTrack = ValueNotifier<Track?>(null);
   final ValueNotifier<List<Track>> queueNotifier =
       ValueNotifier<List<Track>>([]);
-  final ValueNotifier<bool> isShuffleModeEnabled = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> isShuffleModeEnabled =
+      ValueNotifier<bool>(false);
   final ValueNotifier<LoopMode> loopModeNotifier =
       ValueNotifier<LoopMode>(LoopMode.off);
-  final ValueNotifier<String?> playbackError = ValueNotifier<String?>(null);
+  final ValueNotifier<String?> playbackError =
+      ValueNotifier<String?>(null);
 
   AudioService() {
     _init();
@@ -52,7 +51,8 @@ class AudioService {
       (_) {},
       onError: (Object e, StackTrace st) {
         debugPrint('AudioService playback error: $e');
-        playbackError.value = 'Playback error: ${e.toString().split('\n').first}';
+        playbackError.value =
+            'Playback error: ${e.toString().split('\n').first}';
       },
     );
   }
@@ -60,11 +60,11 @@ class AudioService {
   AudioPlayer get player => _player;
   List<Track> get queue => List.unmodifiable(_queue);
 
-  /// Plays a single track immediately (clears queue).
+  /// Play a single track (clears queue).
   Future<void> playTrack(Track track) async {
-    playbackError.value = null; // Clear previous errors
+    playbackError.value = null;
     currentTrack.value = track;
-    await _player.stop(); // Immediately stop the previous track while loading
+    await _player.stop();
     _queue.clear();
     await _playlist.clear();
 
@@ -77,17 +77,11 @@ class AudioService {
     await _player.play();
   }
 
-  /// Adds a track to the end of the current queue.
-  Future<void> addToQueue(Track track) async {
-    final source = await _buildAudioSource(track);
-    _queue.add(track);
-    await _playlist.add(source);
-    queueNotifier.value = List.from(_queue);
-  }
-
-  /// Clears queue and plays all tracks from the beginning.
-  Future<void> playAll(List<Track> tracks) async {
+  /// Play a list of tracks, optionally starting at a given index.
+  Future<void> playAll(List<Track> tracks, {int startIndex = 0}) async {
     if (tracks.isEmpty) return;
+    playbackError.value = null;
+
     _queue.clear();
     await _playlist.clear();
 
@@ -98,32 +92,51 @@ class AudioService {
     }
 
     queueNotifier.value = List.from(_queue);
-    await _player.setAudioSource(_playlist);
+    await _player.setAudioSource(_playlist,
+        initialIndex: startIndex.clamp(0, tracks.length - 1));
+    currentTrack.value = _queue[startIndex.clamp(0, _queue.length - 1)];
     await _player.play();
   }
 
-  /// Builds an AudioSource for a track.
-  ///
-  /// Priority: local downloaded file → YouTube stream URL (with required headers).
+  /// Insert track to play immediately after current track.
+  Future<void> playNextTrack(Track track) async {
+    final currentIdx = _player.currentIndex ?? 0;
+    final insertAt = currentIdx + 1;
+
+    final source = await _buildAudioSource(track);
+    if (insertAt >= _queue.length) {
+      _queue.add(track);
+      await _playlist.add(source);
+    } else {
+      _queue.insert(insertAt, track);
+      await _playlist.insert(insertAt, source);
+    }
+    queueNotifier.value = List.from(_queue);
+  }
+
+  /// Add track to end of queue.
+  Future<void> addToQueue(Track track) async {
+    final source = await _buildAudioSource(track);
+    _queue.add(track);
+    await _playlist.add(source);
+    queueNotifier.value = List.from(_queue);
+  }
+
   Future<AudioSource> _buildAudioSource(Track track) async {
-    // Check if the file is already downloaded locally
     final localPath = await DownloadService.getLocalFilePath(track);
 
     final Uri uri;
     final Map<String, String>? headers;
 
     if (localPath != null) {
-      debugPrint('[AudioService] Playing local file: $localPath');
       uri = Uri.file(localPath);
-      headers = null; // Local files don't need headers
+      headers = null;
     } else {
-      debugPrint('[AudioService] Streaming from YouTube: ${track.title}');
       try {
         final streamUrl = await _api.getAudioStreamUrl(track.id);
         uri = Uri.parse(streamUrl);
-        headers = _youtubeHeaders; // ← This is the critical fix
+        headers = _youtubeHeaders;
       } catch (e) {
-        debugPrint('[AudioService] Failed to get stream URL: $e');
         rethrow;
       }
     }
@@ -136,8 +149,7 @@ class AudioService {
         album: track.album,
         title: track.title,
         artist: track.artist,
-        artUri:
-            track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
+        artUri: track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
       ),
     );
   }
@@ -170,9 +182,7 @@ class AudioService {
     if (oldIndex < newIndex) newIndex -= 1;
     final item = _queue.removeAt(oldIndex);
     _queue.insert(newIndex, item);
-    
     await _playlist.move(oldIndex, newIndex);
-    
     queueNotifier.value = List.from(_queue);
   }
 

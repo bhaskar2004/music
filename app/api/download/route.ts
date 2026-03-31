@@ -82,6 +82,20 @@ export async function POST(req: NextRequest) {
 
         const ytDlp = new YTDlpWrap(YT_DLP_PATH);
 
+        // Auto-update yt-dlp every 7 days to bypass new YouTube throttles
+        try {
+          const binStat = fs.statSync(YT_DLP_PATH);
+          const daysOld = (Date.now() - binStat.mtimeMs) / (1000 * 60 * 60 * 24);
+          if (daysOld > 7) {
+            send('status', { stage: 'metadata', message: 'Updating yt-dlp engine to bypass throttles…' });
+            await ytDlp.execPromise(['-U']);
+            const now = new Date();
+            fs.utimesSync(YT_DLP_PATH, now, now);
+          }
+        } catch (e: any) {
+          console.warn('[DOWNLOAD] Failed to check/update yt-dlp:', e.message);
+        }
+
         // Find ffmpeg/ffprobe
         let ffmpegLocation = '';
         if (process.platform === 'win32' && process.env.LOCALAPPDATA) {

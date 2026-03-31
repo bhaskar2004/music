@@ -27,7 +27,7 @@ class ApiService {
         );
       }).toList();
     } catch (e) {
-      debugPrint("Search error: $e");
+      debugPrint('Search error: $e');
       return [];
     }
   }
@@ -35,9 +35,10 @@ class ApiService {
   /// Fetches track metadata from a direct YouTube URL
   Future<Track?> getTrackFromUrl(String url) async {
     try {
-      // Use VideoId.parseVideoId to handle various URL formats and tracking parameters
       final videoId = VideoId.parseVideoId(url);
-      final video = await _yt.videos.get(videoId).timeout(const Duration(seconds: 45));
+      final video = await _yt.videos
+          .get(videoId)
+          .timeout(const Duration(seconds: 45));
       return Track(
         id: video.id.value,
         title: video.title,
@@ -50,45 +51,40 @@ class ApiService {
         format: 'mp3',
       );
     } catch (e) {
-      debugPrint("Error fetching video from URL ($url): $e");
+      debugPrint('Error fetching video from URL ($url): $e');
       return null;
     }
   }
 
   /// Fetches the audio manifest for a specific video ID
   Future<StreamManifest> getAudioManifest(String videoId) async {
-    return await _yt.videos.streamsClient.getManifest(videoId)
-        .timeout(const Duration(seconds: 45), onTimeout: () {
-          throw Exception("Metadata fetch timed out (45s). Check your connection.");
-        });
+    return await _yt.videos.streamsClient.getManifest(videoId).timeout(
+      const Duration(seconds: 45),
+      onTimeout: () {
+        throw Exception('Metadata fetch timed out. Check your connection.');
+      },
+    );
   }
 
-  /// Fetches the actual audio stream for a specific StreamInfo
+  /// Returns a raw byte stream for a specific StreamInfo
   Stream<List<int>> getAudioStream(StreamInfo streamInfo) {
     return _yt.videos.streamsClient.get(streamInfo);
   }
 
-  /// Fetches the direct audio stream URL for a specific video ID 
+  /// Returns the highest-quality audio stream URL for a video ID
   Future<String> getAudioStreamUrl(String videoId) async {
-    try {
-      final manifest = await getAudioManifest(videoId);
-      final audioStreams = manifest.audioOnly;
-      
-      if (audioStreams.isEmpty) {
-        throw Exception("No available audio streams found for this track.");
-      }
-      
-      final audioStreamInfo = audioStreams.reduce((curr, next) => 
-        curr.bitrate.bitsPerSecond > next.bitrate.bitsPerSecond ? curr : next);
-      return audioStreamInfo.url.toString();
-    } catch (e) {
-      debugPrint("Error fetching audio stream for $videoId: $e");
-      rethrow;
+    final manifest = await getAudioManifest(videoId);
+    final streams = manifest.audioOnly;
+    if (streams.isEmpty) {
+      throw Exception('No audio streams found for this video.');
     }
+    final best = streams.reduce(
+      (a, b) => a.bitrate.bitsPerSecond > b.bitrate.bitsPerSecond ? a : b,
+    );
+    return best.url.toString();
   }
 
   void dispose() {
-    // Note: In singleton, we usually don't close until app exit
-    // _yt.close(); 
+    // Singleton — do not close between calls
   }
 }

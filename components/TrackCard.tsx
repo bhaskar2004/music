@@ -13,7 +13,7 @@ interface TrackCardProps {
 }
 
 const PLACEHOLDER_COLORS = [
-  '#000000', '#0A0A0A', '#121212', '#1A1A1A'
+  'var(--surface2)', 'var(--surface3)', 'color-mix(in srgb, var(--surface) 80%, var(--accent) 5%)'
 ];
 
 export default function TrackCard({ track, index }: TrackCardProps) {
@@ -65,11 +65,9 @@ export default function TrackCard({ track, index }: TrackCardProps) {
         padding: 16,
         cursor: 'pointer',
         position: 'relative',
-        animationDelay: `${Math.min(index * 30, 300)}ms`,
-        animationFillMode: 'both',
         zIndex: hovered || menuOpen ? 50 : 1,
       }}
-      className={`animate-fade-in uber-card ${isActive ? 'uber-card-active neon-border' : ''}`}
+      className={`animate-fade-in premium-card ${isActive ? 'premium-card-active neon-border' : ''}`}
       onClick={handlePlay}
     >
       {/* Cover Art */}
@@ -210,6 +208,7 @@ export default function TrackCard({ track, index }: TrackCardProps) {
           style={{
             fontWeight: 700,
             fontSize: 14,
+            fontFamily: 'var(--font-sans)',
             color: isActive ? 'var(--text)' : 'var(--text)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -225,6 +224,7 @@ export default function TrackCard({ track, index }: TrackCardProps) {
           style={{
             fontSize: 13,
             fontWeight: 500,
+            fontFamily: 'var(--font-sans)',
             color: 'var(--text-muted)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
