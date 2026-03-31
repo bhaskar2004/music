@@ -4,6 +4,7 @@ import '../../models/track.dart';
 import '../../providers/app_state.dart';
 import '../../services/audio_service.dart';
 import '../widgets/track_tile.dart';
+import '../widgets/server_settings_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -116,6 +117,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                       }
                                     });
                                   },
+                                ),
+                                const SizedBox(width: 8),
+
+                                // Settings toggle
+                                _IconBtn(
+                                  icon: Icons.settings_outlined,
+                                  onTap: () => ServerSettingsDialog.show(context),
                                 ),
                                 const SizedBox(width: 8),
 

@@ -77,7 +77,7 @@ export default function Sidebar() {
           Menu
         </div>
         {navItems.map(({ id, label, icon: Icon }) => {
-          const active = activeView === id;
+          const active = activeView === id && (id !== 'library' || !activeFolderId);
           const badge =
             id === 'downloads' && pendingDownloads > 0
               ? pendingDownloads
@@ -93,29 +93,62 @@ export default function Sidebar() {
                 setActiveView(id);
                 if (id === 'library') setActiveFolderId(null);
               }}
-              aria-current={active && (id !== 'library' || !activeFolderId) ? 'page' : undefined}
+              aria-current={active ? 'page' : undefined}
+              className="tap-active"
               style={{
-                width: '100%', padding: '10px 12px', marginBottom: 4,
-                background: active && (id !== 'library' || !activeFolderId) ? 'var(--brand-gradient)' : 'transparent',
-                border: 'none', borderRadius: '8px',
-                color: active && (id !== 'library' || !activeFolderId) ? '#000' : 'var(--text-muted)',
+                width: '100%',
+                padding: '10px 12px',
+                marginBottom: 4,
+                background: active ? 'var(--accent-dim)' : 'transparent',
+                border: 'none',
+                borderRadius: '10px',
+                color: active ? 'var(--accent)' : 'var(--text-muted)',
                 fontFamily: 'var(--font-sans)',
-                fontWeight: active && (id !== 'library' || !activeFolderId) ? 800 : 500,
-                fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center',
-                gap: 12, transition: 'all 0.2s ease', textAlign: 'left',
+                fontWeight: active ? 700 : 500,
+                fontSize: 14,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                textAlign: 'left',
               }}
-              onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = 'var(--text)'; }}
-              onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = 'var(--text-muted)'; }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = 'var(--surface2)';
+                  e.currentTarget.style.color = 'var(--text)';
+                }
+              } }
+              onMouseLeave={(e) => {
+                if (!active) {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                }
+              } }
             >
-              <Icon size={18} fill={active && (id !== 'library' || !activeFolderId) ? 'currentColor' : 'none'} opacity={active && (id !== 'library' || !activeFolderId) ? 1 : 0.8} />
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: active ? 'var(--accent)' : 'transparent',
+                color: active ? '#fff' : 'inherit',
+                transition: 'all 0.2s ease',
+              }}>
+                <Icon size={18} />
+              </div>
               <span style={{ flex: 1 }}>{label}</span>
               {badge && (
                 <span style={{
-                  background: active && (id !== 'library' || !activeFolderId) ? 'rgba(0,0,0,0.1)' : 'transparent',
-                  color: active && (id !== 'library' || !activeFolderId) ? '#000' : 'var(--text)',
-                  border: active && (id !== 'library' || !activeFolderId) ? 'none' : '1px solid var(--border)',
-                  borderRadius: 99, fontSize: 11, fontWeight: 800, padding: '2px 8px',
-                  fontFamily: 'var(--font-mono)', transition: 'all 0.2s ease',
+                  background: active ? 'var(--accent)' : 'var(--surface3)',
+                  color: active ? '#fff' : 'var(--text-muted)',
+                  borderRadius: 99,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  fontFamily: 'var(--font-mono)',
                 }}>
                   {badge}
                 </span>
@@ -127,13 +160,14 @@ export default function Sidebar() {
 
       {/* Folders Section */}
       <div style={{ padding: '0 12px 12px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, padding: '0 12px' }}>
+          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px' }}>
             Playlists
           </div>
           <button
             onClick={() => setIsCreatingFolder(true)}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+            className="tap-active"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: 4 }}
           >
             <Plus size={14} />
           </button>
@@ -142,7 +176,7 @@ export default function Sidebar() {
         {isCreatingFolder && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 12, padding: '0 12px' }}>
             <input
-              type="text" autoFocus placeholder="New Folder..."
+              type="text" autoFocus placeholder="New Playlist..."
               value={newFolderName}
               onChange={e => setNewFolderName(e.target.value)}
               onKeyDown={e => {
@@ -158,7 +192,7 @@ export default function Sidebar() {
               }}
               style={{
                 flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)',
-                borderRadius: 6, padding: '6px 10px', color: 'var(--text)', fontSize: 13, outline: 'none',
+                borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, outline: 'none',
                 fontFamily: 'var(--font-sans)'
               }}
             />
@@ -171,19 +205,45 @@ export default function Sidebar() {
             return (
               <div
                 key={folder.id}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: isFolderActive ? 'var(--brand-gradient)' : 'transparent', color: isFolderActive ? '#000' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s', marginBottom: 2 }}
-                onMouseEnter={e => { if (!isFolderActive) e.currentTarget.style.color = 'var(--text)'; }}
-                onMouseLeave={e => { if (!isFolderActive) e.currentTarget.style.color = 'var(--text-muted)'; }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  background: isFolderActive ? 'var(--accent-dim)' : 'transparent',
+                  color: isFolderActive ? 'var(--accent)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  marginBottom: 2
+                }}
+                onMouseEnter={e => {
+                  if (!isFolderActive) {
+                    e.currentTarget.style.background = 'var(--surface2)';
+                    e.currentTarget.style.color = 'var(--text)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isFolderActive) {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                  }
+                }}
               >
                 <div
                   style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}
                   onClick={() => { setActiveFolderId(folder.id); setActiveView('library'); }}
                 >
-                  <FolderIcon size={16} fill={isFolderActive ? 'currentColor' : 'none'} />
-                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: isFolderActive ? 800 : 500 }}>{folder.name}</span>
+                  <FolderIcon size={16} fill={isFolderActive ? 'currentColor' : 'none'} opacity={isFolderActive ? 1 : 0.7} />
+                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: isFolderActive ? 700 : 500 }}>{folder.name}</span>
                 </div>
                 {isFolderActive && (
-                  <button onClick={() => removeFolder(folder.id)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }} title="Delete Folder">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }}
+                    className="tap-active"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4, opacity: 0.7 }}
+                    title="Delete Playlist"
+                  >
                     <Trash2 size={13} />
                   </button>
                 )}
@@ -194,27 +254,37 @@ export default function Sidebar() {
       </div>
 
       {/* Add button & Footer */}
-      <div style={{ padding: '20px', borderTop: '1px solid color-mix(in srgb, var(--border) 50%, transparent)' }}>
+      <div style={{ padding: '20px', borderTop: '1px solid var(--border)' }}>
         <button
           onClick={() => setShowDownloadModal(true)}
           aria-label="Add music from URL"
           className="tap-active"
           style={{
             width: '100%', padding: '12px 16px', background: 'var(--brand-gradient)',
-            color: '#000', border: 'none', borderRadius: '12px', fontFamily: 'var(--font-sans)',
-            fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', gap: 8,
-            transition: 'transform 0.1s, opacity 0.15s',
-            boxShadow: '0 8px 16px rgba(0,0,0,0.3)', marginBottom: 20,
+            color: '#fff', border: 'none', borderRadius: '14px', fontFamily: 'var(--font-sans)',
+            fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', gap: 10,
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 8px 24px var(--accent-glow)', marginBottom: 20,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 12px 32px var(--accent-glow)';
+            e.currentTarget.style.background = 'var(--brand-gradient-hover)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 8px 24px var(--accent-glow)';
+            e.currentTarget.style.background = 'var(--brand-gradient)';
           }}
         >
-          <Plus size={18} /> Add from URL
+          <Plus size={18} strokeWidth={3} /> Add Music
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-faint)', justifyContent: 'center' }}>
-          <Music2 size={14} />
-          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', fontWeight: 500 }}>
-            Wavelength v2.5
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-faint)', justifyContent: 'center', opacity: 0.6 }}>
+          <Music2 size={12} />
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600, letterSpacing: '0.5px' }}>
+            WAVELENGTH v2.5
           </span>
         </div>
       </div>

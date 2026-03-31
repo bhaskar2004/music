@@ -85,12 +85,17 @@ class _WavelengthAppState extends State<WavelengthApp> {
       );
     } else {
       _messengerKey.currentState?.showSnackBar(
-        const SnackBar(
-          content: Text(
+        SnackBar(
+          content: const Text(
               '⚠ No server found. Downloads won\'t work until a server is reachable.'),
-          backgroundColor: Color(0xFFE53935),
+          backgroundColor: const Color(0xFFE53935),
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 5),
+          duration: const Duration(seconds: 10),
+          action: SnackBarAction(
+            label: 'RETRY',
+            textColor: Colors.white,
+            onPressed: _discoverServer,
+          ),
         ),
       );
     }

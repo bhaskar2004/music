@@ -6,7 +6,7 @@ import { formatDuration } from '@/lib/utils';
 import {
   Play, Pause, SkipBack, SkipForward,
   Volume2, VolumeX, Shuffle, Repeat, Repeat1,
-  ListMusic, Heart, Maximize2,
+  ListMusic, Heart, Maximize2, Music2,
 } from 'lucide-react';
 import Image from 'next/image';
 import SleepTimerDropdown from './SleepTimerDropdown';
@@ -223,7 +223,6 @@ export default function NowPlayingBar() {
       window.removeEventListener('mouseup', onUp);
     };
   }, [dragging, duration]);
-
   const displayTime = dragging ? localTime : currentTime;
   const progressPct = duration > 0 ? (displayTime / duration) * 100 : 0;
   const bgColor = PLACEHOLDER_COLORS[0];
@@ -245,33 +244,40 @@ export default function NowPlayingBar() {
       <div
         className="now-playing-container"
         style={{
-          height: 84,
-          background: 'color-mix(in srgb, var(--surface) 92%, transparent)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          borderTop: '1px solid color-mix(in srgb, var(--border) 40%, transparent)',
+          height: 96,
+          background: 'color-mix(in srgb, var(--bg) 75%, transparent)',
+          backdropFilter: 'blur(32px) saturate(1.8)',
+          WebkitBackdropFilter: 'blur(32px) saturate(1.8)',
+          borderTop: '1px solid color-mix(in srgb, var(--border) 50%, transparent)',
           display: 'grid',
           alignItems: 'center',
-          padding: '0 24px',
-          gap: 20,
+          padding: '0 32px',
+          gap: 24,
           flexShrink: 0,
           position: 'relative',
-          zIndex: 90,
+          zIndex: 100,
+          boxShadow: '0 -10px 40px rgba(0,0,0,0.08)',
         }}
       >
         {/* Left — Track info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
           {/* Album art — clickable for full-screen */}
           <div
             onClick={() => setShowFullScreenPlayer(true)}
             style={{
-              width: 48, height: 48, borderRadius: 8, background: bgColor,
+              width: 56, height: 56, borderRadius: 12, background: bgColor,
               flexShrink: 0, position: 'relative', overflow: 'hidden',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.4)', cursor: 'pointer',
-              transition: 'transform 0.15s',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.15)', cursor: 'pointer',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
-            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'scale(1.08) translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.25)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'scale(1) translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+            }}
             title="Open full-screen player"
           >
             {currentTrack.coverUrl ? (
@@ -280,7 +286,7 @@ export default function NowPlayingBar() {
                 fill style={{ objectFit: 'cover' }} unoptimized
               />
             ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: 'rgba(255,255,255,0.15)' }}>
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: 'var(--text-faint)', opacity: 0.3 }}>
                 {currentTrack.title.charAt(0)}
               </div>
             )}
@@ -293,20 +299,20 @@ export default function NowPlayingBar() {
             onMouseEnter={e => e.currentTarget.style.opacity = '1'}
             onMouseLeave={e => e.currentTarget.style.opacity = '0'}
             >
-              <Maximize2 size={14} color="#fff" />
+              <Maximize2 size={16} color="#fff" />
             </div>
           </div>
 
           <div style={{ minWidth: 0 }}>
             <div style={{
-              fontWeight: 700, fontSize: 14, fontFamily: 'var(--font-sans)',
+              fontWeight: 800, fontSize: 16, fontFamily: 'var(--font-sans)',
               color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden',
-              textOverflow: 'ellipsis', marginBottom: 2, letterSpacing: '-0.2px',
+              textOverflow: 'ellipsis', marginBottom: 2, letterSpacing: '-0.4px',
             }}>
               {currentTrack.title}
             </div>
             <div style={{
-              fontSize: 12, fontWeight: 500, fontFamily: 'var(--font-sans)',
+              fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-sans)',
               color: 'var(--text-muted)', whiteSpace: 'nowrap',
               overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
@@ -316,65 +322,62 @@ export default function NowPlayingBar() {
 
           <button
             onClick={() => toggleFavorite(currentTrack.id)}
-            className="desktop-only"
+            className="desktop-only tap-active"
             aria-label={isLiked ? 'Remove from favorites' : 'Add to favorites'}
             style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
               color: isLiked ? 'var(--accent)' : 'var(--text-faint)',
-              display: 'flex', padding: 4, transition: 'color 0.15s, transform 0.1s', flexShrink: 0,
+              display: 'flex', padding: 8, transition: 'all 0.2s ease', flexShrink: 0,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.15)')}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            <Heart size={15} fill={isLiked ? 'var(--accent)' : 'none'} />
+            <Heart size={18} fill={isLiked ? 'var(--accent)' : 'none'} strokeWidth={isLiked ? 0 : 2} />
           </button>
         </div>
 
         {/* Center — Controls + Seek */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%' }}>
           {/* Playback buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <ControlBtn onClick={toggleShuffle} active={shuffle} title="Shuffle" ariaLabel={`Shuffle ${shuffle ? 'on' : 'off'}`} className="desktop-only">
-              <Shuffle size={14} />
+              <Shuffle size={16} />
             </ControlBtn>
 
             <ControlBtn onClick={playPrev} title="Previous" ariaLabel="Previous track">
-              <SkipBack size={16} fill="currentColor" />
+              <SkipBack size={20} fill="currentColor" />
             </ControlBtn>
 
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               aria-label={isPlaying ? 'Pause' : 'Play'}
+              className="tap-active"
               style={{
-                width: 44, height: 44, borderRadius: '50%', background: 'var(--text)',
+                width: 48, height: 48, borderRadius: '50%', background: 'var(--text)',
                 border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s, box-shadow 0.15s',
-                flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                flexShrink: 0, boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; }}
-              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
-              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             >
               {isPlaying ? (
-                <Pause size={18} color="var(--bg)" fill="var(--bg)" />
+                <Pause size={22} color="var(--bg)" fill="var(--bg)" />
               ) : (
-                <Play size={18} color="var(--bg)" fill="var(--bg)" style={{ marginLeft: 3 }} />
+                <Play size={22} color="var(--bg)" fill="var(--bg)" style={{ marginLeft: 4 }} />
               )}
             </button>
 
             <ControlBtn onClick={playNext} title="Next" ariaLabel="Next track">
-              <SkipForward size={16} fill="currentColor" />
+              <SkipForward size={20} fill="currentColor" />
             </ControlBtn>
 
             <ControlBtn onClick={toggleRepeat} active={repeat !== 'off'} title={`Repeat: ${repeat}`} ariaLabel={`Repeat ${repeat}`} className="desktop-only">
-              {repeat === 'one' ? <Repeat1 size={14} /> : <Repeat size={14} />}
+              {repeat === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
             </ControlBtn>
           </div>
 
           {/* Seek bar */}
-          <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', maxWidth: 480 }}>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', width: 36, textAlign: 'right', flexShrink: 0 }}>
+          <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 580 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', width: 44, textAlign: 'right', flexShrink: 0, fontWeight: 600 }}>
               {formatDuration(displayTime)}
             </span>
             <div
@@ -382,70 +385,75 @@ export default function NowPlayingBar() {
               onMouseDown={handleProgressMouseDown}
               onClick={handleProgressClick}
               role="slider" aria-label="Seek" aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(displayTime)} tabIndex={0}
-              style={{ flex: 1, height: 4, background: 'var(--surface3)', borderRadius: 99, cursor: 'pointer', position: 'relative', overflow: 'visible' }}
+              className={`seek-bar-container ${dragging ? 'dragging' : ''}`}
             >
-              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${progressPct}%`, background: 'var(--text)', borderRadius: 99, transition: dragging ? 'none' : 'width 0.1s linear' }} />
-              <div style={{ position: 'absolute', top: '50%', left: `${progressPct}%`, transform: 'translate(-50%, -50%)', width: 12, height: 12, borderRadius: '50%', background: 'var(--text)', boxShadow: '0 2px 4px rgba(0,0,0,0.3)', transition: dragging ? 'none' : 'left 0.1s linear', pointerEvents: 'none' }} />
+              <div className="seek-bar-fill" style={{ width: `${progressPct}%`, transition: dragging ? 'none' : 'all 0.1s linear' }} />
+              <div className="seek-handle" style={{ left: `${progressPct}%`, transition: dragging ? 'none' : 'left 0.1s linear' }} />
             </div>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', width: 36, flexShrink: 0 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', width: 44, flexShrink: 0, fontWeight: 600 }}>
               {formatDuration(duration)}
             </span>
           </div>
         </div>
 
         {/* Right — Volume + Queue + Sleep Timer */}
-        <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}>
+        <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-end' }}>
           <SleepTimerDropdown />
 
           <button
             onClick={() => setShowFullScreenPlayer(true)}
             aria-label="Full-screen player"
+            className="tap-active"
             style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
-              color: 'var(--text-muted)', display: 'flex', padding: 6, borderRadius: 6, transition: 'color 0.15s',
+              color: 'var(--text-muted)', display: 'flex', padding: 8, borderRadius: 10, transition: 'all 0.2s',
             }}
             onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'}
             onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-            title="Expand"
+            title="Full Screen"
           >
-            <Maximize2 size={15} />
+            <Maximize2 size={18} />
           </button>
 
           <button
             onClick={() => { setActiveView('queue'); }}
             aria-label="View queue"
+            className="tap-active"
             style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
-              color: 'var(--text-muted)', display: 'flex', padding: 6, borderRadius: 6, transition: 'color 0.15s',
+              color: 'var(--text-muted)', display: 'flex', padding: 8, borderRadius: 10, transition: 'all 0.2s',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text)')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
             title="Queue"
           >
-            <ListMusic size={15} />
+            <ListMusic size={18} />
           </button>
 
-          <button
-            onClick={() => setMuted(!muted)}
-            aria-label={muted ? 'Unmute' : 'Mute'}
-            style={{
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              color: 'var(--text-muted)', display: 'flex', padding: 4, transition: 'color 0.15s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-          >
-            {muted || volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+            <button
+              onClick={() => setMuted(!muted)}
+              aria-label={muted ? 'Unmute' : 'Mute'}
+              className="tap-active"
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: 'var(--text-muted)', display: 'flex', padding: 4, transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+            >
+              {muted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
 
-          <div style={{ width: 90 }}>
-            <input
-              type="range" min={0} max={1} step={0.01}
-              value={muted ? 0 : volume}
-              onChange={(e) => { setVolume(parseFloat(e.target.value)); if (muted) setMuted(false); }}
-              aria-label="Volume"
-              style={{ width: '100%', accentColor: 'var(--accent)' }}
-            />
+            <div style={{ width: 100 }}>
+              <input
+                type="range" min={0} max={1} step={0.01}
+                value={muted ? 0 : volume}
+                onChange={(e) => { setVolume(parseFloat(e.target.value)); if (muted) setMuted(false); }}
+                aria-label="Volume"
+                style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer', height: 4 }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -458,30 +466,63 @@ function ControlBtn({ children, onClick, active, title, ariaLabel, className }: 
 }) {
   return (
     <button
-      onClick={onClick} title={title} aria-label={ariaLabel || title} className={className}
+      onClick={onClick} title={title} aria-label={ariaLabel || title} className={`tap-active ${className}`}
       style={{
-        background: 'transparent', border: 'none', cursor: 'pointer',
-        color: active ? 'var(--text)' : 'var(--text-muted)',
-        display: 'flex', padding: 8, borderRadius: 8,
-        transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)', position: 'relative',
+        background: active ? 'var(--accent-dim)' : 'transparent',
+        border: 'none', cursor: 'pointer',
+        color: active ? 'var(--accent)' : 'var(--text-muted)',
+        display: 'flex', padding: 10, borderRadius: 12,
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', position: 'relative',
       }}
-      onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = active ? 'var(--text)' : 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)'; } }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = active ? 'var(--accent)' : 'var(--text-muted)'; e.currentTarget.style.background = active ? 'var(--accent-dim)' : 'transparent'; }}
     >
       {children}
-      {active && (
-        <div style={{ position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent)' }} />
-      )}
     </button>
   );
 }
 
 function EmptyBar() {
   return (
-    <div style={{ height: 80, background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <p style={{ color: 'var(--text-faint)', fontSize: 13, fontFamily: 'var(--font-mono)' }}>
-        Select a track to begin playing
-      </p>
+    <div style={{
+      height: 96,
+      background: 'color-mix(in srgb, var(--bg) 85%, transparent)',
+      backdropFilter: 'blur(32px)',
+      WebkitBackdropFilter: 'blur(32px)',
+      borderTop: '1px solid var(--border)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      gap: 32,
+      padding: '0 32px'
+    }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Music2 size={24} color="var(--text-faint)" opacity={0.3} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ height: 16, width: 140, background: 'var(--surface2)', borderRadius: 4 }} />
+          <div style={{ height: 12, width: 90, background: 'var(--surface2)', borderRadius: 4 }} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, opacity: 0.3, pointerEvents: 'none' }}>
+        <SkipBack size={20} />
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Play size={22} color="var(--bg)" fill="var(--bg)" style={{ marginLeft: 4 }} />
+        </div>
+        <SkipForward size={20} />
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', opacity: 0.3, pointerEvents: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Maximize2 size={18} />
+          <ListMusic size={18} />
+          <Volume2 size={18} />
+          <div style={{ width: 100, height: 4, background: 'var(--surface2)', borderRadius: 2 }} />
+        </div>
+      </div>
     </div>
   );
 }

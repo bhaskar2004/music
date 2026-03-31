@@ -61,13 +61,17 @@ export default function TrackCard({ track, index }: TrackCardProps) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
       style={{
-        borderRadius: '12px',
-        padding: 16,
+        borderRadius: '16px',
+        padding: 12,
         cursor: 'pointer',
         position: 'relative',
         zIndex: hovered || menuOpen ? 50 : 1,
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        background: hovered || isActive ? 'var(--surface2)' : 'transparent',
+        boxShadow: hovered ? '0 12px 24px rgba(0,0,0,0.1)' : 'none',
+        transform: hovered ? 'translateY(-4px)' : 'none',
       }}
-      className={`animate-fade-in premium-card ${isActive ? 'premium-card-active neon-border' : ''}`}
+      className={`animate-fade-in ${isActive ? 'neon-border' : ''}`}
       onClick={handlePlay}
     >
       {/* Cover Art */}
@@ -75,7 +79,7 @@ export default function TrackCard({ track, index }: TrackCardProps) {
         style={{
           width: '100%',
           aspectRatio: '1',
-          borderRadius: 8,
+          borderRadius: '12px',
           marginBottom: 12,
           position: 'relative',
           overflow: 'hidden',
@@ -83,6 +87,7 @@ export default function TrackCard({ track, index }: TrackCardProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
         }}
       >
         {track.coverUrl ? (
@@ -99,117 +104,98 @@ export default function TrackCard({ track, index }: TrackCardProps) {
               fontFamily: 'var(--font-sans)',
               fontSize: 28,
               fontWeight: 800,
-              color: 'rgba(255,255,255,0.15)',
+              color: 'var(--text-faint)',
               userSelect: 'none',
+              opacity: 0.3,
             }}
           >
             {track.title.charAt(0).toUpperCase()}
           </div>
         )}
 
-        {/* Play overlay - Styled like Uber/Spotify */}
+        {/* Play overlay */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'rgba(0,0,0,0.4)',
+            background: 'rgba(0,0,0,0.3)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             opacity: hovered || isActive || isSelectionMode ? 1 : 0,
-            transition: 'opacity 0.25s ease',
-            borderRadius: 8,
+            transition: 'all 0.3s ease',
           }}
         >
           {isSelectionMode ? (
             <div
               className="tap-active"
               style={{
-                width: 32,
-                height: 32,
-                background: isSelected ? 'var(--accent)' : 'rgba(0,0,0,0.4)',
-                borderRadius: 8,
+                width: 36,
+                height: 36,
+                background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+                borderRadius: '10px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 border: `2px solid ${isSelected ? 'var(--accent)' : '#fff'}`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
               }}
             >
-              {isSelected && <Check size={18} color="#000" strokeWidth={3} />}
+              {isSelected && <Check size={20} color="#fff" strokeWidth={3} />}
             </div>
           ) : isActive && isPlaying ? (
-            <div style={{ display: 'flex', gap: 3, height: 20, alignItems: 'flex-end' }}>
-              <div className="eq-bar" style={{ height: '100%' }} />
-              <div className="eq-bar" style={{ height: '100%' }} />
-              <div className="eq-bar" style={{ height: '100%' }} />
+            <div style={{ display: 'flex', gap: 3, height: 24, alignItems: 'flex-end' }}>
+              <div className="eq-bar" style={{ height: '100%', background: 'var(--accent)' }} />
+              <div className="eq-bar" style={{ height: '100%', background: 'var(--accent)', animationDelay: '0.1s' }} />
+              <div className="eq-bar" style={{ height: '100%', background: 'var(--accent)', animationDelay: '0.2s' }} />
             </div>
           ) : (
             <div
               className="tap-active"
               style={{
-                width: 44,
-                height: 44,
-                background: 'var(--text)',
+                width: 48,
+                height: 48,
+                background: 'var(--accent)',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                boxShadow: '0 10px 20px var(--accent-glow)',
                 transform: hovered ? 'scale(1)' : 'scale(0.8)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                color: '#fff',
               }}
             >
-              <Play size={18} color="var(--bg)" fill="var(--bg)" style={{ marginLeft: 2 }} />
+              <Play size={20} fill="currentColor" style={{ marginLeft: 2 }} />
             </div>
           )}
         </div>
 
-        {/* Active indicator */}
+        {/* Active indicator bar */}
         {isActive && (
           <div
             style={{
               position: 'absolute',
-              top: 8,
-              right: 8,
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: 4,
               background: 'var(--accent)',
-              boxShadow: '0 0 8px var(--accent-glow)',
+              boxShadow: '0 0 12px var(--accent)',
             }}
           />
-        )}
-
-        {/* Favorite indicator */}
-        {isFav && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 8,
-              left: 8,
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              background: 'rgba(0,0,0,0.6)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Heart size={11} color="var(--accent)" fill="var(--accent)" />
-          </div>
         )}
       </div>
 
       {/* Info */}
-      <div style={{ paddingRight: 8, marginTop: 4 }}>
+      <div style={{ padding: '0 4px' }}>
         <div
           style={{
             fontWeight: 700,
             fontSize: 14,
             fontFamily: 'var(--font-sans)',
-            color: isActive ? 'var(--text)' : 'var(--text)',
+            color: 'var(--text)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -229,7 +215,7 @@ export default function TrackCard({ track, index }: TrackCardProps) {
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            marginBottom: 10,
+            marginBottom: 8,
           }}
           title={track.artist}
         >
@@ -243,6 +229,8 @@ export default function TrackCard({ track, index }: TrackCardProps) {
             color: 'var(--text-faint)',
             fontSize: 11,
             fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            opacity: 0.8,
           }}
         >
           <span>{formatDuration(track.duration)}</span>

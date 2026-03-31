@@ -89,202 +89,198 @@ export default function LibraryView() {
         className="responsive-padding"
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           justifyContent: 'space-between',
-          gap: 16,
+          gap: 24,
           flexShrink: 0,
-          paddingBottom: 0,
+          paddingTop: 48,
+          paddingBottom: 24,
           flexWrap: 'wrap',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.2), transparent)',
         }}
       >
-        <div>
-          <h1 className="brand-text font-display" style={{ fontWeight: 800, fontSize: 32, letterSpacing: '-1.5px', marginBottom: 4 }}>
+        <div style={{ flex: 1, minWidth: 300 }}>
+          <div style={{ 
+            fontSize: 12, fontWeight: 800, color: 'var(--accent)', 
+            textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8,
+            display: 'flex', alignItems: 'center', gap: 6
+          }}>
+            <Music2 size={14} />
+            Your Collection
+          </div>
+          <h1 className="brand-text font-display" style={{ fontWeight: 900, fontSize: 48, letterSpacing: '-2px', marginBottom: 8, lineHeight: 1 }}>
             {activeFolder ? activeFolder.name : 'Library'}
           </h1>
-          <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>
-            {filtered.length} {filtered.length === 1 ? 'track' : 'tracks'}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-muted)', fontSize: 14, fontWeight: 600 }}>
+            <span>{filtered.length} {filtered.length === 1 ? 'track' : 'tracks'}</span>
+            <span style={{ opacity: 0.3 }}>•</span>
+            <span style={{ color: 'var(--text-faint)' }}>Sorted by {activeSortLabel}</span>
+          </div>
         </div>
 
         {library.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
             <button
               onClick={() => playAll(filtered)}
-              className="tap-active uber-btn-accent"
-              style={{ padding: '8px 20px', fontSize: 13 }}
+              className="tap-active"
+              style={{
+                background: 'var(--accent)', color: '#000', border: 'none',
+                borderRadius: '99px', padding: '12px 28px', fontSize: 14, fontWeight: 800,
+                display: 'flex', alignItems: 'center', gap: 10,
+                boxShadow: '0 8px 24px var(--accent-glow)',
+                transition: 'all 0.2s',
+              }}
             >
-              <Play size={14} fill="currentColor" />
+              <Play size={16} fill="currentColor" />
               Play All
             </button>
 
             <button
               onClick={() => shufflePlay(filtered)}
-              className="tap-active uber-btn-primary"
-              style={{ padding: '8px 20px', fontSize: 13, background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              className="tap-active glass-panel"
+              style={{
+                padding: '12px 24px', fontSize: 14, fontWeight: 700,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}
             >
-              <Shuffle size={14} />
+              <Shuffle size={16} />
               Shuffle
             </button>
 
             {activeFolderId && !isAddingSongs && (
               <button
                 onClick={handleStartAdding}
-                className="tap-active uber-btn-primary"
-                style={{ padding: '8px 20px', fontSize: 13, background: 'rgba(6, 193, 103, 0.1)', color: 'var(--accent)', border: '1px solid rgba(6, 193, 103, 0.2)' }}
+                className="tap-active"
+                style={{
+                  padding: '12px 24px', fontSize: 14, fontWeight: 700, border: 'none',
+                  background: 'var(--accent-dim)', color: 'var(--accent)',
+                  display: 'flex', alignItems: 'center', gap: 8, borderRadius: '99px',
+                }}
               >
-                <Plus size={14} />
+                <Plus size={16} />
                 Add Songs
               </button>
             )}
-
-            {!activeFolderId && !isSelectionMode && (
-              <button
-                onClick={() => setSelectionMode(true)}
-                className="tap-active uber-btn-primary"
-                style={{ padding: '8px 20px', fontSize: 13, background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}
-              >
-                <CheckSquare size={14} />
-                Select
-              </button>
-            )}
-
-            {isSelectionMode && (
-              <button
-                onClick={handleCancelSelection}
-                className="tap-active uber-btn-primary"
-                style={{ padding: '8px 20px', fontSize: 13, background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)' }}
-              >
-                <X size={14} />
-                Cancel
-              </button>
-            )}
-
-            {/* Sort dropdown - Custom Premium UI */}
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setIsSortOpen(!isSortOpen)}
-                className="glass-panel tap-active"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  borderRadius: '99px',
-                  padding: '8px 16px',
-                  transition: 'all 0.2s',
-                  background: isSortOpen ? 'var(--surface2)' : 'transparent',
-                  border: isSortOpen ? '1px solid var(--accent)' : '1px solid transparent',
-                  color: 'var(--text)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                <ArrowUpDown size={13} color={isSortOpen ? 'var(--accent)' : 'var(--text-muted)'} />
-                {activeSortLabel}
-                <ChevronDown size={14} style={{ transform: isSortOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-              </button>
-
-              {isSortOpen && (
-                <div
-                  className="premium-dropdown"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 8px)',
-                    right: 0,
-                    minWidth: 160,
-                    zIndex: 100,
-                  }}
-                >
-                  {SORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      className="dropdown-item"
-                      onClick={() => { setSortBy(opt.value); setIsSortOpen(false); }}
-                      style={{ 
-                        border: 'none', 
-                        background: 'transparent', 
-                        width: '100%', 
-                        padding: '10px 16px',
-                        color: sortBy === opt.value ? 'var(--accent)' : 'inherit',
-                        fontWeight: sortBy === opt.value ? 700 : 500,
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      {opt.label}
-                      {sortBy === opt.value && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Search */}
-            <div
-              className="glass-panel"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                borderRadius: '99px',
-                padding: '10px 16px',
-                flex: '0 0 240px',
-                transition: 'all 0.2s',
-              }}
-              onFocus={(e) => { e.currentTarget.style.border = '1px solid var(--accent)'; e.currentTarget.style.background = 'var(--surface)'; }}
-              onBlur={(e) => { e.currentTarget.style.border = '1px solid transparent'; e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Search size={16} color="var(--text-muted)" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search library..."
-                aria-label="Search tracks"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  color: 'var(--text)',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  fontFamily: 'var(--font-sans)',
-                  flex: 1,
-                }}
-              />
-            </div>
           </div>
         )}
       </div>
 
+      {/* Toolbar */}
+      {library.length > 0 && (
+        <div 
+          className="responsive-padding"
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: 12, 
+            paddingTop: 0, paddingBottom: 16, flexShrink: 0,
+            borderBottom: '1px solid color-mix(in srgb, var(--border) 30%, transparent)'
+          }}
+        >
+          {/* Search */}
+          <div
+            className="glass-panel"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              borderRadius: '12px',
+              padding: '8px 16px',
+              flex: '0 1 280px',
+              transition: 'all 0.2s',
+              background: 'var(--surface)',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--surface2)'; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'var(--surface)'; }}
+          >
+            <Search size={18} color="var(--text-faint)" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search library..."
+              style={{
+                background: 'transparent', border: 'none', outline: 'none',
+                color: 'var(--text)', fontSize: 14, fontWeight: 500,
+                fontFamily: 'var(--font-sans)', flex: 1,
+              }}
+            />
+          </div>
+
+          <div style={{ flex: 1 }} />
+
+          {/* Sort dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsSortOpen(!isSortOpen)}
+              className="tap-active"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'transparent', border: 'none',
+                color: 'var(--text-muted)', fontSize: 13, fontWeight: 600,
+                padding: '8px 12px', cursor: 'pointer', borderRadius: 8,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <ArrowUpDown size={14} />
+              Sort by: {activeSortLabel}
+              <ChevronDown size={14} />
+            </button>
+
+            {isSortOpen && (
+              <div
+                className="premium-dropdown"
+                style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  minWidth: 180, zIndex: 100,
+                }}
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className="dropdown-item"
+                    onClick={() => { setSortBy(opt.value); setIsSortOpen(false); }}
+                    style={{ 
+                      color: sortBy === opt.value ? 'var(--accent)' : 'inherit',
+                      fontWeight: sortBy === opt.value ? 700 : 500,
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    {opt.label}
+                    {sortBy === opt.value && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
-      <div className="responsive-padding" style={{ flex: 1, overflow: 'auto' }}>
+      <div className="responsive-padding" style={{ flex: 1, overflow: 'auto', paddingTop: 24 }}>
         {library.length === 0 ? (
           <EmptyState onAdd={() => setShowDownloadModal(true)} />
         ) : filtered.length === 0 ? (
           <div
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: 200,
-              color: 'var(--text-muted)',
-              gap: 8,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', height: 300, color: 'var(--text-muted)', gap: 12,
             }}
           >
-            <Search size={24} color="var(--text-faint)" />
-            <p style={{ fontSize: 14 }}>No tracks match &quot;{search}&quot;</p>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
+              <Search size={28} />
+            </div>
+            <p style={{ fontSize: 16, fontWeight: 500 }}>No tracks match &quot;{search}&quot;</p>
+            <button onClick={() => setSearch('')} style={{ color: 'var(--accent)', background: 'transparent', border: 'none', fontWeight: 700, cursor: 'pointer' }}>
+              Clear Search
+            </button>
           </div>
         ) : (
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-              gap: 14,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: 20,
+              paddingBottom: 100,
             }}
           >
             {filtered.map((track, i) => (
@@ -299,72 +295,75 @@ export default function LibraryView() {
         <div
           style={{
             position: 'absolute',
-            bottom: 100,
+            bottom: 116,
             left: '50%',
             transform: 'translateX(-50%)',
-            background: '#000',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--bg)',
+            border: '1px solid var(--accent)',
             borderRadius: 24,
-            padding: '12px 24px',
+            padding: '10px 24px',
             display: 'flex',
             alignItems: 'center',
             gap: 20,
-            boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+            boxShadow: '0 20px 64px rgba(0,0,0,0.4), 0 0 40px var(--accent-glow)',
             zIndex: 1000,
-            backdropFilter: 'blur(20px)',
+            backdropFilter: 'blur(32px)',
           }}
           className="animate-slide-up"
         >
-          <div style={{ color: 'var(--text)', fontWeight: 700, fontSize: 14, paddingRight: 12, borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-            {selectedTrackIds.length} selected
+          <div style={{ color: 'var(--text)', fontWeight: 800, fontSize: 14, paddingRight: 16, borderRight: '1px solid var(--border)' }}>
+            {selectedTrackIds.length} <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>selected</span>
           </div>
 
-          {activeFolderId && isAddingSongs ? (
-            <button
-              onClick={() => handleBulkMove(activeFolderId)}
-              className="tap-active uber-btn-accent"
-              style={{ padding: '8px 24px', fontSize: 13 }}
-            >
-              <Plus size={14} fill="currentColor" />
-              Add to {activeFolder?.name}
-            </button>
-          ) : (
-            <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {activeFolderId && isAddingSongs ? (
               <button
-                onClick={() => {
-                  selectedTrackIds.forEach(id => {
-                    const t = library.find(track => track.id === id);
-                    if (t) {
-                      const { addToQueue } = useMusicStore.getState();
-                      addToQueue(t);
-                    }
-                  });
-                  clearSelection();
-                  setSelectionMode(false);
-                }}
+                onClick={() => handleBulkMove(activeFolderId)}
                 className="tap-active"
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}
+                style={{
+                  padding: '10px 24px', fontSize: 13, fontWeight: 700, border: 'none',
+                  background: 'var(--accent)', color: '#000', borderRadius: '99px',
+                  display: 'flex', alignItems: 'center', gap: 8
+                }}
               >
-                <ListPlus size={14} />
-                Add to queue
+                <Plus size={16} fill="currentColor" />
+                Add to Folder
               </button>
-              
-              {activeFolderId && !isAddingSongs && (
+            ) : (
+              <>
                 <button
-                  onClick={() => handleBulkMove(undefined)}
-                  className="tap-active"
-                  style={{ background: 'transparent', border: 'none', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', opacity: 0.8 }}
+                  onClick={() => {
+                    selectedTrackIds.forEach(id => {
+                      const t = library.find(track => track.id === id);
+                      if (t) useMusicStore.getState().addToQueue(t);
+                    });
+                    clearSelection();
+                    setSelectionMode(false);
+                  }}
+                  className="tap-active glass-panel"
+                  style={{ padding: '10px 20px', borderRadius: '14px', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
                 >
-                  <Trash2 size={14} />
-                  Remove from folder
+                  <ListPlus size={16} />
+                  Queue
                 </button>
-              )}
-            </div>
-          )}
+                
+                {activeFolderId && !isAddingSongs && (
+                  <button
+                    onClick={() => handleBulkMove(undefined)}
+                    className="tap-active"
+                    style={{ padding: '10px 20px', borderRadius: '14px', fontSize: 13, fontWeight: 600, color: 'var(--danger)', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
+                    <Trash2 size={16} />
+                    Remove
+                  </button>
+                )}
+              </>
+            )}
+          </div>
 
           <button
             onClick={handleCancelSelection}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', padding: 4 }}
+            style={{ background: 'var(--surface2)', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', padding: 8, borderRadius: '50%', display: 'flex' }}
           >
             <X size={16} />
           </button>
@@ -383,56 +382,57 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         alignItems: 'center',
         justifyContent: 'center',
         height: '60vh',
-        gap: 16,
+        gap: 24,
         textAlign: 'center',
       }}
     >
       <div
+        className="glass-panel"
         style={{
-          width: 80,
-          height: 80,
-          borderRadius: 20,
-          background: 'var(--surface2)',
-          border: '1px solid var(--border)',
+          width: 120,
+          height: 120,
+          borderRadius: '32px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 4,
+          background: 'var(--surface)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
         }}
       >
-        <Music2 size={32} color="var(--text-faint)" />
+        <Music2 size={48} color="var(--accent)" strokeWidth={1.5} style={{ opacity: 0.8 }} />
       </div>
-      <div>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, marginBottom: 6, letterSpacing: '-0.3px' }}>
-          Your library is empty
+      <div style={{ maxWidth: 360 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 32, marginBottom: 12, letterSpacing: '-1px' }}>
+          Your Library is Empty
         </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 280 }}>
-          Paste a YouTube, SoundCloud, or Bandcamp URL to download music directly to your library.
+        <p style={{ color: 'var(--text-muted)', fontSize: 16, lineHeight: 1.6, fontWeight: 500 }}>
+          The world of offline music is just a link away. Discover tracks and build your private collection today.
         </p>
       </div>
       <button
         onClick={onAdd}
+        className="tap-active"
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '11px 20px',
-          background: 'var(--accent)',
+          gap: 12,
+          padding: '16px 36px',
+          background: 'var(--brand-gradient)',
           color: '#000',
           border: 'none',
-          borderRadius: 'var(--radius)',
+          borderRadius: '99px',
           fontFamily: 'var(--font-sans)',
-          fontWeight: 700,
-          fontSize: 14,
+          fontWeight: 800,
+          fontSize: 16,
           cursor: 'pointer',
-          marginTop: 4,
-          transition: 'opacity 0.15s',
+          boxShadow: '0 12px 32px var(--accent-glow)',
+          transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)')}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1) translateY(0)')}
       >
-        <Plus size={16} />
-        Add from URL
+        <Plus size={20} />
+        Start Your Library
       </button>
     </div>
   );
