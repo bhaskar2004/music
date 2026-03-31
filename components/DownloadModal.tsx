@@ -46,13 +46,32 @@ export default function DownloadModal() {
 
     if (urls.length === 0) return;
 
+    const { library, downloads } = useMusicStore.getState();
+    const existingUrls = new Set([
+      ...library.map(t => t.sourceUrl),
+      ...downloads.map(d => d.url)
+    ]);
+
+    const urlsToProcess = urls.filter(u => {
+      if (existingUrls.has(u)) {
+        console.log(`[UI] Skipping duplicate URL: ${u}`);
+        return false;
+      }
+      return true;
+    });
+
+    if (urlsToProcess.length === 0) {
+      setShowDownloadModal(false);
+      return;
+    }
+
     // Dispatch to background and UX reset
     setUrl('');
     setShowDownloadModal(false);
     setActiveView('downloads');
 
     const processAll = async () => {
-      for (const currentUrl of urls) {
+      for (const currentUrl of urlsToProcess) {
         let urlsToDownload: string[] = [currentUrl];
 
         try {

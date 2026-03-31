@@ -26,8 +26,11 @@ function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+// Global tracker for active downloads to prevent parallel yt-dlp runs for the same URL
+const activeDownloads = new Map<string, Promise<any>>();
+
 export async function POST(req: NextRequest) {
-  // Validate Content-Type
+  // ... (existing validation)
   const contentType = req.headers.get('content-type');
   if (!contentType?.includes('application/json')) {
     return new Response('Content-Type must be application/json', { status: 400 });
@@ -45,9 +48,11 @@ export async function POST(req: NextRequest) {
     return new Response('Missing or invalid URL', { status: 400 });
   }
 
-  // Validate URL protocol (only http/https)
+  const cleanUrl = url.trim();
+
+  // Validate URL protocol
   try {
-    const parsed = new URL(url.trim());
+    const parsed = new URL(cleanUrl);
     if (!['http:', 'https:'].includes(parsed.protocol)) {
       return new Response('Only http and https URLs are supported', { status: 400 });
     }
@@ -56,7 +61,43 @@ export async function POST(req: NextRequest) {
   }
 
   ensureAudioDir();
+
+  // 1. Check if URL is already in library
+  const library = readLibrary();
+  const existing = library.find((t: any) => t.sourceUrl === cleanUrl);
+  if (existing) {
+    const filePath = path.join(AUDIO_DIR, existing.filename);
+    if (fs.existsSync(filePath)) {
+      console.log(`[DOWNLOAD] URL already in library: ${cleanUrl}. Returning existing track.`);
+      return new Response(
+        new TextEncoder().encode(sseEvent('done', { track: existing, cached: true })),
+        { headers: { 'Content-Type': 'text/event-stream', 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
+  }
+
+  // 2. Check if already downloading - wait for it to finish if so
+  const activeTask = activeDownloads.get(cleanUrl);
+  if (activeTask) {
+    console.log(`[DOWNLOAD] Joining active download for ${cleanUrl}`);
+    await activeTask;
+    // After waiting, it should be in the library
+    const updatedLibrary = readLibrary();
+    const nowExisting = updatedLibrary.find((t: any) => t.sourceUrl === cleanUrl);
+    if (nowExisting) {
+       return new Response(
+        new TextEncoder().encode(sseEvent('done', { track: nowExisting, cached: true })),
+        { headers: { 'Content-Type': 'text/event-stream', 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
+  }
+
   const id = uuidv4();
+  
+  // Create a promise for this download and store it in activeDownloads
+  let resolveActive: any;
+  const downloadPromise = new Promise((resolve) => { resolveActive = resolve; });
+  activeDownloads.set(cleanUrl, downloadPromise);
 
   // Build a ReadableStream that we drive manually so we can push SSE frames
   const stream = new ReadableStream({
@@ -67,6 +108,7 @@ export async function POST(req: NextRequest) {
       };
 
       try {
+        // ... (rest of the download logic)
         // ── 1. Fetch metadata (Resilient) ────────────────────────────────
         send('status', { stage: 'metadata', message: 'Fetching track info…' });
 
@@ -256,6 +298,8 @@ export async function POST(req: NextRequest) {
         console.error('Download error:', message);
         send('error', { message });
       } finally {
+        resolveActive?.();
+        activeDownloads.delete(cleanUrl);
         controller.close();
       }
     },

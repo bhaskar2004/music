@@ -25,6 +25,14 @@ class DownloadManager {
   Future<void> processJob(String url, AppState state,
       {String? playlistId, String? jobId}) async {
     _appState = state;
+    
+    // ── Check for existing job with same URL ────────────────────────
+    final duplicate = state.downloads.any((d) => d.url == url && d.status != DownloadStatus.error);
+    if (duplicate && jobId == null) {
+      debugPrint('[DL] Skipping duplicate job for $url');
+      return;
+    }
+
     DownloadJob job;
     if (jobId != null) {
       final existing = state.downloads
