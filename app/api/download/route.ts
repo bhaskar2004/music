@@ -267,6 +267,61 @@ export async function POST(req: NextRequest) {
       'Cache-Control': 'no-cache',
       'Connection':    'keep-alive',
       'X-Accel-Buffering': 'no', // disable nginx buffering if behind proxy
+      'Access-Control-Allow-Origin': '*', // Allow mobile app access
+    },
+  });
+}
+
+// ── GET /api/download?id=<uuid> — serve a downloaded audio file ──────────
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+
+  if (!id || typeof id !== 'string' || !id.trim()) {
+    return new Response('Missing or invalid id parameter', { status: 400 });
+  }
+
+  // Sanitize: only allow alphanumeric + hyphens (UUID format)
+  const sanitized = id.trim().replace(/[^a-zA-Z0-9\-]/g, '');
+  if (sanitized !== id.trim()) {
+    return new Response('Invalid id format', { status: 400 });
+  }
+
+  ensureAudioDir();
+
+  const files = fs.readdirSync(AUDIO_DIR).filter((f) => f.startsWith(sanitized));
+  if (!files.length) {
+    return new Response('File not found', { status: 404 });
+  }
+
+  const filename = files[0];
+  const filePath = path.join(AUDIO_DIR, filename);
+  const stats = fs.statSync(filePath);
+  const fileBuffer = fs.readFileSync(filePath);
+
+  const contentType = filename.endsWith('.mp3') ? 'audio/mpeg' :
+                      filename.endsWith('.m4a') ? 'audio/mp4' :
+                      filename.endsWith('.opus') ? 'audio/opus' :
+                      'application/octet-stream';
+
+  return new Response(fileBuffer, {
+    headers: {
+      'Content-Type': contentType,
+      'Content-Length': stats.size.toString(),
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+}
+
+// ── OPTIONS — CORS preflight ─────────────────────────────────────────────
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
 }

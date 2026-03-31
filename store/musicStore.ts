@@ -2,8 +2,10 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Track, DownloadJob, Folder } from '@/types';
+import { Track, DownloadJob, Folder, RecentPlay, ListeningStats, SleepTimerState } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+
+type ViewId = 'library' | 'search' | 'queue' | 'downloads' | 'favorites' | 'history' | 'stats' | 'settings';
 
 interface MusicStore {
   // Library & Folders
@@ -48,6 +50,7 @@ interface MusicStore {
   playNextTrack: (track: Track) => void;
   playAll: (tracks: Track[]) => void;
   shufflePlay: (tracks: Track[]) => void;
+  reorderQueue: (fromIndex: number, toIndex: number) => void;
 
   // Download
   downloads: DownloadJob[];
@@ -56,12 +59,14 @@ interface MusicStore {
   removeDownload: (id: string) => void;
 
   // UI
-  activeView: 'library' | 'search' | 'queue' | 'downloads' | 'favorites';
-  setActiveView: (v: 'library' | 'search' | 'queue' | 'downloads' | 'favorites') => void;
+  activeView: ViewId;
+  setActiveView: (v: ViewId) => void;
   showDownloadModal: boolean;
   setShowDownloadModal: (v: boolean) => void;
   selectedTrack: Track | null;
   setSelectedTrack: (t: Track | null) => void;
+  showFullScreenPlayer: boolean;
+  setShowFullScreenPlayer: (v: boolean) => void;
 
   // Selection
   selectedTrackIds: string[];
@@ -70,6 +75,29 @@ interface MusicStore {
   setSelectionMode: (v: boolean) => void;
   clearSelection: () => void;
   moveSelectedToFolder: (trackIds: string[], folderId?: string) => void;
+
+  // Recently Played
+  recentlyPlayed: RecentPlay[];
+  addRecentPlay: (trackId: string, listenDuration?: number) => void;
+  clearRecentlyPlayed: () => void;
+
+  // Stats
+  listeningStats: ListeningStats;
+  incrementPlayCount: (trackId: string) => void;
+  addListenTime: (seconds: number) => void;
+
+  // Sleep Timer
+  sleepTimer: SleepTimerState;
+  setSleepTimer: (minutes: number) => void;
+  clearSleepTimer: () => void;
+
+  // Crossfade
+  crossfadeDuration: number; // 0–12 seconds
+  setCrossfadeDuration: (v: number) => void;
+
+  // Theme
+  theme: 'system' | 'dark' | 'light';
+  setTheme: (v: 'system' | 'dark' | 'light') => void;
 }
 
 export const useMusicStore = create<MusicStore>()(
@@ -96,16 +124,12 @@ export const useMusicStore = create<MusicStore>()(
         activeFolderId: s.activeFolderId === id ? null : s.activeFolderId,
       })),
       moveTrack: (trackId, folderId) => set((s) => {
-        // Optimistically update memory library
         const updatedLibrary = s.library.map((t) => t.id === trackId ? { ...t, folderId } : t);
-        
-        // Push the update to the backend library.json so it persists across reloads!
         fetch('/api/library/update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ trackId, folderId }),
         }).catch(err => console.error("Failed to sync folder move to backend:", err));
-
         return { library: updatedLibrary };
       }),
       setActiveFolderId: (id) => set({ activeFolderId: id }),
@@ -152,7 +176,6 @@ export const useMusicStore = create<MusicStore>()(
         } else if (repeat === 'one') {
           next = currentTrack;
         } else if (idx === queue.length - 1 && repeat === 'off') {
-          // At the end and repeat is off — stop
           set({ isPlaying: false });
           return;
         } else {
@@ -164,7 +187,6 @@ export const useMusicStore = create<MusicStore>()(
       playPrev: () => {
         const { queue, currentTrack, currentTime } = get();
         if (!queue.length) return;
-        // If more than 3 seconds into a track, restart it
         if (currentTime > 3) {
           set({ currentTime: 0 });
           return;
@@ -198,6 +220,13 @@ export const useMusicStore = create<MusicStore>()(
         set({ queue: shuffled, currentTrack: shuffled[0], isPlaying: true, currentTime: 0 });
       },
 
+      reorderQueue: (fromIndex, toIndex) => set((s) => {
+        const newQueue = [...s.queue];
+        const [moved] = newQueue.splice(fromIndex, 1);
+        newQueue.splice(toIndex, 0, moved);
+        return { queue: newQueue };
+      }),
+
       downloads: [],
       addDownload: (job) => set((s) => ({ downloads: [job, ...s.downloads] })),
       updateDownload: (id, updates) =>
@@ -213,6 +242,8 @@ export const useMusicStore = create<MusicStore>()(
       setShowDownloadModal: (v) => set({ showDownloadModal: v }),
       selectedTrack: null,
       setSelectedTrack: (t) => set({ selectedTrack: t }),
+      showFullScreenPlayer: false,
+      setShowFullScreenPlayer: (v) => set({ showFullScreenPlayer: v }),
 
       // Selection
       selectedTrackIds: [],
@@ -228,9 +259,6 @@ export const useMusicStore = create<MusicStore>()(
         const updatedLibrary = s.library.map((t) => 
           trackIds.includes(t.id) ? { ...t, folderId } : t
         );
-        
-        // Sync each move to backend (sequential or batch if we had an endpoint, 
-        // using moveTrack's endpoint for now)
         trackIds.forEach(id => {
           fetch('/api/library/update', {
             method: 'POST',
@@ -238,20 +266,68 @@ export const useMusicStore = create<MusicStore>()(
             body: JSON.stringify({ trackId: id, folderId }),
           }).catch(err => console.error("Failed to sync bulk move:", err));
         });
-
         return { library: updatedLibrary, selectedTrackIds: [], isSelectionMode: false };
       }),
+
+      // Recently Played
+      recentlyPlayed: [],
+      addRecentPlay: (trackId, listenDuration = 0) => set((s) => {
+        const filtered = s.recentlyPlayed.filter(r => r.trackId !== trackId);
+        const entry: RecentPlay = { trackId, playedAt: new Date().toISOString(), listenDuration };
+        return { recentlyPlayed: [entry, ...filtered].slice(0, 50) };
+      }),
+      clearRecentlyPlayed: () => set({ recentlyPlayed: [] }),
+
+      // Stats
+      listeningStats: { totalListenTime: 0, playCount: {} },
+      incrementPlayCount: (trackId) => set((s) => ({
+        listeningStats: {
+          ...s.listeningStats,
+          playCount: {
+            ...s.listeningStats.playCount,
+            [trackId]: (s.listeningStats.playCount[trackId] || 0) + 1,
+          },
+        },
+      })),
+      addListenTime: (seconds) => set((s) => ({
+        listeningStats: {
+          ...s.listeningStats,
+          totalListenTime: s.listeningStats.totalListenTime + seconds,
+        },
+      })),
+
+      // Sleep Timer
+      sleepTimer: { endTime: null, duration: 0, active: false },
+      setSleepTimer: (minutes) => set({
+        sleepTimer: {
+          endTime: Date.now() + minutes * 60 * 1000,
+          duration: minutes,
+          active: true,
+        },
+      }),
+      clearSleepTimer: () => set({ sleepTimer: { endTime: null, duration: 0, active: false } }),
+
+      // Crossfade
+      crossfadeDuration: 0,
+      setCrossfadeDuration: (v) => set({ crossfadeDuration: v }),
+
+      // Theme
+      theme: 'system',
+      setTheme: (v) => set({ theme: v }),
     }),
     {
       name: 'wavelength-settings',
       storage: createJSONStorage(() => localStorage),
-      // Only persist user preferences — NOT ephemeral state
       partialize: (state) => ({
         volume: state.volume,
         shuffle: state.shuffle,
         repeat: state.repeat,
         favorites: state.favorites,
         folders: state.folders,
+        recentlyPlayed: state.recentlyPlayed,
+        listeningStats: state.listeningStats,
+        crossfadeDuration: state.crossfadeDuration,
+        theme: state.theme,
       }),
     }
   )

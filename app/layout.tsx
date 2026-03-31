@@ -6,8 +6,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swa
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'Wavelength — Music Library',
-  description: 'Uber-inspired music player. Paste any URL to download & play.',
+  title: 'Wavelength — Own Your Music',
+  description: 'Download, organize, and play music from any source. Free, private, and premium.',
   icons: {
     icon: '/logo.svg',
     shortcut: '/logo.svg',

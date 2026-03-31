@@ -28,6 +28,23 @@ export interface DownloadJob {
   track?: Track;
 }
 
+export interface RecentPlay {
+  trackId: string;
+  playedAt: string;
+  listenDuration: number; // seconds listened
+}
+
+export interface ListeningStats {
+  totalListenTime: number; // seconds
+  playCount: Record<string, number>; // trackId -> count
+}
+
+export interface SleepTimerState {
+  endTime: number | null; // Unix timestamp
+  duration: number; // minutes
+  active: boolean;
+}
+
 export interface PlayerState {
   currentTrack: Track | null;
   queue: Track[];

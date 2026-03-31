@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
-
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/track.dart';
@@ -11,11 +11,19 @@ class DownloadService {
   // ─── Save directory ────────────────────────────────────────────────────────
 
   /// Android  → /sdcard/Android/data/<pkg>/files/Wavelength/
+  ///            Falls back to app documents if external storage unavailable
   /// iOS      → <documentsDir>/Wavelength/
   static Future<Directory> getSaveDirectory() async {
     final Directory base;
     if (Platform.isAndroid) {
-      base = (await getExternalStorageDirectory())!;
+      // Some devices return null for external storage
+      final externalDir = await getExternalStorageDirectory();
+      if (externalDir != null) {
+        base = externalDir;
+      } else {
+        debugPrint('[DownloadService] External storage unavailable, using app documents');
+        base = await getApplicationDocumentsDirectory();
+      }
     } else {
       base = await getApplicationDocumentsDirectory();
     }
@@ -24,11 +32,22 @@ class DownloadService {
     return dir;
   }
 
-  /// Full path to a track's audio file if it exists on disk, else null.
+  /// Full path to a track's audio file if it exists on disk and is valid.
   static Future<String?> getLocalFilePath(Track track) async {
     final dir = await getSaveDirectory();
     final file = File('${dir.path}/${track.filename}');
-    return (await file.exists()) ? file.path : null;
+    if (await file.exists()) {
+      // Verify file isn't corrupt (> 1KB)
+      final size = await file.length();
+      if (size > 1024) {
+        return file.path;
+      } else {
+        debugPrint('[DownloadService] Corrupt file detected for ${track.title} (${size}B), removing');
+        await file.delete();
+        return null;
+      }
+    }
+    return null;
   }
 
   static Future<bool> isDownloaded(Track track) async =>
@@ -49,5 +68,6 @@ class DownloadService {
       final s = await Permission.storage.request();
       if (s.isDenied) throw Exception('Storage permission required.');
     }
+    // SDK 29-32: scoped storage, no permission needed for app-specific dirs
   }
 }

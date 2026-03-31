@@ -7,6 +7,7 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
+  // Lightweight singleton for search & metadata (no CDN URLs involved)
   final YoutubeExplode _yt = YoutubeExplode();
 
   /// Searches YouTube directly from the device
@@ -38,7 +39,7 @@ class ApiService {
       final videoId = VideoId.parseVideoId(url);
       final video = await _yt.videos
           .get(videoId)
-          .timeout(const Duration(seconds: 45));
+          .timeout(const Duration(seconds: 60));
       return Track(
         id: video.id.value,
         title: video.title,
@@ -56,32 +57,14 @@ class ApiService {
     }
   }
 
-  /// Fetches the audio manifest for a specific video ID
+  /// Fetches the audio manifest using the singleton (for non-download use).
   Future<StreamManifest> getAudioManifest(String videoId) async {
     return await _yt.videos.streamsClient.getManifest(videoId).timeout(
-      const Duration(seconds: 45),
+      const Duration(seconds: 60),
       onTimeout: () {
         throw Exception('Metadata fetch timed out. Check your connection.');
       },
     );
-  }
-
-  /// Returns a raw byte stream for a specific StreamInfo
-  Stream<List<int>> getAudioStream(StreamInfo streamInfo) {
-    return _yt.videos.streamsClient.get(streamInfo);
-  }
-
-  /// Returns the highest-quality audio stream URL for a video ID
-  Future<String> getAudioStreamUrl(String videoId) async {
-    final manifest = await getAudioManifest(videoId);
-    final streams = manifest.audioOnly;
-    if (streams.isEmpty) {
-      throw Exception('No audio streams found for this video.');
-    }
-    final best = streams.reduce(
-      (a, b) => a.bitrate.bitsPerSecond > b.bitrate.bitsPerSecond ? a : b,
-    );
-    return best.url.toString();
   }
 
   void dispose() {

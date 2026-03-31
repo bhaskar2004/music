@@ -2,7 +2,8 @@
 
 import { useMusicStore } from '@/store/musicStore';
 import { formatDuration } from '@/lib/utils';
-import { Play, Music2, Trash2 } from 'lucide-react';
+import { Play, Music2, Trash2, GripVertical } from 'lucide-react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 
 const PLACEHOLDER_COLORS = [
@@ -10,7 +11,9 @@ const PLACEHOLDER_COLORS = [
 ];
 
 export default function QueueView() {
-  const { queue, currentTrack, setCurrentTrack, setIsPlaying, setQueue, library } = useMusicStore();
+  const { queue, currentTrack, setCurrentTrack, setIsPlaying, setQueue, library, reorderQueue } = useMusicStore();
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
 
   const totalDuration = queue.reduce((sum, t) => sum + (t.duration || 0), 0);
 
@@ -55,6 +58,28 @@ export default function QueueView() {
   const currentIdx = queue.findIndex((t) => t.id === currentTrack?.id);
   const upNext = currentIdx >= 0 ? queue.slice(currentIdx + 1) : queue;
 
+  const handleDragStart = (absoluteIndex: number) => {
+    setDragIdx(absoluteIndex);
+  };
+
+  const handleDragOver = (e: React.DragEvent, absoluteIndex: number) => {
+    e.preventDefault();
+    setDropIdx(absoluteIndex);
+  };
+
+  const handleDrop = (absoluteIndex: number) => {
+    if (dragIdx !== null && dragIdx !== absoluteIndex) {
+      reorderQueue(dragIdx, absoluteIndex);
+    }
+    setDragIdx(null);
+    setDropIdx(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragIdx(null);
+    setDropIdx(null);
+  };
+
   return (
     <div className="responsive-padding" style={{ height: '100%', overflow: 'auto' }}>
       {/* Header */}
@@ -75,74 +100,74 @@ export default function QueueView() {
           }}
           className="tap-active"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 14px',
-            background: 'rgba(229,62,62,0.1)',
-            border: '1px solid rgba(229,62,62,0.2)',
-            borderRadius: 'var(--radius)',
-            color: 'var(--danger)',
-            fontFamily: 'var(--font-sans)',
-            fontWeight: 600,
-            fontSize: 12,
-            cursor: 'pointer',
-            transition: 'all 0.15s',
+            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+            background: 'rgba(229,62,62,0.1)', border: '1px solid rgba(229,62,62,0.2)',
+            borderRadius: 'var(--radius)', color: 'var(--danger)', fontFamily: 'var(--font-sans)',
+            fontWeight: 600, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(229,62,62,0.15)')}
           onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(229,62,62,0.1)')}
         >
-          <Trash2 size={12} />
-          Clear Queue
+          <Trash2 size={12} /> Clear Queue
         </button>
       </div>
 
       {currentTrack && (
         <div style={{ marginBottom: 28 }}>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: 'var(--accent)',
-              fontFamily: 'var(--font-mono)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              marginBottom: 10,
-            }}
-          >
+          <div style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--font-mono)',
+            textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10,
+          }}>
             Now Playing
           </div>
-          <QueueRow track={currentTrack} index={0} isActive />
+          <QueueRow track={currentTrack} index={0} isActive absoluteIndex={currentIdx} />
         </div>
       )}
 
       {upNext.length > 0 && (
         <div>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-mono)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              marginBottom: 10,
-            }}
-          >
-            Up Next — {upNext.length} tracks
+          <div style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)',
+            textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10,
+          }}>
+            Up Next — {upNext.length} tracks · Drag to reorder
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {upNext.map((track, i) => (
-              <QueueRow
-                key={track.id}
-                track={track}
-                index={i}
-                onPlay={() => {
-                  setCurrentTrack(track);
-                  setIsPlaying(true);
-                }}
-              />
-            ))}
+            {upNext.map((track, i) => {
+              const absoluteIndex = currentIdx + 1 + i;
+              return (
+                <div
+                  key={track.id}
+                  draggable
+                  onDragStart={() => handleDragStart(absoluteIndex)}
+                  onDragOver={(e) => handleDragOver(e, absoluteIndex)}
+                  onDrop={() => handleDrop(absoluteIndex)}
+                  onDragEnd={handleDragEnd}
+                  style={{
+                    position: 'relative',
+                    opacity: dragIdx === absoluteIndex ? 0.4 : 1,
+                    transition: 'opacity 0.15s',
+                  }}
+                >
+                  {dropIdx === absoluteIndex && dragIdx !== absoluteIndex && (
+                    <div style={{
+                      position: 'absolute', top: -2, left: 0, right: 0, height: 3,
+                      background: 'var(--brand-gradient)', borderRadius: 99, zIndex: 10,
+                    }} />
+                  )}
+                  <QueueRow
+                    track={track}
+                    index={i}
+                    absoluteIndex={absoluteIndex}
+                    onPlay={() => {
+                      setCurrentTrack(track);
+                      setIsPlaying(true);
+                    }}
+                    draggable
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -151,15 +176,14 @@ export default function QueueView() {
 }
 
 function QueueRow({
-  track,
-  index,
-  isActive,
-  onPlay,
+  track, index, isActive, onPlay, draggable: isDraggable, absoluteIndex,
 }: {
   track: import('@/types').Track;
   index: number;
   isActive?: boolean;
   onPlay?: () => void;
+  draggable?: boolean;
+  absoluteIndex: number;
 }) {
   const bgColor = PLACEHOLDER_COLORS[index % PLACEHOLDER_COLORS.length];
 
@@ -168,30 +192,30 @@ function QueueRow({
       onClick={onPlay}
       className={`uber-card ${isActive ? 'uber-card-active' : ''}`}
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '12px',
-        borderRadius: 12,
-        cursor: onPlay ? 'pointer' : 'default',
-        marginBottom: 4,
+        display: 'flex', alignItems: 'center', gap: 12, padding: '12px',
+        borderRadius: 12, cursor: onPlay ? 'pointer' : 'default', marginBottom: 4,
       }}
     >
+      {/* Drag handle */}
+      {isDraggable && (
+        <div
+          style={{
+            cursor: 'grab', color: 'var(--text-faint)', display: 'flex', padding: 2,
+            transition: 'color 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--text-muted)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}
+        >
+          <GripVertical size={14} />
+        </div>
+      )}
+
       {/* Cover */}
-      <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 6,
-          background: bgColor,
-          flexShrink: 0,
-          position: 'relative',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+      <div style={{
+        width: 40, height: 40, borderRadius: 6, background: bgColor,
+        flexShrink: 0, position: 'relative', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
         {track.coverUrl ? (
           <Image src={track.coverUrl} alt={track.title} fill style={{ objectFit: 'cover' }} unoptimized />
         ) : (

@@ -5,6 +5,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'providers/app_state.dart';
 import 'services/audio_service.dart';
 import 'services/download_manager.dart';
+import 'services/server_config.dart';
 import 'ui/screens/main_wrapper.dart';
 
 Future<void> main() async {
@@ -16,6 +17,9 @@ Future<void> main() async {
       androidNotificationChannelName: 'Audio playback',
       androidNotificationOngoing: true,
     );
+
+    // Load saved server URL (for server-proxied downloads)
+    await ServerConfig.init();
 
     final appState = AppState();
     await appState.initialize();

@@ -1,12 +1,10 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../models/track.dart';
 import '../models/download_job.dart';
 import '../providers/app_state.dart';
-import 'api_service.dart';
 import 'download_service.dart';
+import 'server_download_service.dart';
 import 'storage_service.dart';
 
 class DownloadManager {
@@ -14,7 +12,6 @@ class DownloadManager {
   factory DownloadManager() => _instance;
   DownloadManager._internal();
 
-  final ApiService _api = ApiService();
   AppState? _appState;
   bool _processing = false;
 
@@ -64,117 +61,97 @@ class DownloadManager {
 
     while (attempts < maxAttempts && !success) {
       attempts++;
+
       try {
         await DownloadService.requestStoragePermission();
 
-        // ── 1. Fetch metadata ────────────────────────────────────────────────
+        // ── 1. Check server reachability ──────────────────────────────────
         state.updateDownload(job.id, status: DownloadStatus.fetchingMeta);
-        final track = await _api.getTrackFromUrl(job.url);
-        if (track == null) {
-          throw Exception('Could not fetch video info. Check the URL.');
-        }
 
-        state.updateDownload(job.id,
-            title: track.title, artist: track.artist, coverUrl: track.coverUrl);
-
-        // ── 2. Check disk ───────────────────────────────────────────────────
-        final saveDir = await DownloadService.getSaveDirectory();
-        final filename = '${track.id}.mp3';
-        final file = File('${saveDir.path}/$filename');
-
-        if (await file.exists()) {
-          success = true;
-          debugPrint('[DL] Already on disk: ${file.path}');
-        } else {
-          // ── 3. Download logic ──────────────────────────────────────────────
-          state.updateDownload(job.id, status: DownloadStatus.downloading, progress: 0);
-
-          final manifest = await _api.getAudioManifest(track.id);
-          final audioStreams = manifest.audioOnly.toList();
-          
-          if (audioStreams.isEmpty) throw Exception('No audio streams available.');
-
-          // Sort streams: Priority is MP4 (often more stable DNS/CDN) then WebM/Opus,
-          // within containers sort by bitrate descending.
-          audioStreams.sort((a, b) {
-            final aIsMp4 = a.container == yt.StreamContainer.mp4;
-            final bIsMp4 = b.container == yt.StreamContainer.mp4;
-            if (aIsMp4 && !bIsMp4) return -1;
-            if (!aIsMp4 && bIsMp4) return 1;
-            return b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond);
-          });
-
-          // Try each stream until one works
-          bool streamSuccess = false;
-          for (final streamInfo in audioStreams) {
-            final total = streamInfo.size.totalBytes;
-            int received = 0;
-            final tmpFile = File('${file.path}.part');
-            final sink = tmpFile.openWrite();
-
-            try {
-              final stream = _api.getAudioStream(streamInfo as yt.StreamInfo);
-              await for (final chunk in stream.timeout(const Duration(seconds: 30))) {
-                sink.add(chunk);
-                received += chunk.length;
-                if (total > 0) {
-                  state.updateDownload(job.id, progress: (received / total).clamp(0.0, 1.0));
-                }
-              }
-              await sink.flush();
-              await sink.close();
-              await tmpFile.rename(file.path);
-              streamSuccess = true;
-              break; // Success with this stream
-            } catch (e) {
-              await sink.close();
-              if (await tmpFile.exists()) await tmpFile.delete();
-              debugPrint('[DL] Stream failed (attempt $attempts): $e');
-              lastError = e;
-              continue; // Try next stream
-            }
+        if (attempts == 1) {
+          final reachable = await ServerDownloadService.isServerReachable();
+          if (!reachable) {
+            throw Exception(
+              'Cannot reach the download server. '
+              'Make sure the server is running and the URL is correct.',
+            );
           }
-
-          if (!streamSuccess) throw lastError ?? Exception('All streams failed.');
-          success = true;
-          debugPrint('[DL] ✓ ${track.title} downloaded.');
         }
 
-        // ── 4. Persist ──────────────────────────────────────────────────────
-        final finalTrack = Track(
-          id: track.id,
-          title: track.title,
-          artist: track.artist,
-          album: track.album,
-          duration: track.duration,
-          filename: filename,
-          coverUrl: track.coverUrl,
-          sourceUrl: track.sourceUrl,
-          addedAt: DateTime.now().toIso8601String(),
-          format: 'mp3',
+        // ── 2. Download via server ────────────────────────────────────────
+        final result = await ServerDownloadService.download(
+          url: job.url,
           playlistId: job.playlistId,
+          onStatus: (stage, message) {
+            if (stage == 'downloading') {
+              state.updateDownload(job.id,
+                  status: DownloadStatus.downloading, progress: 0);
+            } else if (stage == 'processing' || stage == 'saving') {
+              state.updateDownload(job.id,
+                  status: DownloadStatus.downloading, progress: 0.95);
+            } else {
+              state.updateDownload(job.id,
+                  status: DownloadStatus.fetchingMeta);
+            }
+          },
+          onProgress: (percent) {
+            // Server sends 0-100, we store 0.0-1.0
+            state.updateDownload(job.id,
+                progress: (percent / 100).clamp(0.0, 1.0));
+          },
+          onMetadata: (title, artist, coverUrl) {
+            state.updateDownload(job.id,
+                title: title, artist: artist, coverUrl: coverUrl);
+          },
         );
-        await StorageService().insertTrack(finalTrack);
+
+        // ── 3. Success ────────────────────────────────────────────────────
+        success = true;
+        debugPrint('[DL] ✓ ${result.track.title} saved to ${result.localPath}');
 
         state.updateDownload(job.id,
-            status: DownloadStatus.done, progress: 1.0, completedTrack: finalTrack);
+            status: DownloadStatus.done,
+            progress: 1.0,
+            completedTrack: result.track);
       } catch (e) {
         lastError = e;
         debugPrint('[DL] Attempt $attempts failed: $e');
         if (attempts < maxAttempts) {
-          state.updateDownload(job.id, error: 'Retrying... ($attempts/$maxAttempts)');
-          await Future.delayed(Duration(seconds: 2 * attempts)); // Exponential backoff
+          final delaySecs = 3 * attempts; // 3s, 6s, 9s backoff
+          state.updateDownload(job.id,
+              error: 'Retry $attempts/$maxAttempts in ${delaySecs}s…');
+          await Future.delayed(Duration(seconds: delaySecs));
         } else {
           state.updateDownload(
             job.id,
             status: DownloadStatus.error,
-            error: e.toString().contains('SocketException') 
-                ? 'Network Error: DNS fallback failed. Try again on Wi-Fi.'
-                : e.toString().split('Exception: ').last.split('\n').first,
+            error: _friendlyError(e),
           );
         }
       }
     }
+  }
+
+  /// Converts raw exceptions into user-friendly error messages
+  String _friendlyError(dynamic e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') || msg.contains('host lookup') ||
+        msg.contains('Connection refused') || msg.contains('Cannot reach')) {
+      return 'Cannot reach download server. Make sure the server is running and you\'re connected to the same network.';
+    }
+    if (msg.contains('TimeoutException') || msg.contains('timed out')) {
+      return 'Download timed out. Your connection may be too slow — try on Wi-Fi.';
+    }
+    if (msg.contains('No audio streams')) {
+      return 'No downloadable audio found for this video.';
+    }
+    if (msg.contains('Could not fetch') || msg.contains('Server did not return')) {
+      return 'Could not load video info. Check the URL and try again.';
+    }
+    if (msg.contains('Chrome') && msg.contains('cookie')) {
+      return 'Server needs Chrome closed to access cookies. Close Chrome on the server machine.';
+    }
+    return msg.split('Exception: ').last.split('\n').first;
   }
 
   void dispose() => _appState?.removeListener(_onStateChange);
