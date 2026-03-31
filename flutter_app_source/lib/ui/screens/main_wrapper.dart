@@ -26,8 +26,8 @@ class _MainWrapperState extends State<MainWrapper> {
   @override
   void initState() {
     super.initState();
-    _initPermissions();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initPermissions();
       final audio = context.read<AudioService>();
       audio.playbackError.addListener(() {
         final err = audio.playbackError.value;
@@ -44,17 +44,18 @@ class _MainWrapperState extends State<MainWrapper> {
   }
 
   Future<void> _initPermissions() async {
-    final granted = await PermissionService.requestStoragePermissions();
-    if (!granted && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content:
-            const Text('Storage permissions required to download songs.'),
-        action: SnackBarAction(
-            label: 'Settings',
-            onPressed: PermissionService.openAppInfo),
-        duration: const Duration(seconds: 5),
-      ));
-    }
+    final granted = await PermissionService.checkPermissions();
+    if (granted) return; // Already have permissions
+    if (!mounted) return;
+
+    // Show a proper permission dialog
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _PermissionDialog(
+        onGranted: () => Navigator.of(ctx).pop(),
+      ),
+    );
   }
 
   // Search uses index 4 but ActiveView has no search entry — handled via _showSearch flag
@@ -562,6 +563,151 @@ class _DrawerItem extends StatelessWidget {
               ),
             ),
             if (trailing != null) trailing!,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Permission Dialog ────────────────────────────────────────────────────────
+
+class _PermissionDialog extends StatefulWidget {
+  final VoidCallback onGranted;
+  const _PermissionDialog({required this.onGranted});
+
+  @override
+  State<_PermissionDialog> createState() => _PermissionDialogState();
+}
+
+class _PermissionDialogState extends State<_PermissionDialog> {
+  bool _requesting = false;
+
+  Future<void> _requestPermissions() async {
+    setState(() => _requesting = true);
+    final granted = await PermissionService.requestStoragePermissions();
+    setState(() => _requesting = false);
+
+    if (granted) {
+      widget.onGranted();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Permission denied. Tap "Open Settings" to grant manually.'),
+          backgroundColor: Color(0xFFE53935),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF111111),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Icon
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF06C167), Color(0xFF00FF85)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.folder_rounded,
+                  color: Colors.black, size: 32),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            const Text(
+              'Storage Permission',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                letterSpacing: -0.5,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Description
+            Text(
+              'Wavelength needs storage access to save downloaded songs to your device so you can listen offline.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Grant button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _requesting ? null : _requestPermissions,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF06C167),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: _requesting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.black),
+                      )
+                    : const Text('Grant Access',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 15)),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Open Settings button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: TextButton(
+                onPressed: () => PermissionService.openAppInfo(),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white54,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Color(0xFF2A2A2A)),
+                  ),
+                ),
+                child: const Text('Open Settings',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14)),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Skip button (allow using without download)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Skip for now',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 12,
+                ),
+              ),
+            ),
           ],
         ),
       ),
