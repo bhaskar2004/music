@@ -6,6 +6,7 @@ import 'providers/app_state.dart';
 import 'services/audio_service.dart';
 import 'services/download_manager.dart';
 import 'services/server_config.dart';
+import 'services/server_discovery.dart';
 import 'ui/screens/main_wrapper.dart';
 
 Future<void> main() async {
@@ -49,12 +50,56 @@ Future<void> main() async {
   }
 }
 
-class WavelengthApp extends StatelessWidget {
+class WavelengthApp extends StatefulWidget {
   const WavelengthApp({super.key});
+
+  @override
+  State<WavelengthApp> createState() => _WavelengthAppState();
+}
+
+class _WavelengthAppState extends State<WavelengthApp> {
+  final GlobalKey<ScaffoldMessengerState> _messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Run server discovery in background after first frame renders
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _discoverServer();
+    });
+  }
+
+  Future<void> _discoverServer() async {
+    final result = await ServerDiscovery.discover();
+    if (!mounted) return;
+
+    if (result != null) {
+      _messengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Text('✓ Connected to server at $result'),
+          backgroundColor: const Color(0xFF06C167),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } else {
+      _messengerKey.currentState?.showSnackBar(
+        const SnackBar(
+          content: Text(
+              '⚠ No server found. Downloads won\'t work until a server is reachable.'),
+          backgroundColor: Color(0xFFE53935),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: _messengerKey,
       title: 'Wavelength',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
