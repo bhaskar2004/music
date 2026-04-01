@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import '../models/track.dart';
+import 'api_service.dart';
 import 'download_service.dart';
 import 'server_config.dart';
 

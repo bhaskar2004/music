@@ -28,7 +28,7 @@ class TrackTile extends StatefulWidget {
     this.onLongPressSelection,
   });
 
-  final VoidCallback? onLongPressSelection;
+
 
   @override
   State<TrackTile> createState() => _TrackTileState();
