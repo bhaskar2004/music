@@ -69,6 +69,12 @@ class _TrackTileState extends State<TrackTile> {
   }
 
   Future<void> _checkDownloadStatus() async {
+    final appState = context.read<AppState>();
+    final inLibrary = appState.library.any((t) => t.sourceUrl == widget.track.sourceUrl);
+    if (inLibrary) {
+      if (mounted) setState(() => _isDownloaded = true);
+      return;
+    }
     final exists = await DownloadService.isDownloaded(widget.track);
     if (mounted) setState(() => _isDownloaded = exists);
   }

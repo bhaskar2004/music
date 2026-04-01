@@ -23,8 +23,15 @@ class DownloadManager {
   void _onStateChange() => _processQueue();
 
   Future<void> processJob(String url, AppState state,
-      {String? playlistId, String? jobId}) async {
+      {String? playlistId, String? jobId, bool showMessage = true}) async {
     _appState = state;
+
+    // ── Check if already in local library ───────────────────────────
+    final inLibrary = state.library.any((t) => t.sourceUrl == url);
+    if (inLibrary) {
+      debugPrint('[DL] Skipping - already in library: $url');
+      throw Exception('ALREADY_EXISTS');
+    }
     
     // ── Check for existing job with same URL ────────────────────────
     final duplicate = state.downloads.any((d) => d.url == url && d.status != DownloadStatus.error);

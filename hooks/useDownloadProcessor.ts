@@ -9,6 +9,18 @@ export function useDownloadProcessor() {
   const processDownload = async (videoUrl: string, folderId?: string, existingJobId?: string) => {
     const jobId = existingJobId || uuidv4();
     
+    // ── Pre-check: Is it already in the library? ──────────────────────
+    const { library } = useMusicStore.getState();
+    if (library.some(t => t.sourceUrl === videoUrl)) {
+      console.log(`[DL] Skipping download for ${videoUrl} - already in library`);
+      // We still update the job to 'done' in case a stale job was being retried
+      if (existingJobId) {
+        const track = library.find(t => t.sourceUrl === videoUrl);
+        updateDownload(jobId, { status: 'done', progress: 100, track });
+      }
+      return;
+    }
+    
     if (!existingJobId) {
       addDownload({ id: jobId, url: videoUrl, status: 'pending', progress: 0 });
     } else {

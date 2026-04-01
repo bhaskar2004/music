@@ -68,11 +68,22 @@ export async function POST(req: NextRequest) {
   if (existing) {
     const filePath = path.join(AUDIO_DIR, existing.filename);
     if (fs.existsSync(filePath)) {
-      console.log(`[DOWNLOAD] URL already in library: ${cleanUrl}. Returning existing track.`);
-      return new Response(
-        new TextEncoder().encode(sseEvent('done', { track: existing, cached: true })),
-        { headers: { 'Content-Type': 'text/event-stream', 'Access-Control-Allow-Origin': '*' } }
-      );
+      console.log(`[DOWNLOAD] URL already in library: ${cleanUrl}.`);
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(sseEvent('status', { stage: 'done', message: 'Track already exists in library' })));
+          controller.enqueue(encoder.encode(sseEvent('done', { track: existing, cached: true })));
+          controller.close();
+        }
+      });
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Access-Control-Allow-Origin': '*',
+        }
+      });
     }
   }
 

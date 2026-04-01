@@ -103,7 +103,19 @@ class _SearchScreenState extends State<SearchScreen>
     ));
 
     for (final track in tracksToDownload) {
-      DownloadManager().processJob(track.sourceUrl, appState);
+      try {
+        await DownloadManager().processJob(track.sourceUrl, appState);
+      } catch (e) {
+        if (e.toString().contains('ALREADY_EXISTS')) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('"${track.title}" is already in your library.'),
+              backgroundColor: Colors.blueGrey.shade800,
+              duration: const Duration(seconds: 1),
+            ));
+          }
+        }
+      }
     }
 
     appState.setActiveView(ActiveView.downloads);
@@ -120,7 +132,14 @@ class _SearchScreenState extends State<SearchScreen>
     ));
 
     for (final track in _serverTracks) {
-      DownloadManager().processJob(track.sourceUrl, appState);
+      try {
+        await DownloadManager().processJob(track.sourceUrl, appState);
+      } catch (e) {
+        if (e.toString().contains('ALREADY_EXISTS')) {
+          // Skip silently for "Sync All" to avoid SnackBar flood, 
+          // or show a summary later. For now, just skip.
+        }
+      }
     }
 
     appState.setActiveView(ActiveView.downloads);
@@ -167,9 +186,10 @@ class _SearchScreenState extends State<SearchScreen>
       await DownloadManager().processJob(url, appState);
     } catch (e) {
       if (mounted) {
+        final isDuplicate = e.toString().contains('ALREADY_EXISTS');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error: ${e.toString().split('\n').first}'),
-          backgroundColor: Colors.redAccent,
+          content: Text(isDuplicate ? 'This song is already in your library.' : 'Error: ${e.toString().split('\n').first}'),
+          backgroundColor: isDuplicate ? Colors.blueGrey.shade800 : Colors.redAccent,
         ));
       }
     } finally {

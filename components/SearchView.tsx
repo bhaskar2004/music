@@ -24,7 +24,7 @@ export default function SearchView() {
   
   const inputRef = useRef<HTMLInputElement>(null);
   const { processDownload } = useDownloadProcessor();
-  const { downloads } = useMusicStore();
+  const { downloads, library } = useMusicStore();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -52,8 +52,10 @@ export default function SearchView() {
   }
 
   function handleDownload(url: string) {
-    // We treat the current active playlist as "none" to mimic direct download 
-    // unless they choose a folder globally. We'll default to 'none' here.
+    if (library.some(t => t.sourceUrl === url)) {
+      alert('This song is already in your library.');
+      return;
+    }
     processDownload(url, undefined);
   }
 
@@ -117,7 +119,8 @@ export default function SearchView() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {results.map((result) => {
             const isDownloading = downloads.some((d) => d.url === result.url && (d.status === 'pending' || d.status === 'downloading'));
-            const isFinished = downloads.some((d) => d.url === result.url && d.status === 'done');
+            const isFinished = downloads.some((d) => d.url === result.url && d.status === 'done') || 
+                              library.some((t) => t.sourceUrl === result.url);
             
             return (
               <div
