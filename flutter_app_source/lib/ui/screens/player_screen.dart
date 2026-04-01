@@ -586,10 +586,13 @@ class _SyncedLyricsViewerState extends State<_SyncedLyricsViewer> {
           _currentIndex = newIndex;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
+              // Center the current line
+              // Container height is approx 340. Line height is 48.
+              final offset = (_currentIndex * 48.0) - (340 / 2) + (48 / 2);
               _scrollController.animateTo(
-                _currentIndex * 40.0,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
+                offset.clamp(0, _scrollController.position.maxScrollExtent),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeInOutCubic,
               );
             }
           });
@@ -597,22 +600,29 @@ class _SyncedLyricsViewerState extends State<_SyncedLyricsViewer> {
 
         return ListView.builder(
           controller: _scrollController,
-          padding: const EdgeInsets.symmetric(vertical: 100, horizontal: 20),
+          padding: const EdgeInsets.symmetric(vertical: 150, horizontal: 24),
           itemCount: _lines.length,
           itemBuilder: (context, index) {
             final isCurrent = index == _currentIndex;
-            return Container(
-              height: 40,
-              alignment: Alignment.center,
-              child: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isCurrent ? Colors.white : Colors.white24,
-                  fontSize: isCurrent ? 20 : 16,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+            return GestureDetector(
+              onTap: () {
+                widget.player.seek(_lines[index].time);
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: 48,
+                alignment: Alignment.center,
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 300),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isCurrent ? Colors.white : Colors.white.withValues(alpha: 0.2),
+                    fontSize: isCurrent ? 22 : 18,
+                    fontWeight: isCurrent ? FontWeight.w900 : FontWeight.w600,
+                    letterSpacing: isCurrent ? -0.5 : 0,
+                  ),
+                  child: Text(_lines[index].text),
                 ),
-                child: Text(_lines[index].text),
               ),
             );
           },

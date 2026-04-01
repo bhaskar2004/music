@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useMusicStore } from '@/store/musicStore';
 import { formatDuration } from '@/lib/utils';
 import {
@@ -15,11 +15,13 @@ export default function FullScreenPlayer() {
     currentTrack, isPlaying, shuffle, repeat, favorites,
     currentTime, duration, volume, lyrics, isLoadingLyrics,
     setIsPlaying, playNext, playPrev, toggleShuffle, toggleRepeat,
-    toggleFavorite, setShowFullScreenPlayer, setActiveView,
+    toggleFavorite, setShowFullScreenPlayer, setActiveView, setCurrentTime,
   } = useMusicStore();
 
   const [visible, setVisible] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
+  const lyricsContainerRef = useRef<HTMLDivElement>(null);
+  const activeLineRef = useRef<HTMLDivElement>(null);
 
   // Parse LRC lyrics
   const parsedLyrics = (() => {
@@ -47,6 +49,15 @@ export default function FullScreenPlayer() {
         return currentTime >= line.time && (!nextLine || currentTime < nextLine.time);
       })
     : -1;
+
+  useEffect(() => {
+    if (showLyrics && activeLineRef.current) {
+      activeLineRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [currentLineIndex, showLyrics]);
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
@@ -128,31 +139,50 @@ export default function FullScreenPlayer() {
               </div>
             )
           ) : (
-            <div style={{ 
-              width: '100%', height: '100%', padding: '24px 16px', 
-              overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16,
-              background: 'rgba(0,0,0,0.4)', scrollBehavior: 'smooth'
-            }}>
+            <div 
+              ref={lyricsContainerRef}
+              style={{ 
+                width: '100%', height: '100%', padding: '40% 16px', 
+                overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 24,
+                background: 'rgba(0,0,0,0.4)', scrollBehavior: 'smooth',
+                scrollbarWidth: 'none', msOverflowStyle: 'none'
+              }}
+            >
               {isLoadingLyrics ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
                   Loading lyrics...
                 </div>
               ) : lyrics ? (
                 parsedLyrics ? (
-                  parsedLyrics.map((line, i) => (
-                    <div 
-                      key={i}
-                      style={{
-                        fontSize: 18, fontWeight: 700, textAlign: 'center',
-                        color: i === currentLineIndex ? '#fff' : 'rgba(255,255,255,0.3)',
-                        transition: 'all 0.3s ease',
-                        transform: i === currentLineIndex ? 'scale(1.05)' : 'scale(1)',
-                        padding: '4px 0'
-                      }}
-                    >
-                      {line.text}
-                    </div>
-                  ))
+                  parsedLyrics.map((line, i) => {
+                    const isActive = i === currentLineIndex;
+                    return (
+                      <div 
+                        key={i}
+                        ref={isActive ? activeLineRef : null}
+                        onClick={() => {
+                          const audio = document.querySelector('audio');
+                          if (audio) {
+                            audio.currentTime = line.time;
+                            setCurrentTime(line.time);
+                          }
+                        }}
+                        style={{
+                          fontSize: isActive ? 22 : 18, 
+                          fontWeight: isActive ? 800 : 600, 
+                          textAlign: 'center',
+                          color: isActive ? '#fff' : 'rgba(255,255,255,0.25)',
+                          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                          transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                          padding: '8px 0',
+                          cursor: 'pointer',
+                          filter: isActive ? 'none' : 'blur(0.5px)',
+                        }}
+                      >
+                        {line.text}
+                      </div>
+                    );
+                  })
                 ) : lyrics.plainLyrics ? (
                   lyrics.plainLyrics.split('\n').map((line, i) => (
                     <div key={i} style={{ fontSize: 16, color: '#fff', textAlign: 'center', opacity: 0.8 }}>{line}</div>
