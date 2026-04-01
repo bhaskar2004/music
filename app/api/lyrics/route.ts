@@ -35,6 +35,13 @@ function getSearchQueries(title: string, artist: string): string[] {
   return Array.from(new Set(queries)).filter(q => q.length > 2);
 }
 
+function containsNativeScript(text: string | null | undefined): boolean {
+  if (!text) return false;
+  // Regex for Devnagari, Kannada, Telugu, Tamil, Bengali, Malayalam, etc.
+  const nativeRegex = /[\u0900-\u097F\u0C80-\u0CFF\u0C00-\u0C7F\u0B80-\u0BFF\u0980-\u09FF\u0D00-\u0D7F]/;
+  return nativeRegex.test(text);
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const rawArtist = searchParams.get('artist') || '';
@@ -60,10 +67,37 @@ export async function GET(req: NextRequest) {
       if (response.ok) {
         const results = await response.json();
         if (results && Array.isArray(results) && results.length > 0) {
-          // Find the best match among results
-          // For now, take the first one, but could be improved with string similarity
-          console.log(`[LYRICS_API] Found match for "${query}": ${results[0].trackName} by ${results[0].artistName}`);
-          return NextResponse.json(results[0]);
+          // Sort results: 
+          // 1. Synced Lyrics in Native script (Best)
+          // 2. Synced Lyrics (Standard)
+          // 3. Plain Lyrics in Native script
+          // 4. Plain Lyrics (Standard)
+          
+          let bestMatch = results[0];
+          let bestRank = -1;
+
+          for (const res of results) {
+            let rank = 0;
+            const hasSynced = !!res.syncedLyrics;
+            const hasPlain = !!res.plainLyrics;
+            const isNative = containsNativeScript(res.syncedLyrics) || containsNativeScript(res.plainLyrics);
+
+            if (hasSynced && isNative) rank = 4;
+            else if (hasSynced) rank = 3;
+            else if (hasPlain && isNative) rank = 2;
+            else if (hasPlain) rank = 1;
+
+            if (rank > bestRank) {
+              bestRank = rank;
+              bestMatch = res;
+            }
+            
+            // If we found synced native lyrics, it doesn't get better than this
+            if (rank === 4) break;
+          }
+
+          console.log(`[LYRICS_API] Found match for "${query}": ${bestMatch.trackName} (Rank: ${bestRank})`);
+          return NextResponse.json(bestMatch);
         }
       }
     }
