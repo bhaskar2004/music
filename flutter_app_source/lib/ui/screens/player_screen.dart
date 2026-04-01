@@ -99,22 +99,25 @@ class _PlayerScreenState extends State<PlayerScreen>
 
                     const SizedBox(height: 16),
 
-                    // ── Artwork ──────────────────────────────────────────
+                    // ── Artwork & Lyrics Side-by-Side ───────────────────
                     Expanded(
-                      flex: 5,
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 36),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 400),
-                            curve: Curves.easeInOutCubic,
-                            constraints: const BoxConstraints(
-                                maxWidth: 340, maxHeight: 340),
-                            decoration: BoxDecoration(
-                              color: _showLyrics ? Colors.black.withValues(alpha: 0.4) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                if (!_showLyrics) ...[
+                      flex: 6,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: AnimatedCrossFade(
+                          duration: const Duration(milliseconds: 600),
+                          firstCurve: Curves.easeInOutCubic,
+                          secondCurve: Curves.easeInOutCubic,
+                          sizeCurve: Curves.easeInOutCubic,
+                          crossFadeState: _showLyrics 
+                              ? CrossFadeState.showSecond 
+                              : CrossFadeState.showFirst,
+                          firstChild: Center(
+                            child: Container(
+                              constraints: const BoxConstraints(maxWidth: 340, maxHeight: 340),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
                                   BoxShadow(
                                     color: _accent.withValues(alpha: 0.12),
                                     blurRadius: 60,
@@ -126,20 +129,64 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     blurRadius: 30,
                                     offset: const Offset(0, 12),
                                   ),
-                                ]
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(24),
-                              child: AspectRatio(
-                                aspectRatio: 1,
-                                child: _showLyrics 
-                                  ? _buildLyricsView(audio)
-                                  : (track.coverUrl != null
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: AspectRatio(
+                                  aspectRatio: 1,
+                                  child: track.coverUrl != null
                                       ? _buildArtwork(track.coverUrl!, title: track.title)
-                                      : _ArtPlaceholder(title: track.title)),
+                                      : _ArtPlaceholder(title: track.title),
+                                ),
                               ),
                             ),
+                          ),
+                          secondChild: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Small Artwork on Left
+                              Expanded(
+                                flex: 4,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.4),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: AspectRatio(
+                                      aspectRatio: 1,
+                                      child: track.coverUrl != null
+                                          ? _buildArtwork(track.coverUrl!, title: track.title)
+                                          : _ArtPlaceholder(title: track.title),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              // Lyrics on Right
+                              Expanded(
+                                flex: 6,
+                                child: Container(
+                                  height: 340,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.03),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: _buildLyricsView(audio),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

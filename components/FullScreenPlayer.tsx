@@ -105,7 +105,13 @@ export default function FullScreenPlayer() {
       </div>
 
       {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32, maxWidth: 500, width: '90%', padding: '40px 0' }}>
+      <div style={{ 
+        position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', 
+        alignItems: 'center', gap: 32, 
+        maxWidth: showLyrics ? 900 : 500, 
+        width: '90%', padding: '40px 0',
+        transition: 'max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}>
         {/* Close button */}
         <button
           onClick={handleClose}
@@ -122,32 +128,62 @@ export default function FullScreenPlayer() {
           <ChevronDown size={22} />
         </button>
 
-        {/* Album art / Lyrics Toggle */}
-        <div
-          style={{
-            width: 320, height: 320, borderRadius: 16, position: 'relative',
-            overflow: 'hidden', boxShadow: '0 30px 100px rgba(0,0,0,0.6)',
-            background: '#111',
-          }}
-        >
-          {!showLyrics ? (
-            currentTrack.coverUrl ? (
+        {/* Album art / Lyrics Side-by-Side Container */}
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: showLyrics ? 'row' : 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          gap: showLyrics ? 48 : 0,
+          width: '100%',
+          transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
+          {/* Album Art */}
+          <div
+            style={{
+              width: showLyrics ? 300 : 320, 
+              height: showLyrics ? 300 : 320, 
+              borderRadius: 16, position: 'relative',
+              overflow: 'hidden', boxShadow: '0 30px 100px rgba(0,0,0,0.6)',
+              background: '#111',
+              transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+              flexShrink: 0,
+            }}
+          >
+            {currentTrack.coverUrl ? (
               <Image src={currentTrack.coverUrl} alt={currentTrack.title} fill style={{ objectFit: 'cover' }} unoptimized />
             ) : (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80, fontWeight: 800, color: 'rgba(255,255,255,0.1)' }}>
                 {currentTrack.title.charAt(0)}
               </div>
-            )
-          ) : (
+            )}
+          </div>
+
+          {/* Lyrics (Desktop side-by-side) */}
+          {showLyrics && (
             <div 
               ref={lyricsContainerRef}
               style={{ 
-                width: '100%', height: '100%', padding: '40% 16px', 
+                flex: 1,
+                maxWidth: 500,
+                height: 400, 
+                padding: '150px 16px', 
                 overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 24,
-                background: 'rgba(0,0,0,0.4)', scrollBehavior: 'smooth',
-                scrollbarWidth: 'none', msOverflowStyle: 'none'
+                background: 'rgba(0,0,0,0.2)', 
+                borderRadius: 16,
+                scrollBehavior: 'smooth',
+                scrollbarWidth: 'none', msOverflowStyle: 'none',
+                opacity: 1,
+                transform: 'translateX(0)',
+                animation: 'lyricsFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
               }}
             >
+              <style>{`
+                @keyframes lyricsFadeIn {
+                  from { opacity: 0; transform: translateX(20px); }
+                  to { opacity: 1; transform: translateX(0); }
+                }
+              `}</style>
               {isLoadingLyrics ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
                   Loading lyrics...
@@ -168,12 +204,12 @@ export default function FullScreenPlayer() {
                           }
                         }}
                         style={{
-                          fontSize: isActive ? 22 : 18, 
-                          fontWeight: isActive ? 800 : 600, 
-                          textAlign: 'center',
-                          color: isActive ? '#fff' : 'rgba(255,255,255,0.25)',
+                          fontSize: isActive ? 24 : 18, 
+                          fontWeight: isActive ? 800 : 500, 
+                          textAlign: 'left',
+                          color: isActive ? '#fff' : 'rgba(255,255,255,0.2)',
                           transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                          transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                          transform: isActive ? 'scale(1.05)' : 'scale(1)',
                           padding: '8px 0',
                           cursor: 'pointer',
                           filter: isActive ? 'none' : 'blur(0.5px)',
@@ -185,7 +221,7 @@ export default function FullScreenPlayer() {
                   })
                 ) : lyrics.plainLyrics ? (
                   lyrics.plainLyrics.split('\n').map((line, i) => (
-                    <div key={i} style={{ fontSize: 16, color: '#fff', textAlign: 'center', opacity: 0.8 }}>{line}</div>
+                    <div key={i} style={{ fontSize: 16, color: '#fff', textAlign: 'left', opacity: 0.8 }}>{line}</div>
                   ))
                 ) : (
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
