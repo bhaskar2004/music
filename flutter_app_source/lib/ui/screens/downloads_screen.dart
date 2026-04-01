@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -21,6 +22,7 @@ class DownloadsScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           slivers: [
             // Header
             SliverToBoxAdapter(
@@ -247,10 +249,15 @@ class _DownloadRow extends StatelessWidget {
                 child: job.coverUrl != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(
-                          imageUrl: job.coverUrl!,
-                          fit: BoxFit.cover,
-                        ),
+                        child: job.coverUrl!.startsWith('http')
+                            ? CachedNetworkImage(
+                                imageUrl: job.coverUrl!,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.file(
+                                File(job.coverUrl!),
+                                fit: BoxFit.cover,
+                              ),
                       )
                     : const Icon(Icons.music_note,
                         color: Color(0xFF444444), size: 22),

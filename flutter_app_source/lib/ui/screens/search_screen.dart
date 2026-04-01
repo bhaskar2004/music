@@ -261,6 +261,7 @@ class _SearchScreenState extends State<SearchScreen>
                       color: _accent,
                       backgroundColor: const Color(0xFF1A1A1A),
                       child: CustomScrollView(
+                        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                         slivers: [
                           if (!_serverSelectionMode)
                             SliverToBoxAdapter(
@@ -377,6 +378,7 @@ class _SearchScreenState extends State<SearchScreen>
                 child: _results.isEmpty && !_isSearching
                     ? const _SearchHint()
                     : GridView.builder(
+                        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -398,6 +400,7 @@ class _SearchScreenState extends State<SearchScreen>
           Padding(
             padding: const EdgeInsets.all(24),
             child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

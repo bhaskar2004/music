@@ -32,6 +32,33 @@ class TrackTile extends StatefulWidget {
 }
 
 class _TrackTileState extends State<TrackTile> {
+  Widget _buildImage(String url) {
+    if (url.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        height: double.infinity,
+        width: double.infinity,
+        errorWidget: (context, url, error) => const Center(
+          child: Icon(Icons.broken_image_rounded, color: Colors.white24),
+        ),
+      );
+    } else {
+      final file = File(url);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          height: double.infinity,
+          width: double.infinity,
+        );
+      }
+      return const Center(
+        child: Icon(Icons.broken_image_rounded, color: Colors.white24),
+      );
+    }
+  }
+
   bool _isPlaying = false;
   bool _isDownloaded = false;
 
@@ -192,12 +219,7 @@ class _TrackTileState extends State<TrackTile> {
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: widget.track.coverUrl != null
-                            ? CachedNetworkImage(
-                                imageUrl: widget.track.coverUrl!,
-                                fit: BoxFit.cover,
-                                height: double.infinity,
-                                width: double.infinity,
-                              )
+                            ? _buildImage(widget.track.coverUrl!)
                             : Center(
                                 child: Container(
                                   width: 48,

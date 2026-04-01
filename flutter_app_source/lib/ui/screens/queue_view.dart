@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -28,6 +29,7 @@ class QueueView extends StatelessWidget {
                 queue.fold<int>(0, (sum, t) => sum + t.duration);
 
             return CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
@@ -281,9 +283,14 @@ class _QueueRow extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: track.coverUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: track.coverUrl!,
-                        fit: BoxFit.cover)
+                    ? (track.coverUrl!.startsWith('http')
+                        ? CachedNetworkImage(
+                            imageUrl: track.coverUrl!,
+                            fit: BoxFit.cover)
+                        : Image.file(
+                            File(track.coverUrl!),
+                            fit: BoxFit.cover,
+                          ))
                     : const Icon(Icons.music_note,
                         color: Colors.white24, size: 20),
               ),

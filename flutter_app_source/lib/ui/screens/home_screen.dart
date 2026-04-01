@@ -60,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Stack(
           children: [
             CustomScrollView(
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               slivers: [
                 // ── Header ─────────────────────────────────────────────────
                 SliverToBoxAdapter(
