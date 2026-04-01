@@ -101,66 +101,41 @@ class _PlayerScreenState extends State<PlayerScreen>
 
                     // ── Artwork & Lyrics Side-by-Side ───────────────────
                     Expanded(
-                      flex: 6,
+                      flex: 7,
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: AnimatedCrossFade(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 600),
-                          firstCurve: Curves.easeInOutCubic,
-                          secondCurve: Curves.easeInOutCubic,
-                          sizeCurve: Curves.easeInOutCubic,
-                          crossFadeState: _showLyrics 
-                              ? CrossFadeState.showSecond 
-                              : CrossFadeState.showFirst,
-                          firstChild: Center(
-                            child: Container(
-                              constraints: const BoxConstraints(maxWidth: 340, maxHeight: 340),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _accent.withValues(alpha: 0.12),
-                                    blurRadius: 60,
-                                    spreadRadius: 10,
-                                    offset: const Offset(0, 20),
-                                  ),
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.6),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 12),
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(24),
-                                child: AspectRatio(
-                                  aspectRatio: 1,
-                                  child: track.coverUrl != null
-                                      ? _buildArtwork(track.coverUrl!, title: track.title)
-                                      : _ArtPlaceholder(title: track.title),
-                                ),
-                              ),
-                            ),
-                          ),
-                          secondChild: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Small Artwork on Left
-                              Expanded(
-                                flex: 4,
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, anim) {
+                            final slide = Tween<Offset>(
+                              begin: const Offset(0.05, 0),
+                              end: Offset.zero,
+                            ).animate(anim);
+                            return FadeTransition(
+                              opacity: anim,
+                              child: SlideTransition(position: slide, child: child),
+                            );
+                          },
+                          child: !_showLyrics
+                            ? Center(
+                                key: const ValueKey('art_only'),
                                 child: Container(
+                                  constraints: const BoxConstraints(maxWidth: 320, maxHeight: 320),
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(24),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.4),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 8),
+                                        color: _accent.withValues(alpha: 0.15),
+                                        blurRadius: 40,
+                                        spreadRadius: 0,
+                                        offset: const Offset(0, 10),
                                       ),
                                     ],
                                   ),
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(24),
                                     child: AspectRatio(
                                       aspectRatio: 1,
                                       child: track.coverUrl != null
@@ -169,25 +144,53 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 20),
-                              // Lyrics on Right
-                              Expanded(
-                                flex: 6,
-                                child: Container(
-                                  height: 340,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.03),
-                                    borderRadius: BorderRadius.circular(16),
+                              )
+                            : Row(
+                                key: const ValueKey('side_by_side'),
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // Art on Left
+                                  Expanded(
+                                    flex: 4,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.4),
+                                            blurRadius: 20,
+                                          ),
+                                        ],
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: AspectRatio(
+                                          aspectRatio: 1,
+                                          child: track.coverUrl != null
+                                              ? _buildArtwork(track.coverUrl!, title: track.title)
+                                              : _ArtPlaceholder(title: track.title),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: _buildLyricsView(audio),
+                                  const SizedBox(width: 16),
+                                  // Lyrics on Right (centered layout)
+                                  Expanded(
+                                    flex: 6,
+                                    child: Container(
+                                      height: 380,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.04),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: _buildLyricsView(audio),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
                         ),
                       ),
                     ),
