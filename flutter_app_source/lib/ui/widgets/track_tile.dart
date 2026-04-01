@@ -12,19 +12,22 @@ import '../../services/download_manager.dart';
 
 class TrackTile extends StatefulWidget {
   final Track track;
+  final List<Track>? tracks;
   final bool isSelected;
   final bool isSelectionMode;
+  final VoidCallback? onToggleSelection;
+  final VoidCallback? onLongPressSelection;
 
   const TrackTile({
     super.key,
     required this.track,
+    this.tracks,
     this.isSelected = false,
     this.isSelectionMode = false,
     this.onToggleSelection,
     this.onLongPressSelection,
   });
 
-  final VoidCallback? onToggleSelection;
   final VoidCallback? onLongPressSelection;
 
   @override
@@ -90,7 +93,7 @@ class _TrackTileState extends State<TrackTile> {
       return;
     }
     final audio = context.read<AudioService>();
-    final library = appState.filteredTracks;
+    final library = widget.tracks ?? appState.filteredTracks; // Use custom list if provided
     audio.playAll(library, startIndex: library.indexOf(widget.track));
   }
 

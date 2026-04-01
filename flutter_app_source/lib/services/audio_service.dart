@@ -136,6 +136,35 @@ class AudioService {
 
     if (localPath == null) {
       final serverBase = ServerConfig.baseUrl;
+      
+      // If it's a YouTube search result (not in local library/server library yet), 
+      // stream directly from YouTube for immediate playback.
+      final isYouTube = track.sourceUrl.contains('youtube.com') || track.sourceUrl.contains('youtu.be');
+      final isSearchResult = track.addedAt == null;
+
+      if (isYouTube && isSearchResult) {
+        try {
+          debugPrint('[AudioService] Fetching direct YouTube URL for ${track.title}');
+          final manifest = await ApiService().getAudioManifest(track.id);
+          final streamInfo = manifest.audioOnly.withHighestBitrate();
+          final directUrl = streamInfo.url.toString();
+          
+          return AudioSource.uri(
+            Uri.parse(directUrl),
+            tag: MediaItem(
+              id: track.id,
+              album: track.album,
+              title: track.title,
+              artist: track.artist,
+              artUri: track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
+            ),
+          );
+        } catch (e) {
+          debugPrint('[AudioService] YouTube direct stream failed: $e');
+          // Fallback to server streaming if direct fails
+        }
+      }
+
       if (serverBase.isEmpty) {
         playbackError.value =
             '"${track.title}" is not downloaded yet. Tap the download icon or set server URL in settings.';
@@ -146,6 +175,15 @@ class AudioService {
       final streamUrl = '$serverBase/audio/${track.filename}';
       debugPrint('[AudioService] Streaming from server: $streamUrl');
       
+      Uri? artUri;
+      if (track.coverUrl != null) {
+        if (track.coverUrl!.startsWith('http')) {
+          artUri = Uri.parse(track.coverUrl!);
+        } else {
+          artUri = Uri.file(track.coverUrl!);
+        }
+      }
+
       return AudioSource.uri(
         Uri.parse(streamUrl),
         tag: MediaItem(
@@ -153,12 +191,21 @@ class AudioService {
           album: track.album,
           title: track.title,
           artist: track.artist,
-          artUri: track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
+          artUri: artUri,
         ),
       );
     }
 
     debugPrint('[AudioService] Playing local: $localPath');
+    Uri? artUri;
+    if (track.coverUrl != null) {
+      if (track.coverUrl!.startsWith('http')) {
+        artUri = Uri.parse(track.coverUrl!);
+      } else {
+        artUri = Uri.file(track.coverUrl!);
+      }
+    }
+
     return AudioSource.uri(
       Uri.file(localPath),
       tag: MediaItem(
@@ -166,7 +213,7 @@ class AudioService {
         album: track.album,
         title: track.title,
         artist: track.artist,
-        artUri: track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
+        artUri: artUri,
       ),
     );
   }

@@ -10,7 +10,10 @@ The application architecture is designed for full device autonomy:
 The app uses the `youtube_explode_dart` package to search for music directly from the device. It scrapes and parses search results and retrieves direct audio stream URLs without any intermediary Node.js or Next.js API.
 - **Service**: `lib/services/api_service.dart`
 
-### 2. Standalone Downloads
+### 2. Direct Search Playback
+You can now play any song directly from the YouTube search results in the mobile app without needing to download it first. This uses direct YouTube streaming for the fastest possible experience.
+
+### 3. Standalone Downloads
 Instead of relying on a server to process downloads, the app uses `dio` to fetch high-quality audio streams directly from YouTube's servers to the Android `/Music/Wavelength` directory.
 - **Service**: `lib/services/download_service.dart`
 

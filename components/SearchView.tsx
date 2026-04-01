@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useMusicStore } from '@/store/musicStore';
-import { Search, Download, CheckCircle, Music2 } from 'lucide-react';
+import { Search, Download, CheckCircle, Music2, Play } from 'lucide-react';
 import { useDownloadProcessor } from '@/hooks/useDownloadProcessor';
 import Image from 'next/image';
 
@@ -24,7 +24,7 @@ export default function SearchView() {
   
   const inputRef = useRef<HTMLInputElement>(null);
   const { processDownload } = useDownloadProcessor();
-  const { downloads, library } = useMusicStore();
+  const { downloads, library, setCurrentTrack, setIsPlaying, setQueue } = useMusicStore();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -57,6 +57,28 @@ export default function SearchView() {
       return;
     }
     processDownload(url, undefined);
+  }
+
+  function handlePlay(result: SearchResult) {
+    // Create a temporary "ghost" track for direct streaming
+    const ghostTrack = {
+      id: `search-${result.id}`,
+      title: result.title,
+      artist: result.artist,
+      album: 'YouTube Search',
+      duration: result.duration,
+      filename: '', // Not used for streaming tracks
+      coverUrl: result.thumbnail,
+      sourceUrl: result.url,
+      addedAt: '',
+      fileSize: 0,
+      format: 'mp3',
+      playlistIds: [],
+    };
+
+    setCurrentTrack(ghostTrack as any);
+    setQueue([ghostTrack as any]);
+    setIsPlaying(true);
   }
 
   return (
@@ -167,30 +189,46 @@ export default function SearchView() {
                   </div>
                 </div>
 
-                <div style={{ paddingRight: 8 }}>
-                  <button
-                    onClick={() => handleDownload(result.url)}
-                    disabled={isDownloading || isFinished}
-                    className="tap-active"
-                    style={{
-                      background: isFinished ? 'var(--accent-dim)' : 'var(--surface3)',
-                      color: isFinished ? 'var(--accent)' : 'var(--text)',
-                      border: 'none', borderRadius: '14px', width: 44, height: 44,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: (isDownloading || isFinished) ? 'default' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: isFinished ? 'none' : '0 4px 12px rgba(0,0,0,0.1)',
-                    }}
-                  >
-                    {isFinished ? (
-                      <CheckCircle size={22} strokeWidth={2.5} />
-                    ) : isDownloading ? (
-                      <div className="spinner" style={{ width: 24, height: 24, border: '3px solid var(--surface2)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1.2s linear infinite' }} />
-                    ) : (
-                      <Download size={20} />
-                    )}
-                  </button>
-                </div>
+                <div style={{ display: 'flex', gap: 8, paddingRight: 8 }}>
+                   <button
+                     onClick={() => handlePlay(result)}
+                     className="tap-active"
+                     style={{
+                       background: 'var(--accent)',
+                       color: '#000',
+                       border: 'none', borderRadius: '14px', width: 44, height: 44,
+                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                       cursor: 'pointer',
+                       transition: 'all 0.2s ease',
+                       boxShadow: '0 4px 12px var(--accent-glow)',
+                     }}
+                   >
+                     <Play size={20} fill="currentColor" />
+                   </button>
+ 
+                   <button
+                     onClick={() => handleDownload(result.url)}
+                     disabled={isDownloading || isFinished}
+                     className="tap-active"
+                     style={{
+                       background: isFinished ? 'var(--accent-dim)' : 'var(--surface3)',
+                       color: isFinished ? 'var(--accent)' : 'var(--text)',
+                       border: 'none', borderRadius: '14px', width: 44, height: 44,
+                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                       cursor: (isDownloading || isFinished) ? 'default' : 'pointer',
+                       transition: 'all 0.2s ease',
+                       boxShadow: isFinished ? 'none' : '0 4px 12px rgba(0,0,0,0.1)',
+                     }}
+                   >
+                     {isFinished ? (
+                       <CheckCircle size={22} strokeWidth={2.5} />
+                     ) : isDownloading ? (
+                       <div className="spinner" style={{ width: 24, height: 24, border: '3px solid var(--surface2)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1.2s linear infinite' }} />
+                     ) : (
+                       <Download size={20} />
+                     )}
+                   </button>
+                 </div>
               </div>
             );
           })}

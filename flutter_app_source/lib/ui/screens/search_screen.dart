@@ -330,6 +330,7 @@ class _SearchScreenState extends State<SearchScreen>
                                   final track = _serverTracks[i];
                                   return TrackTile(
                                     track: track,
+                                    tracks: _serverTracks,
                                     isSelectionMode: _serverSelectionMode,
                                     isSelected: _serverSelectedIds.contains(track.id),
                                     onToggleSelection: () => _toggleServerSelection(track.id),
@@ -414,6 +415,7 @@ class _SearchScreenState extends State<SearchScreen>
                         itemCount: _results.length,
                         itemBuilder: (ctx, i) => TrackTile(
                           track: _results[i],
+                          tracks: _results,
                         ),
                       ),
               ),

@@ -82,7 +82,13 @@ export default function NowPlayingBar() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
-    audio.src = `/api/stream/${currentTrack.id}`;
+    
+    if (currentTrack.id.startsWith('search-')) {
+      audio.src = `/api/proxy?url=${encodeURIComponent(currentTrack.sourceUrl)}`;
+    } else {
+      audio.src = `/api/stream/${currentTrack.id}`;
+    }
+    
     audio.load();
     if (isPlaying) audio.play().catch(() => {});
   }, [currentTrack?.id]);
@@ -128,7 +134,11 @@ export default function NowPlayingBar() {
       }
 
       if (nextTrack && nextTrack.id !== ct?.id) {
-        audio2.src = `/api/stream/${nextTrack.id}`;
+        if (nextTrack.id.startsWith('search-')) {
+          audio2.src = `/api/proxy?url=${encodeURIComponent(nextTrack.sourceUrl)}`;
+        } else {
+          audio2.src = `/api/stream/${nextTrack.id}`;
+        }
         audio2.volume = 0;
         audio2.play().catch(() => {});
 
