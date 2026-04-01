@@ -553,7 +553,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                     final p = playlists[i];
                     final isActive = activeId == p.id;
                     final trackCount = library
-                        .where((t) => t.playlistId == p.id)
+                        .where((t) => t.playlistIds.contains(p.id))
                         .length;
                     return _DrawerItem(
                       icon: Icons.folder_rounded,

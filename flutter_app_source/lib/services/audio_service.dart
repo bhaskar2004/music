@@ -4,6 +4,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import '../models/track.dart';
 import 'download_service.dart';
+import 'server_config.dart';
 
 /// Audio service that ONLY plays local downloaded files.
 /// No YouTube CDN streaming — avoids URL expiry / DNS failures.
@@ -134,10 +135,27 @@ class AudioService {
     final localPath = await DownloadService.getLocalFilePath(track);
 
     if (localPath == null) {
-      playbackError.value =
-          '"${track.title}" is not downloaded yet. Tap the download icon first.';
-      debugPrint('[AudioService] File not found for ${track.title}');
-      return null;
+      final serverBase = ServerConfig.baseUrl;
+      if (serverBase.isEmpty) {
+        playbackError.value =
+            '"${track.title}" is not downloaded yet. Tap the download icon or set server URL in settings.';
+        debugPrint('[AudioService] File not found and server URL not set for ${track.title}');
+        return null;
+      }
+
+      final streamUrl = '$serverBase/audio/${track.filename}';
+      debugPrint('[AudioService] Streaming from server: $streamUrl');
+      
+      return AudioSource.uri(
+        Uri.parse(streamUrl),
+        tag: MediaItem(
+          id: track.id,
+          album: track.album,
+          title: track.title,
+          artist: track.artist,
+          artUri: track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
+        ),
+      );
     }
 
     debugPrint('[AudioService] Playing local: $localPath');

@@ -2,7 +2,7 @@
 
 import { useMusicStore } from '@/store/musicStore';
 import TrackCard from './TrackCard';
-import { Plus, Search, Music2, ArrowUpDown, Play, Shuffle, X, CheckSquare, ListPlus, Trash2, ChevronDown } from 'lucide-react';
+import { Plus, Search, Music2, ArrowUpDown, Play, Shuffle, X, CheckSquare, ListPlus, Trash2, ChevronDown, RefreshCcw } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Track } from '@/types';
 
@@ -116,6 +116,17 @@ export default function LibraryView() {
             <span>{filtered.length} {filtered.length === 1 ? 'track' : 'tracks'}</span>
             <span style={{ opacity: 0.3 }}>•</span>
             <span style={{ color: 'var(--text-faint)' }}>Sorted by {activeSortLabel}</span>
+            <span style={{ opacity: 0.3 }}>•</span>
+            <button 
+              onClick={() => useMusicStore.getState().fetchLibrary()}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, padding: '2px 8px', borderRadius: 6 }}
+              className="tap-active"
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-dim)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <RefreshCcw size={12} />
+              Sync
+            </button>
           </div>
         </div>
 
@@ -328,7 +339,7 @@ export default function LibraryView() {
                 }}
               >
                 <Plus size={16} fill="currentColor" />
-                Add to Folder
+                Add to Playlist
               </button>
             ) : (
               <>

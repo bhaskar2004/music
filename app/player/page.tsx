@@ -19,16 +19,12 @@ import SettingsView from '@/components/SettingsView';
 import FullScreenPlayer from '@/components/FullScreenPlayer';
 
 export default function Home() {
-  const { setLibrary, activeView, showFullScreenPlayer, theme } = useMusicStore();
+  const { fetchLibrary, activeView, showFullScreenPlayer, theme } = useMusicStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/library')
-      .then((r) => r.json())
-      .then((data) => { if (data.tracks) setLibrary(data.tracks); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [setLibrary]);
+    fetchLibrary().finally(() => setLoading(false));
+  }, [fetchLibrary]);
 
   // Apply theme
   useEffect(() => {

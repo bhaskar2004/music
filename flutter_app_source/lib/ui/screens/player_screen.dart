@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -83,11 +84,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
                     child: Opacity(
                       opacity: 0.15,
-                      child: CachedNetworkImage(
-                        imageUrl: track.coverUrl!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                      ),
+                      child: _buildArtwork(track.coverUrl!, isBackground: true, title: track.title),
                     ),
                   ),
                 ),
@@ -130,12 +127,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                               child: AspectRatio(
                                 aspectRatio: 1,
                                 child: track.coverUrl != null
-                                    ? CachedNetworkImage(
-                                        imageUrl: track.coverUrl!,
-                                        fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) =>
-                                            _ArtPlaceholder(title: track.title),
-                                      )
+                                    ? _buildArtwork(track.coverUrl!, title: track.title)
                                     : _ArtPlaceholder(title: track.title),
                               ),
                             ),
@@ -420,6 +412,25 @@ class _PlayerScreenState extends State<PlayerScreen>
         },
       ),
     );
+  }
+
+  Widget _buildArtwork(String url, {bool isBackground = false, required String title}) {
+    if (url.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        errorWidget: (_, __, ___) => isBackground ? const SizedBox.shrink() : _ArtPlaceholder(title: title),
+      );
+    } else {
+      final file = File(url);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+        );
+      }
+      return isBackground ? const SizedBox.shrink() : _ArtPlaceholder(title: title);
+    }
   }
 
   Widget _buildAppBar(BuildContext context) {

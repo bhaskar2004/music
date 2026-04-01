@@ -14,6 +14,7 @@ import {
   Clock,
   BarChart2,
   Settings,
+  RefreshCcw,
 } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
@@ -73,8 +74,17 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav style={{ padding: '12px', flex: 1, overflowY: 'auto' }} role="navigation">
-        <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 12px 12px' }}>
-          Menu
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 12px' }}>
+          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            Menu
+          </div>
+          <button 
+            onClick={() => useMusicStore.getState().fetchLibrary()}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: 4 }}
+            title="Refresh Library"
+          >
+            <RefreshCcw size={12} />
+          </button>
         </div>
         {navItems.map(({ id, label, icon: Icon }) => {
           const active = activeView === id && (id !== 'library' || !activePlaylistId);

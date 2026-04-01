@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../models/track.dart';
 import '../models/playlist.dart';
 import 'server_config.dart';
@@ -11,7 +11,7 @@ class ApiService {
   ApiService._internal();
 
   // Lightweight singleton for search & metadata (no CDN URLs involved)
-  final YoutubeExplode _yt = YoutubeExplode();
+  final yt.YoutubeExplode _yt = yt.YoutubeExplode();
   final Dio _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
@@ -79,7 +79,7 @@ class ApiService {
   /// Fetches track metadata from a direct YouTube URL
   Future<Track?> getTrackFromUrl(String url) async {
     try {
-      final videoId = VideoId.parseVideoId(url);
+      final videoId = yt.VideoId.parseVideoId(url);
       final video = await _yt.videos
           .get(videoId)
           .timeout(const Duration(seconds: 60));
@@ -101,7 +101,7 @@ class ApiService {
   }
 
   /// Fetches the audio manifest using the singleton (for non-download use).
-  Future<StreamManifest> getAudioManifest(String videoId) async {
+  Future<yt.StreamManifest> getAudioManifest(String videoId) async {
     return await _yt.videos.streamsClient.getManifest(videoId).timeout(
       const Duration(seconds: 60),
       onTimeout: () {

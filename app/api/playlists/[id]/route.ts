@@ -20,9 +20,9 @@ function writeData(filePath: string, data: any[]) {
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
   try {

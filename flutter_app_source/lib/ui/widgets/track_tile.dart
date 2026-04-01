@@ -89,30 +89,6 @@ class _TrackTileState extends State<TrackTile> {
       }
       return;
     }
-    // Block playback if file not on disk
-    if (!_isDownloaded) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.download_rounded, color: Colors.black, size: 16),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '"${widget.track.title}" — tap ⋯ then Download to save it first.',
-                  style: const TextStyle(color: Colors.black, fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF06C167),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.only(bottom: 90, left: 16, right: 16),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
     final audio = context.read<AudioService>();
     final library = appState.filteredTracks;
     audio.playAll(library, startIndex: library.indexOf(widget.track));

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -103,14 +104,7 @@ class NowPlayingBar extends StatelessWidget {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: (track.coverUrl != null)
-                                    ? CachedNetworkImage(
-                                        imageUrl: track.coverUrl!,
-                                        width: 48,
-                                        height: 48,
-                                        fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) =>
-                                            _artPlaceholder(),
-                                      )
+                                    ? _buildArtwork(track.coverUrl!)
                                     : _artPlaceholder(),
                               ),
                             ),
@@ -211,6 +205,29 @@ class NowPlayingBar extends StatelessWidget {
         );
       },
     );
+  }
+
+  Widget _buildArtwork(String url) {
+    if (url.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorWidget: (_, __, ___) => _artPlaceholder(),
+      );
+    } else {
+      final file = File(url);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+        );
+      }
+      return _artPlaceholder();
+    }
   }
 
   Widget _artPlaceholder() {

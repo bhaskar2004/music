@@ -59,8 +59,12 @@ class _SearchScreenState extends State<SearchScreen>
   Future<void> _fetchServerLibrary() async {
     setState(() => _isFetchingServer = true);
     try {
-      final tracks = await _api.fetchServerLibrary();
-      if (mounted) setState(() => _serverTracks = tracks);
+      final data = await _api.fetchServerLibrary();
+      if (mounted) {
+        setState(() {
+          _serverTracks = data['tracks'] as List<Track>;
+        });
+      }
     } finally {
       if (mounted) setState(() => _isFetchingServer = false);
     }
