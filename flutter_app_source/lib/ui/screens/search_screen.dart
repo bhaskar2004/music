@@ -21,8 +21,10 @@ class _SearchScreenState extends State<SearchScreen>
   late final TabController _tab;
 
   List<Track> _results = [];
+  List<Track> _serverTracks = [];
   bool _isSearching = false;
   bool _isFetchingUrl = false;
+  bool _isFetchingServer = false;
   double _dlProgress = 0;
 
   static const _accent = Color(0xFF06C167);
@@ -30,7 +32,8 @@ class _SearchScreenState extends State<SearchScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
+    _tab = TabController(length: 3, vsync: this);
+    _fetchServerLibrary();
   }
 
   @override
@@ -39,6 +42,16 @@ class _SearchScreenState extends State<SearchScreen>
     _urlCtrl.dispose();
     _tab.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchServerLibrary() async {
+    setState(() => _isFetchingServer = true);
+    try {
+      final tracks = await _api.fetchServerLibrary();
+      if (mounted) setState(() => _serverTracks = tracks);
+    } finally {
+      if (mounted) setState(() => _isFetchingServer = false);
+    }
   }
 
   Future<void> _search() async {
@@ -76,7 +89,6 @@ class _SearchScreenState extends State<SearchScreen>
           backgroundColor: const Color(0xFF1E1E1E),
         ));
         _urlCtrl.clear();
-        // Go to downloads view
         appState.setActiveView(ActiveView.downloads);
       }
 
@@ -84,8 +96,7 @@ class _SearchScreenState extends State<SearchScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Error: ${e.toString().split('\n').first}'),
+          content: Text('Error: ${e.toString().split('\n').first}'),
           backgroundColor: Colors.redAccent,
         ));
       }
@@ -100,7 +111,7 @@ class _SearchScreenState extends State<SearchScreen>
       appBar: AppBar(
         title: ShaderMask(
           shaderCallback: (b) => const LinearGradient(
-              colors: [Color(0xFF06C167), Color(0xFF00FF85)])
+                  colors: [Color(0xFF06C167), Color(0xFF00FF85)])
               .createShader(b),
           child: const Text('Search & Download',
               style: TextStyle(
@@ -114,18 +125,64 @@ class _SearchScreenState extends State<SearchScreen>
           indicatorWeight: 2,
           labelColor: _accent,
           unselectedLabelColor: Colors.white38,
-          labelStyle: const TextStyle(
-              fontWeight: FontWeight.w700, fontSize: 13),
+          labelStyle:
+              const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           tabs: const [
-            Tab(text: 'Search YouTube'),
-            Tab(text: 'Paste URL'),
+            Tab(text: 'Web Library'),
+            Tab(text: 'YouTube'),
+            Tab(text: 'Direct Link'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tab,
         children: [
-          // ── Search tab ───────────────────────────────────────────────
+          // ── Web Library Tab ──────────────────────────────────────────
+          _isFetchingServer
+              ? const Center(
+                  child: CircularProgressIndicator(color: _accent),
+                )
+              : _serverTracks.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.cloud_off_rounded,
+                              size: 48, color: Colors.white12),
+                          const SizedBox(height: 16),
+                          const Text('No songs found on server',
+                              style: TextStyle(color: Colors.white38)),
+                          const SizedBox(height: 24),
+                          TextButton.icon(
+                            onPressed: _fetchServerLibrary,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Refresh'),
+                            style: TextButton.styleFrom(foregroundColor: _accent),
+                          ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _fetchServerLibrary,
+                      color: _accent,
+                      backgroundColor: const Color(0xFF1A1A1A),
+                      child: GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 180,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.72,
+                        ),
+                        itemCount: _serverTracks.length,
+                        itemBuilder: (ctx, i) => TrackTile(
+                          track: _serverTracks[i],
+                        ),
+                      ),
+                    ),
+
+          // ── YouTube Search Tab ──────────────────────────────────────
           Column(
             children: [
               Padding(
@@ -139,8 +196,7 @@ class _SearchScreenState extends State<SearchScreen>
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A1A1A),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: const Color(0xFF2A2A2A)),
+                          border: Border.all(color: const Color(0xFF2A2A2A)),
                         ),
                         child: TextField(
                           controller: _searchCtrl,
@@ -148,8 +204,7 @@ class _SearchScreenState extends State<SearchScreen>
                               color: Colors.white, fontSize: 14),
                           decoration: const InputDecoration(
                             hintText: 'Search YouTube…',
-                            hintStyle:
-                                TextStyle(color: Color(0xFF444444)),
+                            hintStyle: TextStyle(color: Color(0xFF444444)),
                             border: InputBorder.none,
                             icon: Icon(Icons.search_rounded,
                                 color: Color(0xFF888888)),
@@ -172,8 +227,7 @@ class _SearchScreenState extends State<SearchScreen>
                             ? const Padding(
                                 padding: EdgeInsets.all(10),
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.black),
+                                    strokeWidth: 2, color: Colors.black),
                               )
                             : const Icon(Icons.search_rounded,
                                 color: Colors.black, size: 22),
@@ -186,8 +240,7 @@ class _SearchScreenState extends State<SearchScreen>
                 child: _results.isEmpty && !_isSearching
                     ? const _SearchHint()
                     : GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(
-                            16, 0, 16, 100),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 180,
@@ -204,102 +257,98 @@ class _SearchScreenState extends State<SearchScreen>
             ],
           ),
 
-          // ── URL tab ───────────────────────────────────────────────────
+          // ── Direct Link Tab ──────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [
-                      Color(0xFF06C167),
-                      Color(0xFF00FF85)
-                    ]),
-                    borderRadius: BorderRadius.circular(18),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 40),
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [Color(0xFF06C167), Color(0xFF00FF85)]),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(Icons.link_rounded,
+                        color: Colors.black, size: 32),
                   ),
-                  child: const Icon(Icons.link_rounded,
-                      color: Colors.black, size: 32),
-                ),
-                const SizedBox(height: 20),
-                const Text('Direct Download',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5)),
-                const SizedBox(height: 8),
-                const Text(
-                  'Paste any YouTube URL to download audio directly to your library',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Color(0xFF888888), fontSize: 14),
-                ),
-                const SizedBox(height: 28),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF2A2A2A)),
+                  const SizedBox(height: 20),
+                  const Text('Direct Download',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Paste any YouTube URL to download audio directly to your library',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF888888), fontSize: 14),
                   ),
-                  child: TextField(
-                    controller: _urlCtrl,
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 13),
-                    decoration: const InputDecoration(
-                      hintText: 'https://youtube.com/watch?v=…',
-                      hintStyle: TextStyle(
-                          color: Color(0xFF444444), fontSize: 13),
-                      border: InputBorder.none,
+                  const SizedBox(height: 28),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A1A),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF2A2A2A)),
+                    ),
+                    child: TextField(
+                      controller: _urlCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: const InputDecoration(
+                        hintText: 'https://youtube.com/watch?v=…',
+                        hintStyle:
+                            TextStyle(color: Color(0xFF444444), fontSize: 13),
+                        border: InputBorder.none,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                if (_isFetchingUrl && _dlProgress > 0) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      value: _dlProgress,
-                      backgroundColor: const Color(0xFF1E1E1E),
-                      valueColor:
-                          const AlwaysStoppedAnimation(_accent),
-                      minHeight: 5,
+                  const SizedBox(height: 20),
+                  if (_isFetchingUrl && _dlProgress > 0) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(99),
+                      child: LinearProgressIndicator(
+                        value: _dlProgress,
+                        backgroundColor: const Color(0xFF1E1E1E),
+                        valueColor: const AlwaysStoppedAnimation(_accent),
+                        minHeight: 5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: _isFetchingUrl ? null : _downloadUrl,
+                      icon: _isFetchingUrl
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.black),
+                            )
+                          : const Icon(Icons.download_rounded),
+                      label: Text(
+                        _isFetchingUrl ? 'Downloading…' : 'Download Audio',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 15),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _accent,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
                 ],
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: _isFetchingUrl ? null : _downloadUrl,
-                    icon: _isFetchingUrl
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.black),
-                          )
-                        : const Icon(
-                            Icons.download_rounded),
-                    label: Text(
-                      _isFetchingUrl ? 'Downloading…' : 'Download Audio',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _accent,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
@@ -317,12 +366,10 @@ class _SearchHint extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.music_note_outlined,
-              color: Color(0xFF333333), size: 52),
+          Icon(Icons.music_note_outlined, color: Color(0xFF333333), size: 52),
           SizedBox(height: 12),
           Text('Search for songs, artists, or albums',
-              style: TextStyle(
-                  color: Color(0xFF555555), fontSize: 14)),
+              style: TextStyle(color: Color(0xFF555555), fontSize: 14)),
         ],
       ),
     );

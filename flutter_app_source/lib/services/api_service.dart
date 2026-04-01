@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/track.dart';
+import 'server_config.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -9,6 +11,35 @@ class ApiService {
 
   // Lightweight singleton for search & metadata (no CDN URLs involved)
   final YoutubeExplode _yt = YoutubeExplode();
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 10),
+  ));
+
+  /// Fetches the entire library from the Next.js server
+  Future<List<Track>> fetchServerLibrary() async {
+    final serverBase = ServerConfig.baseUrl;
+    if (serverBase.isEmpty) return [];
+
+    try {
+      final response = await _dio.get('$serverBase/api/library');
+      if (response.statusCode == 200) {
+        final data = response.data as Map<String, dynamic>;
+        final tracksJson = data['tracks'] as List<dynamic>;
+        return tracksJson.map((t) {
+          final track = Track.fromJson(t);
+          if (track.coverUrl != null && track.coverUrl!.startsWith('/')) {
+            return track.copyWith(coverUrl: '$serverBase${track.coverUrl}');
+          }
+          return track;
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('[ApiService] fetchServerLibrary error: $e');
+      return [];
+    }
+  }
 
   /// Searches YouTube directly from the device
   Future<List<Track>> searchTracks(String query) async {
