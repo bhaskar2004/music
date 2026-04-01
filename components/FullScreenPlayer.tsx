@@ -6,8 +6,9 @@ import { formatDuration } from '@/lib/utils';
 import {
   X, Play, Pause, SkipBack, SkipForward,
   Shuffle, Repeat, Repeat1, Heart, ListMusic,
-  Volume2, VolumeX, ChevronDown, AlignLeft, Music,
+  Volume2, VolumeX, ChevronDown, AlignLeft, Music, Download,
 } from 'lucide-react';
+import { useDownloadProcessor } from '@/hooks/useDownloadProcessor';
 import Image from 'next/image';
 
 export default function FullScreenPlayer() {
@@ -16,7 +17,10 @@ export default function FullScreenPlayer() {
     currentTime, duration, volume, lyrics, isLoadingLyrics,
     setIsPlaying, playNext, playPrev, toggleShuffle, toggleRepeat,
     toggleFavorite, setShowFullScreenPlayer, setActiveView, setCurrentTime,
+    library,
   } = useMusicStore();
+
+  const { processDownload } = useDownloadProcessor();
 
   const [visible, setVisible] = useState(false);
   const [showLyrics, setShowLyrics] = useState(true);
@@ -77,6 +81,8 @@ export default function FullScreenPlayer() {
 
   if (!currentTrack) return null;
   const isLiked = favorites.includes(currentTrack.id);
+  const isSearchTrack = currentTrack.id.includes('search-');
+  const isDownloaded = library.some(t => t.id === currentTrack.id);
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -323,6 +329,18 @@ export default function FullScreenPlayer() {
           >
             <Heart size={22} fill={isLiked ? '#ff6b6b' : 'none'} />
           </button>
+
+          {isSearchTrack && !isDownloaded && (
+            <button
+              onClick={() => processDownload(currentTrack.sourceUrl)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', transition: 'all 0.15s', display: 'flex', padding: 8 }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
+              title="Download to Library"
+            >
+              <Download size={22} />
+            </button>
+          )}
 
           <button
             onClick={() => { handleClose(); setTimeout(() => setActiveView('queue'), 400); }}

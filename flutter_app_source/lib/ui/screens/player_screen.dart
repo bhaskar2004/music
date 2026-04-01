@@ -6,6 +6,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../providers/app_state.dart';
 import '../../services/audio_service.dart';
+import '../../services/download_manager.dart';
+import '../../services/download_service.dart';
 import '../../models/track.dart';
 import 'queue_view.dart';
 
@@ -59,6 +61,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           }
 
           final isFav = appState.favorites.contains(track.id);
+          final isDownloaded = track.addedAt != null;
 
           return Stack(
             fit: StackFit.expand,
@@ -234,6 +237,33 @@ class _PlayerScreenState extends State<PlayerScreen>
                             ),
                           ),
                           const SizedBox(width: 16),
+                          if (!isDownloaded) ...[
+                            GestureDetector(
+                              onTap: () {
+                                DownloadManager().processJob(track.sourceUrl, appState);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Download started...'), duration: Duration(seconds: 2)),
+                                );
+                              },
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.download_rounded,
+                                  color: Colors.white38,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
                           GestureDetector(
                             onTap: () => appState.toggleFavorite(track.id),
                             child: Container(
