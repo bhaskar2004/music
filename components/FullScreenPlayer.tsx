@@ -6,19 +6,47 @@ import { formatDuration } from '@/lib/utils';
 import {
   X, Play, Pause, SkipBack, SkipForward,
   Shuffle, Repeat, Repeat1, Heart, ListMusic,
-  Volume2, VolumeX, ChevronDown,
+  Volume2, VolumeX, ChevronDown, AlignLeft, Music,
 } from 'lucide-react';
 import Image from 'next/image';
 
 export default function FullScreenPlayer() {
   const {
     currentTrack, isPlaying, shuffle, repeat, favorites,
-    currentTime, duration, volume,
+    currentTime, duration, volume, lyrics, isLoadingLyrics,
     setIsPlaying, playNext, playPrev, toggleShuffle, toggleRepeat,
     toggleFavorite, setShowFullScreenPlayer, setActiveView,
   } = useMusicStore();
 
   const [visible, setVisible] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
+
+  // Parse LRC lyrics
+  const parsedLyrics = (() => {
+    if (!lyrics?.syncedLyrics) return null;
+    const lines = lyrics.syncedLyrics.split('\n');
+    const result: { time: number; text: string }[] = [];
+    const timeRegex = /\[(\d+):(\d+\.\d+)\]/;
+    
+    lines.forEach(line => {
+      const match = timeRegex.exec(line);
+      if (match) {
+        const minutes = parseInt(match[1]);
+        const seconds = parseFloat(match[2]);
+        const time = minutes * 60 + seconds;
+        const text = line.replace(timeRegex, '').trim();
+        if (text) result.push({ time, text });
+      }
+    });
+    return result;
+  })();
+
+  const currentLineIndex = parsedLyrics 
+    ? parsedLyrics.findIndex((line, i) => {
+        const nextLine = parsedLyrics[i + 1];
+        return currentTime >= line.time && (!nextLine || currentTime < nextLine.time);
+      })
+    : -1;
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
@@ -83,7 +111,7 @@ export default function FullScreenPlayer() {
           <ChevronDown size={22} />
         </button>
 
-        {/* Album art */}
+        {/* Album art / Lyrics Toggle */}
         <div
           style={{
             width: 320, height: 320, borderRadius: 16, position: 'relative',
@@ -91,11 +119,54 @@ export default function FullScreenPlayer() {
             background: '#111',
           }}
         >
-          {currentTrack.coverUrl ? (
-            <Image src={currentTrack.coverUrl} alt={currentTrack.title} fill style={{ objectFit: 'cover' }} unoptimized />
+          {!showLyrics ? (
+            currentTrack.coverUrl ? (
+              <Image src={currentTrack.coverUrl} alt={currentTrack.title} fill style={{ objectFit: 'cover' }} unoptimized />
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80, fontWeight: 800, color: 'rgba(255,255,255,0.1)' }}>
+                {currentTrack.title.charAt(0)}
+              </div>
+            )
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80, fontWeight: 800, color: 'rgba(255,255,255,0.1)' }}>
-              {currentTrack.title.charAt(0)}
+            <div style={{ 
+              width: '100%', height: '100%', padding: '24px 16px', 
+              overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16,
+              background: 'rgba(0,0,0,0.4)', scrollBehavior: 'smooth'
+            }}>
+              {isLoadingLyrics ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                  Loading lyrics...
+                </div>
+              ) : lyrics ? (
+                parsedLyrics ? (
+                  parsedLyrics.map((line, i) => (
+                    <div 
+                      key={i}
+                      style={{
+                        fontSize: 18, fontWeight: 700, textAlign: 'center',
+                        color: i === currentLineIndex ? '#fff' : 'rgba(255,255,255,0.3)',
+                        transition: 'all 0.3s ease',
+                        transform: i === currentLineIndex ? 'scale(1.05)' : 'scale(1)',
+                        padding: '4px 0'
+                      }}
+                    >
+                      {line.text}
+                    </div>
+                  ))
+                ) : lyrics.plainLyrics ? (
+                  lyrics.plainLyrics.split('\n').map((line, i) => (
+                    <div key={i} style={{ fontSize: 16, color: '#fff', textAlign: 'center', opacity: 0.8 }}>{line}</div>
+                  ))
+                ) : (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                    Lyrics not available for this track.
+                  </div>
+                )
+              ) : (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                  No lyrics found.
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -164,6 +235,20 @@ export default function FullScreenPlayer() {
 
         {/* Bottom actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <button
+            onClick={() => setShowLyrics(!showLyrics)}
+            style={{ 
+              background: 'transparent', border: 'none', cursor: 'pointer', 
+              color: showLyrics ? 'var(--accent)' : 'rgba(255,255,255,0.5)', 
+              transition: 'all 0.15s', display: 'flex', padding: 8 
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            title={showLyrics ? "Show Album Art" : "Show Lyrics"}
+          >
+            {showLyrics ? <Music size={22} /> : <AlignLeft size={22} />}
+          </button>
+
           <button
             onClick={() => toggleFavorite(currentTrack.id)}
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: isLiked ? '#ff6b6b' : 'rgba(255,255,255,0.5)', transition: 'all 0.15s', display: 'flex', padding: 8 }}

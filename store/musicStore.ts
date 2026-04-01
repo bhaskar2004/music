@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Track, DownloadJob, Playlist, RecentPlay, ListeningStats, SleepTimerState } from '@/types';
+import { Track, DownloadJob, Playlist, RecentPlay, ListeningStats, SleepTimerState, Lyrics } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
 type ViewId = 'library' | 'search' | 'queue' | 'downloads' | 'favorites' | 'history' | 'stats' | 'settings';
@@ -38,6 +38,11 @@ interface MusicStore {
   shuffle: boolean;
   repeat: 'off' | 'one' | 'all';
   queue: Track[];
+
+  // Lyrics
+  lyrics: Lyrics | null;
+  isLoadingLyrics: boolean;
+  fetchLyrics: (title: string, artist: string) => Promise<void>;
 
   setCurrentTrack: (track: Track | null) => void;
   setIsPlaying: (v: boolean) => void;
@@ -218,8 +223,33 @@ export const useMusicStore = create<MusicStore>()(
       shuffle: false,
       repeat: 'off',
       queue: [],
+      
+      lyrics: null,
+      isLoadingLyrics: false,
 
-      setCurrentTrack: (track) => set({ currentTrack: track, currentTime: 0 }),
+      setCurrentTrack: (track) => {
+        set({ currentTrack: track, currentTime: 0, lyrics: null });
+        if (track) {
+          get().fetchLyrics(track.title, track.artist);
+        }
+      },
+      
+      fetchLyrics: async (title, artist) => {
+        set({ isLoadingLyrics: true, lyrics: null });
+        try {
+          const res = await fetch(`/api/lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`);
+          if (res.ok) {
+            const data = await res.json();
+            set({ lyrics: data });
+          } else {
+            console.warn(`[LYRICS] Failed to fetch: ${res.status}`);
+          }
+        } catch (err) {
+          console.error("[LYRICS] Error:", err);
+        } finally {
+          set({ isLoadingLyrics: false });
+        }
+      },
       setIsPlaying: (v) => set({ isPlaying: v }),
       setVolume: (v) => set({ volume: v }),
       setCurrentTime: (v) => set({ currentTime: v }),

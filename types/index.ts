@@ -20,6 +20,17 @@ export interface Track {
   folderId?: string; // @deprecated: Links track to a custom user folder
 }
 
+export interface Lyrics {
+  id?: number;
+  trackName?: string;
+  artistName?: string;
+  albumName?: string;
+  duration?: number;
+  instrumental?: boolean;
+  plainLyrics?: string;
+  syncedLyrics?: string;
+}
+
 export interface DownloadJob {
   id: string;
   url: string;

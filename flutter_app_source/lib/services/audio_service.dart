@@ -23,12 +23,21 @@ class AudioService {
       ValueNotifier<LoopMode>(LoopMode.off);
   final ValueNotifier<String?> playbackError = ValueNotifier<String?>(null);
 
+  final ValueNotifier<Map<String, dynamic>?> lyrics =
+      ValueNotifier<Map<String, dynamic>?>(null);
+  final ValueNotifier<bool> isLoadingLyrics = ValueNotifier<bool>(false);
+
   AudioService() {
     _player.currentIndexStream.listen((index) {
       if (index != null && index < _queue.length) {
-        currentTrack.value = _queue[index];
+        final newTrack = _queue[index];
+        if (currentTrack.value?.id != newTrack.id) {
+          currentTrack.value = newTrack;
+          _fetchLyrics(newTrack);
+        }
       } else if (_queue.isEmpty) {
         currentTrack.value = null;
+        lyrics.value = null;
       }
     });
 
@@ -54,6 +63,7 @@ class AudioService {
     if (source == null) return;
 
     currentTrack.value = track;
+    _fetchLyrics(track);
     await _player.stop();
     _queue.clear();
     await _playlist.clear();
@@ -126,6 +136,19 @@ class AudioService {
     _queue.add(track);
     await _playlist.add(src);
     queueNotifier.value = List.from(_queue);
+  }
+
+  Future<void> _fetchLyrics(Track track) async {
+    lyrics.value = null;
+    isLoadingLyrics.value = true;
+    try {
+      final data = await ApiService().fetchLyrics(track.artist, track.title);
+      lyrics.value = data;
+    } catch (e) {
+      debugPrint('[AudioService] Error fetching lyrics: $e');
+    } finally {
+      isLoadingLyrics.value = false;
+    }
   }
 
   // ─── Internal ──────────────────────────────────────────────────────────────
