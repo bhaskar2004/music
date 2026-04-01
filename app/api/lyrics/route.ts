@@ -28,6 +28,10 @@ function getSearchQueries(title: string, artist: string): string[] {
     if (firstOnly && !queries.includes(firstOnly)) queries.push(firstOnly);
   }
 
+  // 5. Raw-ish title (Last resort: just remove brackets/parentheses)
+  const semiRaw = title.replace(/[\(\[].*?[\)\]]/g, '').trim();
+  if (semiRaw && !queries.includes(semiRaw)) queries.push(semiRaw);
+
   return Array.from(new Set(queries)).filter(q => q.length > 2);
 }
 
