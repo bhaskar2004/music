@@ -130,152 +130,180 @@ class _TrackTileState extends State<TrackTile> {
 
   @override
   Widget build(BuildContext context) {
-    final audio = context.watch<AudioService>();
-    _isPlaying = audio.currentTrack.value?.id == widget.track.id;
+    // Use context.read (not watch!) since AudioService is NOT a ChangeNotifier.
+    // Reactivity comes from ValueListenableBuilder below.
+    final audio = context.read<AudioService>();
 
-    return GestureDetector(
-      onLongPress: () => context.read<AppState>().setSelectionMode(true),
-      onTap: _handleTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: widget.isSelected
-              ? const Color(0xFF06C167).withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: widget.isSelected
-                ? const Color(0xFF06C167).withValues(alpha: 0.3)
-                : Colors.transparent,
-          ),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  // Cover
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF121212),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        if (_isPlaying)
-                          BoxShadow(
-                            color: const Color(0xFF06C167).withValues(alpha: 0.2),
-                            blurRadius: 15,
-                            spreadRadius: 2,
+    return ValueListenableBuilder<Track?>(
+      valueListenable: audio.currentTrack,
+      builder: (ctx, currentTrack, _) {
+        _isPlaying = currentTrack?.id == widget.track.id;
+
+        return GestureDetector(
+          onLongPress: () => context.read<AppState>().setSelectionMode(true),
+          onTap: _handleTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: widget.isSelected
+                  ? const Color(0xFF06C167).withValues(alpha: 0.1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: widget.isSelected
+                    ? const Color(0xFF06C167).withValues(alpha: 0.3)
+                    : _isPlaying
+                        ? const Color(0xFF06C167).withValues(alpha: 0.15)
+                        : Colors.transparent,
+              ),
+            ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Stack(
+                    children: [
+                      // Cover
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF121212),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            if (_isPlaying)
+                              BoxShadow(
+                                color: const Color(0xFF06C167).withValues(alpha: 0.2),
+                                blurRadius: 15,
+                                spreadRadius: 2,
+                              ),
+                          ],
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: widget.track.coverUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: widget.track.coverUrl!,
+                                fit: BoxFit.cover,
+                                height: double.infinity,
+                                width: double.infinity,
+                              )
+                            : Center(
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E1E1E),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.music_note_rounded,
+                                      color: Color(0xFF333333), size: 28),
+                                ),
+                              ),
+                      ),
+
+                      // Selection Checkbox
+                      if (widget.isSelectionMode)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Icon(
+                              widget.isSelected
+                                  ? Icons.check_circle_rounded
+                                  : Icons.circle_outlined,
+                              color: widget.isSelected
+                                  ? const Color(0xFF06C167)
+                                  : Colors.white70,
+                              size: 24,
+                            ),
                           ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: widget.track.coverUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: widget.track.coverUrl!,
-                            fit: BoxFit.cover,
-                            height: double.infinity,
-                            width: double.infinity,
-                          )
-                        : const Center(
-                            child: Icon(Icons.music_note,
-                                color: Color(0xFF333333), size: 40)),
+                        ),
+
+                      // Play Overlay / EQ
+                      if (_isPlaying)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Center(
+                              child: _EqualizerAnimation(),
+                            ),
+                          ),
+                        ),
+
+                      // Download Status Indicator (Bottom Right)
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _isDownloaded
+                                ? Icons.check_circle_rounded
+                                : Icons.download_rounded,
+                            color: const Color(0xFF06C167),
+                            size: 14,
+                          ),
+                        ),
+                      ),
+
+                      // Menu Button
+                      if (!widget.isSelectionMode)
+                        Positioned(
+                          top: 2,
+                          right: 2,
+                          child: IconButton(
+                            icon: const Icon(Icons.more_vert,
+                                color: Colors.white, size: 20),
+                            onPressed: _showMenu,
+                          ),
+                        ),
+                    ],
                   ),
-
-                  // Selection Checkbox
-                  if (widget.isSelectionMode)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white24),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.track.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          letterSpacing: -0.2,
+                          color:
+                              _isPlaying ? const Color(0xFF06C167) : Colors.white,
                         ),
-                        child: Icon(
-                          widget.isSelected
-                              ? Icons.check_circle_rounded
-                              : Icons.circle_outlined,
-                          color: widget.isSelected
-                              ? const Color(0xFF06C167)
-                              : Colors.white70,
-                          size: 24,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.track.artist,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-
-                  // Play Overlay / EQ
-                  if (_isPlaying)
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black38,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(
-                          child: _EqualizerAnimation(),
-                        ),
-                      ),
-                    ),
-
-                  // Download Status Indicator (Bottom Right)
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.black54,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _isDownloaded ? Icons.check_circle_rounded : Icons.download_rounded,
-                        color: const Color(0xFF06C167),
-                        size: 14,
-                      ),
-                    ),
+                    ],
                   ),
-
-                  // Menu Button
-                  if (!widget.isSelectionMode)
-                    Positioned(
-                      top: 2,
-                      right: 2,
-                      child: IconButton(
-                        icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
-                        onPressed: _showMenu,
-                      ),
-                    ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.track.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: _isPlaying ? const Color(0xFF06C167) : Colors.white,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.track.artist,
-                    style: const TextStyle(color: Color(0xFF888888), fontSize: 11),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

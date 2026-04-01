@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state.dart';
 import '../../services/permission_service.dart';
 import '../../services/audio_service.dart';
+
 import 'home_screen.dart';
 import 'favorites_screen.dart';
 import 'queue_view.dart';
@@ -21,7 +23,7 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
 
-  static const _accent = Color(0xFF06C167);
+
 
   @override
   void initState() {
@@ -45,10 +47,9 @@ class _MainWrapperState extends State<MainWrapper> {
 
   Future<void> _initPermissions() async {
     final granted = await PermissionService.checkPermissions();
-    if (granted) return; // Already have permissions
+    if (granted) return;
     if (!mounted) return;
 
-    // Show a proper permission dialog
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -58,7 +59,6 @@ class _MainWrapperState extends State<MainWrapper> {
     );
   }
 
-  // Search uses index 4 but ActiveView has no search entry — handled via _showSearch flag
   bool _showSearch = false;
 
   ActiveView _viewFromIndex(int i) {
@@ -108,119 +108,234 @@ class _MainWrapperState extends State<MainWrapper> {
     final activeView = appState.activeView;
     final playlists = appState.playlists;
     final pendingCount = appState.pendingDownloadsCount;
+    final audio = context.read<AudioService>();
 
     return Scaffold(
       key: _scaffoldKey,
-      // ── Playlist Drawer ────────────────────────────────────────────────
       drawer: _PlaylistDrawer(
         appState: appState,
         onClose: () => _scaffoldKey.currentState?.closeDrawer(),
       ),
 
-      body: Stack(
+      // Use a Column body so now playing bar + screens + nav all layout properly
+      body: Column(
         children: [
-          // Main screens (library, favorites, queue, downloads)
-          Offstage(
-            offstage: _showSearch,
-            child: IndexedStack(
-              index: _indexFromView(activeView),
-              children: ActiveView.values
-                  .map((v) => _buildScreen(v))
-                  .toList(),
-            ),
-          ),
-
-          // Search screen overlay
-          if (_showSearch) const SearchScreen(),
-
-          // NowPlaying bar sits above the bottom nav
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: NowPlayingBar(),
-          ),
-        ],
-      ),
-
-      // ── Bottom Nav ─────────────────────────────────────────────────────
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF000000),
-              border: Border(top: BorderSide(color: Color(0xFF1E1E1E))),
-            ),
-            child: Row(
+          // Main content area (screens + search)
+          Expanded(
+            child: Stack(
               children: [
-                // Playlist drawer toggle
-                _NavPlaylistBtn(
-                  hasPlaylists: playlists.isNotEmpty,
-                  hasActivePlaylist: appState.activePlaylistId != null,
-                  onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                ),
-
-                Expanded(
-                  child: BottomNavigationBar(
-                    currentIndex:
-                        _showSearch ? 4 : _indexFromView(activeView),
-                    onTap: (i) {
-                      if (i == 4) {
-                        setState(() => _showSearch = true);
-                      } else {
-                        setState(() => _showSearch = false);
-                        appState.setActiveView(_viewFromIndex(i));
-                      }
-                    },
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    selectedFontSize: 11,
-                    unselectedFontSize: 11,
-                    items: [
-                      const BottomNavigationBarItem(
-                        icon: Icon(Icons.library_music_outlined),
-                        activeIcon: Icon(Icons.library_music),
-                        label: 'Library',
-                      ),
-                      const BottomNavigationBarItem(
-                        icon: Icon(Icons.favorite_border_rounded),
-                        activeIcon: Icon(Icons.favorite_rounded),
-                        label: 'Favorites',
-                      ),
-                      const BottomNavigationBarItem(
-                        icon: Icon(Icons.queue_music_rounded),
-                        activeIcon: Icon(Icons.queue_music),
-                        label: 'Queue',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Badge(
-                          isLabelVisible: pendingCount > 0,
-                          label: Text('$pendingCount'),
-                          backgroundColor: _accent,
-                          textColor: Colors.black,
-                          child: const Icon(Icons.download_outlined),
-                        ),
-                        activeIcon: const Icon(Icons.download_rounded),
-                        label: 'Downloads',
-                      ),
-                      const BottomNavigationBarItem(
-                        icon: Icon(Icons.search_outlined),
-                        activeIcon: Icon(Icons.search_rounded),
-                        label: 'Search',
-                      ),
-                    ],
+                Offstage(
+                  offstage: _showSearch,
+                  child: IndexedStack(
+                    index: _indexFromView(activeView),
+                    children: ActiveView.values
+                        .map((v) => _buildScreen(v))
+                        .toList(),
                   ),
                 ),
-
-                // Add from URL quick button
-                _NavAddBtn(
-                  onTap: () => DownloadBottomSheet.show(context),
-                ),
+                if (_showSearch) const SearchScreen(),
               ],
             ),
           ),
+
+          // Now playing bar - properly positioned above bottom nav
+          const NowPlayingBar(),
+
+          // Bottom Navigation Bar
+          _buildBottomNav(appState, activeView, playlists, pendingCount, audio),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(AppState appState, ActiveView activeView,
+      List playlists, int pendingCount, AudioService audio) {
+    final currentIndex = _showSearch ? 4 : _indexFromView(activeView);
+
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF000000).withValues(alpha: 0.92),
+            border: const Border(
+              top: BorderSide(color: Color(0xFF1A1A1A), width: 0.5),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 2),
+              child: Row(
+                children: [
+                  // Playlist drawer toggle
+                  _NavPlaylistBtn(
+                    hasPlaylists: playlists.isNotEmpty,
+                    hasActivePlaylist: appState.activePlaylistId != null,
+                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
+
+                  // Nav items
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _NavItem(
+                          icon: Icons.library_music_outlined,
+                          activeIcon: Icons.library_music,
+                          label: 'Library',
+                          isActive: currentIndex == 0,
+                          onTap: () {
+                            setState(() => _showSearch = false);
+                            appState.setActiveView(_viewFromIndex(0));
+                          },
+                        ),
+                        _NavItem(
+                          icon: Icons.favorite_border_rounded,
+                          activeIcon: Icons.favorite_rounded,
+                          label: 'Favorites',
+                          isActive: currentIndex == 1,
+                          onTap: () {
+                            setState(() => _showSearch = false);
+                            appState.setActiveView(_viewFromIndex(1));
+                          },
+                        ),
+                        _NavItem(
+                          icon: Icons.queue_music_outlined,
+                          activeIcon: Icons.queue_music,
+                          label: 'Queue',
+                          isActive: currentIndex == 2,
+                          onTap: () {
+                            setState(() => _showSearch = false);
+                            appState.setActiveView(_viewFromIndex(2));
+                          },
+                        ),
+                        _NavItem(
+                          icon: Icons.download_outlined,
+                          activeIcon: Icons.download_rounded,
+                          label: 'Downloads',
+                          isActive: currentIndex == 3,
+                          badgeCount: pendingCount,
+                          onTap: () {
+                            setState(() => _showSearch = false);
+                            appState.setActiveView(_viewFromIndex(3));
+                          },
+                        ),
+                        _NavItem(
+                          icon: Icons.search_outlined,
+                          activeIcon: Icons.search_rounded,
+                          label: 'Search',
+                          isActive: currentIndex == 4,
+                          onTap: () {
+                            setState(() => _showSearch = true);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Add from URL quick button
+                  _NavAddBtn(
+                    onTap: () => DownloadBottomSheet.show(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Custom Nav Item ──────────────────────────────────────────────────────────
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final int badgeCount;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    this.badgeCount = 0,
+    required this.onTap,
+  });
+
+  static const _accent = Color(0xFF06C167);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    isActive ? activeIcon : icon,
+                    key: ValueKey(isActive),
+                    size: 24,
+                    color: isActive ? Colors.white : const Color(0xFF555555),
+                  ),
+                ),
+                if (badgeCount > 0)
+                  Positioned(
+                    right: -8,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: _accent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive ? Colors.white : const Color(0xFF555555),
+              ),
+            ),
+            // Active indicator dot
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(top: 4),
+              width: isActive ? 4 : 0,
+              height: isActive ? 4 : 0,
+              decoration: const BoxDecoration(
+                color: _accent,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -243,13 +358,13 @@ class _NavPlaylistBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Icon(
           Icons.library_books_rounded,
-          size: 24,
+          size: 22,
           color: hasActivePlaylist
               ? const Color(0xFF06C167)
-              : Colors.white38,
+              : Colors.white24,
         ),
       ),
     );
@@ -265,17 +380,23 @@ class _NavAddBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        width: 36,
-        height: 36,
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF06C167), Color(0xFF00FF85)],
           ),
           borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF06C167).withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: const Icon(Icons.add_rounded,
-            color: Colors.black, size: 20),
+        child: const Icon(Icons.add_rounded, color: Colors.black, size: 18),
       ),
     );
   }
@@ -312,43 +433,44 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
     final library = appState.library;
 
     return Drawer(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: const Color(0xFF080808),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Playlists',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 22,
-                          letterSpacing: -0.5)),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () =>
-                            setState(() => _isCreating = !_isCreating),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
+                  ShaderMask(
+                    shaderCallback: (b) => const LinearGradient(
+                      colors: [Color(0xFF06C167), Color(0xFF00FF85)],
+                    ).createShader(b),
+                    child: const Text('Playlists',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 24,
+                            letterSpacing: -0.5)),
+                  ),
+                  GestureDetector(
+                    onTap: () =>
+                        setState(() => _isCreating = !_isCreating),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF06C167)
+                            .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
                             color: const Color(0xFF06C167)
-                                .withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: const Color(0xFF06C167)
-                                    .withValues(alpha: 0.2)),
-                          ),
-                          child: const Icon(Icons.add_rounded,
-                              color: Color(0xFF06C167), size: 18),
-                        ),
+                                .withValues(alpha: 0.2)),
                       ),
-                    ],
+                      child: const Icon(Icons.add_rounded,
+                          color: Color(0xFF06C167), size: 18),
+                    ),
                   ),
                 ],
               ),
@@ -357,7 +479,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
             // Create new
             if (_isCreating) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                 child: Row(
                   children: [
                     Expanded(
@@ -371,11 +493,11 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                           hintStyle: const TextStyle(
                               color: Color(0xFF444444)),
                           filled: true,
-                          fillColor: const Color(0xFF1A1A1A),
+                          fillColor: const Color(0xFF141414),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 10),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                               borderSide: BorderSide.none),
                         ),
                         onSubmitted: (name) async {
@@ -398,7 +520,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
               ),
             ],
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             // All Library item
             _DrawerItem(
@@ -416,13 +538,13 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
 
             if (playlists.isNotEmpty) ...[
               const Padding(
-                padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+                padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
                 child: Text('MY PLAYLISTS',
                     style: TextStyle(
-                        color: Color(0xFF555555),
+                        color: Color(0xFF444444),
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0)),
+                        letterSpacing: 1.2)),
               ),
               Expanded(
                 child: ListView.builder(
@@ -461,7 +583,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                   child: Text('No playlists yet.\nTap + to create one.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          color: Color(0xFF555555), fontSize: 13)),
+                          color: Color(0xFF444444), fontSize: 13)),
                 ),
               ),
 
@@ -475,11 +597,18 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                 },
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                         colors: [Color(0xFF06C167), Color(0xFF00FF85)]),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF06C167).withValues(alpha: 0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -527,13 +656,14 @@ class _DrawerItem extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           gradient: isActive
               ? const LinearGradient(
                   colors: [Color(0xFF06C167), Color(0xFF00FF85)])
               : null,
-          borderRadius: BorderRadius.circular(8),
+          color: isActive ? null : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
@@ -557,7 +687,7 @@ class _DrawerItem extends StatelessWidget {
                         style: TextStyle(
                             color: isActive
                                 ? Colors.black54
-                                : const Color(0xFF666666),
+                                : const Color(0xFF555555),
                             fontSize: 11)),
                 ],
               ),
@@ -604,14 +734,13 @@ class _PermissionDialogState extends State<_PermissionDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF111111),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: const Color(0xFF0D0D0D),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon
             Container(
               width: 64,
               height: 64,
@@ -619,14 +748,12 @@ class _PermissionDialogState extends State<_PermissionDialog> {
                 gradient: const LinearGradient(
                   colors: [Color(0xFF06C167), Color(0xFF00FF85)],
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
               ),
               child: const Icon(Icons.folder_rounded,
                   color: Colors.black, size: 32),
             ),
             const SizedBox(height: 20),
-
-            // Title
             const Text(
               'Storage Permission',
               style: TextStyle(
@@ -637,30 +764,26 @@ class _PermissionDialogState extends State<_PermissionDialog> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // Description
             Text(
               'Wavelength needs storage access to save downloaded songs to your device so you can listen offline.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
+                color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 14,
-                height: 1.4,
+                height: 1.45,
               ),
             ),
             const SizedBox(height: 24),
-
-            // Grant button
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 50,
               child: ElevatedButton(
                 onPressed: _requesting ? null : _requestPermissions,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF06C167),
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
                 child: _requesting
@@ -676,8 +799,6 @@ class _PermissionDialogState extends State<_PermissionDialog> {
               ),
             ),
             const SizedBox(height: 10),
-
-            // Open Settings button
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -686,8 +807,8 @@ class _PermissionDialogState extends State<_PermissionDialog> {
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white54,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: Color(0xFF2A2A2A)),
+                    borderRadius: BorderRadius.circular(14),
+                    side: const BorderSide(color: Color(0xFF222222)),
                   ),
                 ),
                 child: const Text('Open Settings',
@@ -696,14 +817,12 @@ class _PermissionDialogState extends State<_PermissionDialog> {
               ),
             ),
             const SizedBox(height: 10),
-
-            // Skip button (allow using without download)
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'Skip for now',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: Colors.white.withValues(alpha: 0.25),
                   fontSize: 12,
                 ),
               ),

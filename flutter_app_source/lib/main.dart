@@ -113,7 +113,7 @@ class _WavelengthAppState extends State<WavelengthApp> {
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFFFFFFF),
           secondary: Color(0xFF06C167),
-          surface: Color(0xFF121212),
+          surface: Color(0xFF0D0D0D),
         ),
         textTheme: GoogleFonts.interTextTheme(
           Theme.of(context).textTheme.apply(
@@ -128,7 +128,7 @@ class _WavelengthAppState extends State<WavelengthApp> {
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Color(0xFF000000),
           selectedItemColor: Colors.white,
-          unselectedItemColor: Color(0xFF535353),
+          unselectedItemColor: Color(0xFF555555),
           elevation: 0,
           type: BottomNavigationBarType.fixed,
         ),
