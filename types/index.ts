@@ -1,4 +1,4 @@
-export interface Folder {
+export interface Playlist {
   id: string;
   name: string;
   createdAt: string;
@@ -16,7 +16,8 @@ export interface Track {
   addedAt: string;
   fileSize: number; // bytes
   format: string;
-  folderId?: string; // Links track to a custom user folder
+  playlistIds: string[]; // Many-to-many playlist association
+  folderId?: string; // @deprecated: Links track to a custom user folder
 }
 
 export interface DownloadJob {

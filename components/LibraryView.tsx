@@ -33,8 +33,8 @@ function sortTracks(tracks: Track[], sortBy: SortOption): Track[] {
 export default function LibraryView() {
   const { 
     library, setShowDownloadModal, setQueue, setCurrentTrack, setIsPlaying, 
-    activeFolderId, folders, playAll, shufflePlay, 
-    isSelectionMode, setSelectionMode, selectedTrackIds, clearSelection, moveSelectedToFolder
+    activePlaylistId, playlists, playAll, shufflePlay, 
+    isSelectionMode, setSelectionMode, selectedTrackIds, clearSelection, moveSelectedToPlaylist
   } = useMusicStore();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('recent');
@@ -43,17 +43,18 @@ export default function LibraryView() {
 
   const activeSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label;
 
-  const activeFolder = activeFolderId ? folders.find(f => f.id === activeFolderId) : null;
+  const activePlaylist = activePlaylistId ? playlists.find(p => p.id === activePlaylistId) : null;
 
   const filtered = useMemo(() => {
     const searched = library.filter((t) => {
-      if (activeFolderId) {
+      if (activePlaylistId) {
+        const isInPlaylist = t.playlistIds?.includes(activePlaylistId);
         if (isAddingSongs) {
-          // In "Add Songs" mode, show songs NOT in current folder
-          if (t.folderId === activeFolderId) return false;
+          // In "Add Songs" mode, show songs NOT in current playlist
+          if (isInPlaylist) return false;
         } else {
-          // Normal view: show songs IN current folder
-          if (t.folderId !== activeFolderId) return false;
+          // Normal view: show songs IN current playlist
+          if (!isInPlaylist) return false;
         }
       }
       
@@ -64,7 +65,7 @@ export default function LibraryView() {
       );
     });
     return sortTracks(searched, sortBy);
-  }, [library, search, sortBy, activeFolderId, isAddingSongs]);
+  }, [library, search, sortBy, activePlaylistId, isAddingSongs]);
 
   const handleStartAdding = () => {
     setIsAddingSongs(true);
@@ -77,8 +78,8 @@ export default function LibraryView() {
     clearSelection();
   };
 
-  const handleBulkMove = (targetFolderId?: string) => {
-    moveSelectedToFolder(selectedTrackIds, targetFolderId);
+  const handleBulkMove = (targetPlaylistId: string) => {
+    moveSelectedToPlaylist(selectedTrackIds, targetPlaylistId);
     setIsAddingSongs(false);
   };
 
@@ -109,7 +110,7 @@ export default function LibraryView() {
             Your Collection
           </div>
           <h1 className="brand-text font-display" style={{ fontWeight: 900, fontSize: 48, letterSpacing: '-2px', marginBottom: 8, lineHeight: 1 }}>
-            {activeFolder ? activeFolder.name : 'Library'}
+            {activePlaylist ? activePlaylist.name : 'Library'}
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-muted)', fontSize: 14, fontWeight: 600 }}>
             <span>{filtered.length} {filtered.length === 1 ? 'track' : 'tracks'}</span>
@@ -147,7 +148,7 @@ export default function LibraryView() {
               Shuffle
             </button>
 
-            {activeFolderId && !isAddingSongs && (
+            {activePlaylistId && !isAddingSongs && (
               <button
                 onClick={handleStartAdding}
                 className="tap-active"
@@ -316,9 +317,9 @@ export default function LibraryView() {
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
-            {activeFolderId && isAddingSongs ? (
+            {activePlaylistId && isAddingSongs ? (
               <button
-                onClick={() => handleBulkMove(activeFolderId)}
+                onClick={() => handleBulkMove(activePlaylistId)}
                 className="tap-active"
                 style={{
                   padding: '10px 24px', fontSize: 13, fontWeight: 700, border: 'none',
@@ -347,9 +348,15 @@ export default function LibraryView() {
                   Queue
                 </button>
                 
-                {activeFolderId && !isAddingSongs && (
+                {activePlaylistId && !isAddingSongs && (
                   <button
-                    onClick={() => handleBulkMove(undefined)}
+                    onClick={() => {
+                      selectedTrackIds.forEach(trackId => {
+                        useMusicStore.getState().toggleTrackInPlaylist(trackId, activePlaylistId);
+                      });
+                      clearSelection();
+                      setSelectionMode(false);
+                    }}
                     className="tap-active"
                     style={{ padding: '10px 20px', borderRadius: '14px', fontSize: 13, fontWeight: 600, color: 'var(--danger)', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
                   >

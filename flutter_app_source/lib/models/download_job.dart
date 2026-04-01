@@ -11,7 +11,7 @@ class DownloadJob {
   String? artist;
   String? coverUrl;
   String? error;
-  String? playlistId;
+  List<String> playlistIds;
   Track? completedTrack;
   final DateTime startedAt;
 
@@ -24,7 +24,7 @@ class DownloadJob {
     this.artist,
     this.coverUrl,
     this.error,
-    this.playlistId,
+    this.playlistIds = const [],
     this.completedTrack,
     required this.startedAt,
   });

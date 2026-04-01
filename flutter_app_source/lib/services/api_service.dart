@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/track.dart';
+import '../models/playlist.dart';
 import 'server_config.dart';
 
 class ApiService {
@@ -16,28 +17,39 @@ class ApiService {
     receiveTimeout: const Duration(seconds: 10),
   ));
 
-  /// Fetches the entire library from the Next.js server
-  Future<List<Track>> fetchServerLibrary() async {
+  /// Fetches the entire library and playlists from the Next.js server
+  Future<Map<String, dynamic>> fetchServerLibrary() async {
     final serverBase = ServerConfig.baseUrl;
-    if (serverBase.isEmpty) return [];
+    if (serverBase.isEmpty) return {'tracks': [], 'playlists': []};
 
     try {
       final response = await _dio.get('$serverBase/api/library');
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
+        
+        // Process tracks
         final tracksJson = data['tracks'] as List<dynamic>;
-        return tracksJson.map((t) {
+        final tracks = tracksJson.map((t) {
           final track = Track.fromJson(t);
           if (track.coverUrl != null && track.coverUrl!.startsWith('/')) {
             return track.copyWith(coverUrl: '$serverBase${track.coverUrl}');
           }
           return track;
         }).toList();
+
+        // Process playlists
+        final playlistsJson = data['playlists'] as List<dynamic>? ?? [];
+        final playlists = playlistsJson.map((p) => Playlist.fromMap(p)).toList();
+
+        return {
+          'tracks': tracks,
+          'playlists': playlists,
+        };
       }
-      return [];
+      return {'tracks': [], 'playlists': []};
     } catch (e) {
       debugPrint('[ApiService] fetchServerLibrary error: $e');
-      return [];
+      return {'tracks': [], 'playlists': []};
     }
   }
 

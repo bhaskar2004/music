@@ -17,7 +17,7 @@ const PLACEHOLDER_COLORS = [
 ];
 
 export default function TrackCard({ track, index }: TrackCardProps) {
-  const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying, setQueue, library, removeTrack, toggleFavorite, favorites, folders, moveTrack, addToQueue, playNextTrack,
+  const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying, setQueue, library, removeTrack, toggleFavorite, favorites, playlists, toggleTrackInPlaylist, addToQueue, playNextTrack,
     isSelectionMode, selectedTrackIds, toggleTrackSelection } =
     useMusicStore();
 
@@ -307,39 +307,30 @@ export default function TrackCard({ track, index }: TrackCardProps) {
             <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
 
             {/* Playlists */}
-            {folders.length > 0 && (
+            {playlists.length > 0 && (
               <>
                 <div style={{ padding: '8px 12px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase' }}>
-                  Move to Playlist
+                  Playlists
                 </div>
-                {folders.map(folder => (
-                  <button
-                    key={folder.id}
-                    className="dropdown-item"
-                    onClick={() => { moveTrack(track.id, folder.id); setMenuOpen(false); }}
-                    style={{ border: 'none', background: 'transparent', width: '100%', padding: 0 }}
-                  >
-                    <div className="dropdown-item" style={{ width: '100%', color: track.folderId === folder.id ? 'var(--neon-blue)' : 'inherit' }}>
-                      <FolderIcon size={12} fill={track.folderId === folder.id ? 'currentColor' : 'none'} />
-                      {folder.name}
-                    </div>
-                  </button>
-                ))}
-                {track.folderId && (
-                  <button
-                    onClick={() => { moveTrack(track.id, undefined); setMenuOpen(false); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px',
-                      color: 'var(--text-muted)', fontSize: 12, background: 'transparent', border: 'none', width: '100%',
-                      cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface3)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <FolderIcon size={12} opacity={0.5} />
-                    Remove from Playlist
-                  </button>
-                )}
+                {playlists.map(playlist => {
+                  const isInPlaylist = track.playlistIds?.includes(playlist.id);
+                  return (
+                    <button
+                      key={playlist.id}
+                      className="dropdown-item"
+                      onClick={() => { toggleTrackInPlaylist(track.id, playlist.id); setMenuOpen(false); }}
+                      style={{ border: 'none', background: 'transparent', width: '100%', padding: 0 }}
+                    >
+                      <div className="dropdown-item" style={{ width: '100%', color: isInPlaylist ? 'var(--accent)' : 'inherit' }}>
+                        <div style={{ position: 'relative', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <FolderIcon size={12} fill={isInPlaylist ? 'currentColor' : 'none'} />
+                          {isInPlaylist && <Check size={8} color="#000" style={{ position: 'absolute', fontWeight: 900 }} />}
+                        </div>
+                        {playlist.name}
+                      </div>
+                    </button>
+                  );
+                })}
                 <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
               </>
             )}

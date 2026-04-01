@@ -22,8 +22,23 @@ function writeLibrary(data: unknown[]) {
   fs.writeFileSync(LIBRARY_PATH, JSON.stringify(data, null, 2));
 }
 
+const PLAYLISTS_PATH = path.join(process.cwd(), 'data', 'playlists.json');
+
+function readPlaylists(): any[] {
+  try {
+    if (!fs.existsSync(PLAYLISTS_PATH)) return [];
+    const data = fs.readFileSync(PLAYLISTS_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
-  return NextResponse.json({ tracks: readLibrary() });
+  return NextResponse.json({ 
+    tracks: readLibrary(),
+    playlists: readPlaylists()
+  });
 }
 
 export async function DELETE(req: NextRequest) {

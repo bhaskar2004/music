@@ -51,9 +51,9 @@ class AppState extends ChangeNotifier {
 
     if (_activePlaylistId != null) {
       if (_isAddingSongs) {
-        tracks = tracks.where((t) => t.playlistId != _activePlaylistId).toList();
+        tracks = tracks.where((t) => !t.playlistIds.contains(_activePlaylistId)).toList();
       } else {
-        tracks = tracks.where((t) => t.playlistId == _activePlaylistId).toList();
+        tracks = tracks.where((t) => t.playlistIds.contains(_activePlaylistId)).toList();
       }
     }
 
@@ -184,24 +184,61 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> moveTrackToPlaylist(String trackId, String? playlistId) async {
-    await StorageService().updateTrackPlaylist(trackId, playlistId);
+  Future<void> toggleTrackInPlaylist(String trackId, String playlistId) async {
+    await StorageService().toggleTrackPlaylist(trackId, playlistId);
     final idx = _library.indexWhere((t) => t.id == trackId);
     if (idx >= 0) {
-      _library[idx] = playlistId == null
-          ? _library[idx].copyWith(clearPlaylistId: true)
-          : _library[idx].copyWith(playlistId: playlistId);
+      final t = _library[idx];
+      final list = List<String>.from(t.playlistIds);
+      if (list.contains(playlistId)) {
+        list.remove(playlistId);
+      } else {
+        list.add(playlistId);
+      }
+      _library[idx] = t.copyWith(playlistIds: list);
     }
     notifyListeners();
   }
 
-  Future<void> bulkMoveToPlaylist(String? playlistId) async {
+  Future<void> bulkAddTracksToPlaylist(String playlistId) async {
     for (final id in Set<String>.from(_selectedIds)) {
-      await moveTrackToPlaylist(id, playlistId);
+      final t = _library.firstWhere((track) => track.id == id);
+      if (!t.playlistIds.contains(playlistId)) {
+        await toggleTrackInPlaylist(id, playlistId);
+      }
     }
     _selectedIds.clear();
     _isSelectionMode = false;
     _isAddingSongs = false;
+    notifyListeners();
+  }
+
+  // ─── Sync ─────────────────────────────────────────────────────────────────
+
+  Future<void> syncWithServer() async {
+    final data = await ApiService().fetchServerLibrary();
+    final serverTracks = data['tracks'] as List<Track>;
+    final serverPlaylists = data['playlists'] as List<Playlist>;
+
+    if (serverTracks.isEmpty && serverPlaylists.isEmpty) return;
+
+    // Merge tracks (preserve local favs if they exist)
+    for (final sTrack in serverTracks) {
+      final localIdx = _library.indexWhere((t) => t.id == sTrack.id);
+      if (localIdx >= 0) {
+        // Update local with server metadata but keep favorite status if it was set
+        _library[localIdx] = sTrack.copyWith(
+          isFavorite: _library[localIdx].isFavorite || sTrack.isFavorite,
+        );
+      } else {
+        _library.add(sTrack);
+      }
+    }
+
+    _playlists = serverPlaylists;
+    
+    await StorageService().saveTracks(_library);
+    await StorageService().savePlaylists(_playlists);
     notifyListeners();
   }
 
@@ -230,11 +267,11 @@ class AppState extends ChangeNotifier {
 
   // ─── Downloads ────────────────────────────────────────────────────────────
 
-  DownloadJob createDownloadJob(String url, {String? playlistId}) {
+  DownloadJob createDownloadJob(String url, {List<String>? playlistIds}) {
     final job = DownloadJob(
       id: const Uuid().v4(),
       url: url,
-      playlistId: playlistId,
+      playlistIds: playlistIds ?? [],
       startedAt: DateTime.now(),
     );
     _downloads.insert(0, job);

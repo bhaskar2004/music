@@ -94,7 +94,7 @@ class DownloadsScreen extends StatelessWidget {
                           appState.retryDownload(history[i].id);
                           DownloadManager().processJob(
                               history[i].url, appState,
-                              playlistId: history[i].playlistId,
+                              playlistIds: history[i].playlistIds,
                               jobId: history[i].id);
                         },
                       ),

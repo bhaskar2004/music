@@ -72,7 +72,7 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
     appState.setActiveView(ActiveView.downloads);
 
     for (final url in urls) {
-      await DownloadManager().processJob(url, appState, playlistId: playlistId);
+      await DownloadManager().processJob(url, appState, playlistIds: playlistId != null ? [playlistId] : []);
     }
   }
 

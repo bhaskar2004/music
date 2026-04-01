@@ -121,6 +121,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 const SizedBox(width: 8),
 
+                                // Sync button (added)
+                                _IconBtn(
+                                  icon: Icons.sync_rounded,
+                                  onTap: () {
+                                    appState.syncWithServer();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Syncing with server...'), duration: Duration(seconds: 1)),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+
                                 // Settings toggle
                                 _IconBtn(
                                   icon: Icons.settings_outlined,
@@ -243,10 +255,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       .toList(),
                   onCancel: appState.cancelAddingSongs,
                   onAddToCurrentPlaylist: () =>
-                      appState.bulkMoveToPlaylist(appState.activePlaylistId),
-                  onMoveToPlaylist: (id) => appState.bulkMoveToPlaylist(id),
-                  onRemoveFromPlaylist: () =>
-                      appState.bulkMoveToPlaylist(null),
+                      appState.bulkAddTracksToPlaylist(appState.activePlaylistId!),
+                  onMoveToPlaylist: (id) => appState.bulkAddTracksToPlaylist(id),
+                  onRemoveFromPlaylist: () async {
+                    for (final trackId in appState.selectedIds) {
+                      await appState.toggleTrackInPlaylist(trackId, appState.activePlaylistId!);
+                    }
+                    appState.setSelectionMode(false);
+                  },
                   onAddToQueue: () {
                     final audio = context.read<AudioService>();
                     for (final id in appState.selectedIds) {

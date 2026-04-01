@@ -23,7 +23,7 @@ class DownloadManager {
   void _onStateChange() => _processQueue();
 
   Future<void> processJob(String url, AppState state,
-      {String? playlistId, String? jobId, bool showMessage = true}) async {
+      {List<String>? playlistIds, String? jobId, bool showMessage = true}) async {
     _appState = state;
 
     // ── Check if already in local library ───────────────────────────
@@ -45,9 +45,9 @@ class DownloadManager {
       final existing = state.downloads
           .cast<DownloadJob?>()
           .firstWhere((d) => d?.id == jobId, orElse: () => null);
-      job = existing ?? state.createDownloadJob(url, playlistId: playlistId);
+      job = existing ?? state.createDownloadJob(url, playlistIds: playlistIds);
     } else {
-      job = state.createDownloadJob(url, playlistId: playlistId);
+      job = state.createDownloadJob(url, playlistIds: playlistIds);
     }
     await _executeJob(job, state);
   }
@@ -96,7 +96,7 @@ class DownloadManager {
         // ── 2. Download via server ────────────────────────────────────────
         final result = await ServerDownloadService.download(
           url: job.url,
-          playlistId: job.playlistId,
+          playlistIds: job.playlistIds,
           onStatus: (stage, message) {
             if (stage == 'downloading') {
               state.updateDownload(job.id,

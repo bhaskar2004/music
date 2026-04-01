@@ -66,13 +66,18 @@ class StorageService {
     await _saveTracks(tracks);
   }
 
-  Future<void> updateTrackPlaylist(String trackId, String? playlistId) async {
+  Future<void> toggleTrackPlaylist(String trackId, String playlistId) async {
     final tracks = await getTracks();
     final idx = tracks.indexWhere((t) => t.id == trackId);
     if (idx < 0) return;
-    tracks[idx] = playlistId == null
-        ? tracks[idx].copyWith(clearPlaylistId: true)
-        : tracks[idx].copyWith(playlistId: playlistId);
+    final t = tracks[idx];
+    final list = List<String>.from(t.playlistIds);
+    if (list.contains(playlistId)) {
+      list.remove(playlistId);
+    } else {
+      list.add(playlistId);
+    }
+    tracks[idx] = t.copyWith(playlistIds: list);
     await _saveTracks(tracks);
   }
 
@@ -121,10 +126,20 @@ class StorageService {
     // Detach all tracks from this playlist
     final tracks = await getTracks();
     final updated = tracks.map((t) {
-      return t.playlistId == playlistId
-          ? t.copyWith(clearPlaylistId: true)
-          : t;
+      if (t.playlistIds.contains(playlistId)) {
+        final newList = List<String>.from(t.playlistIds)..remove(playlistId);
+        return t.copyWith(playlistIds: newList);
+      }
+      return t;
     }).toList();
     await _saveTracks(updated);
+  }
+
+  Future<void> savePlaylists(List<Playlist> playlists) async {
+    await _savePlaylists(playlists);
+  }
+
+  Future<void> saveTracks(List<Track> tracks) async {
+    await _saveTracks(tracks);
   }
 }

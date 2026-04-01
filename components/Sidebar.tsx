@@ -31,10 +31,10 @@ const navItems = [
 
 
 export default function Sidebar() {
-  const { activeView, setActiveView, library, downloads, favorites, setShowDownloadModal, folders, addFolder, removeFolder, activeFolderId, setActiveFolderId, recentlyPlayed } =
+  const { activeView, setActiveView, library, downloads, favorites, setShowDownloadModal, playlists, addPlaylist, removePlaylist, activePlaylistId, setActivePlaylistId, recentlyPlayed } =
     useMusicStore();
-  const [newFolderName, setNewFolderName] = useState('');
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
 
   const pendingDownloads = downloads.filter(
     (d) => d.status === 'downloading' || d.status === 'pending'
@@ -77,7 +77,7 @@ export default function Sidebar() {
           Menu
         </div>
         {navItems.map(({ id, label, icon: Icon }) => {
-          const active = activeView === id && (id !== 'library' || !activeFolderId);
+          const active = activeView === id && (id !== 'library' || !activePlaylistId);
           const badge =
             id === 'downloads' && pendingDownloads > 0
               ? pendingDownloads
@@ -91,7 +91,7 @@ export default function Sidebar() {
               key={id}
               onClick={() => {
                 setActiveView(id);
-                if (id === 'library') setActiveFolderId(null);
+                if (id === 'library') setActivePlaylistId(null);
               }}
               aria-current={active ? 'page' : undefined}
               className="tap-active"
@@ -158,14 +158,14 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Folders Section */}
+      {/* Playlists Section */}
       <div style={{ padding: '0 12px 12px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, padding: '0 12px' }}>
           <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '1px' }}>
             Playlists
           </div>
           <button
-            onClick={() => setIsCreatingFolder(true)}
+            onClick={() => setIsCreatingPlaylist(true)}
             className="tap-active"
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: 4 }}
           >
@@ -173,22 +173,22 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {isCreatingFolder && (
+        {isCreatingPlaylist && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 12, padding: '0 12px' }}>
             <input
               type="text" autoFocus placeholder="New Playlist..."
-              value={newFolderName}
-              onChange={e => setNewFolderName(e.target.value)}
+              value={newPlaylistName}
+              onChange={e => setNewPlaylistName(e.target.value)}
               onKeyDown={e => {
-                if (e.key === 'Enter' && newFolderName.trim()) {
-                  addFolder(newFolderName.trim()); setNewFolderName(''); setIsCreatingFolder(false);
+                if (e.key === 'Enter' && newPlaylistName.trim()) {
+                  addPlaylist(newPlaylistName.trim()); setNewPlaylistName(''); setIsCreatingPlaylist(false);
                 } else if (e.key === 'Escape') {
-                  setNewFolderName(''); setIsCreatingFolder(false);
+                  setNewPlaylistName(''); setIsCreatingPlaylist(false);
                 }
               }}
               onBlur={() => {
-                if (newFolderName.trim()) addFolder(newFolderName.trim());
-                setNewFolderName(''); setIsCreatingFolder(false);
+                if (newPlaylistName.trim()) addPlaylist(newPlaylistName.trim());
+                setNewPlaylistName(''); setIsCreatingPlaylist(false);
               }}
               style={{
                 flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)',
@@ -200,31 +200,31 @@ export default function Sidebar() {
         )}
 
         <div style={{ overflowY: 'auto', maxHeight: '20vh' }}>
-          {folders.map(folder => {
-            const isFolderActive = activeView === 'library' && activeFolderId === folder.id;
+          {playlists.map(playlist => {
+            const isPlaylistActive = activeView === 'library' && activePlaylistId === playlist.id;
             return (
               <div
-                key={folder.id}
+                key={playlist.id}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
                   padding: '8px 12px',
                   borderRadius: 10,
-                  background: isFolderActive ? 'var(--accent-dim)' : 'transparent',
-                  color: isFolderActive ? 'var(--accent)' : 'var(--text-muted)',
+                  background: isPlaylistActive ? 'var(--accent-dim)' : 'transparent',
+                  color: isPlaylistActive ? 'var(--accent)' : 'var(--text-muted)',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   marginBottom: 2
                 }}
                 onMouseEnter={e => {
-                  if (!isFolderActive) {
+                  if (!isPlaylistActive) {
                     e.currentTarget.style.background = 'var(--surface2)';
                     e.currentTarget.style.color = 'var(--text)';
                   }
                 }}
                 onMouseLeave={e => {
-                  if (!isFolderActive) {
+                  if (!isPlaylistActive) {
                     e.currentTarget.style.background = 'transparent';
                     e.currentTarget.style.color = 'var(--text-muted)';
                   }
@@ -232,14 +232,14 @@ export default function Sidebar() {
               >
                 <div
                   style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}
-                  onClick={() => { setActiveFolderId(folder.id); setActiveView('library'); }}
+                  onClick={() => { setActivePlaylistId(playlist.id); setActiveView('library'); }}
                 >
-                  <FolderIcon size={16} fill={isFolderActive ? 'currentColor' : 'none'} opacity={isFolderActive ? 1 : 0.7} />
-                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: isFolderActive ? 700 : 500 }}>{folder.name}</span>
+                  <FolderIcon size={16} fill={isPlaylistActive ? 'currentColor' : 'none'} opacity={isPlaylistActive ? 1 : 0.7} />
+                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: isPlaylistActive ? 700 : 500 }}>{playlist.name}</span>
                 </div>
-                {isFolderActive && (
+                {isPlaylistActive && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); removeFolder(folder.id); }}
+                    onClick={(e) => { e.stopPropagation(); removePlaylist(playlist.id); }}
                     className="tap-active"
                     style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4, opacity: 0.7 }}
                     title="Delete Playlist"

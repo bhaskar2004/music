@@ -39,7 +39,7 @@ class ServerDownloadService {
   /// Throws on failure.
   static Future<ServerDownloadResult> download({
     required String url,
-    String? playlistId,
+    List<String>? playlistIds,
     void Function(String stage, String message)? onStatus,
     void Function(double percent)? onProgress,
     void Function(String title, String artist, String? coverUrl)? onMetadata,
@@ -54,7 +54,10 @@ class ServerDownloadService {
 
     final response = await _dio.post<ResponseBody>(
       '$serverBase/api/download',
-      data: jsonEncode({'url': url}),
+      data: jsonEncode({
+        'url': url,
+        'playlistIds': playlistIds ?? [],
+      }),
       options: Options(
         headers: {'Content-Type': 'application/json'},
         responseType: ResponseType.stream,
@@ -210,7 +213,7 @@ class ServerDownloadService {
       sourceUrl: url,
       addedAt: DateTime.now().toIso8601String(),
       format: trackPayload['format'] as String? ?? 'mp3',
-      playlistId: playlistId,
+      playlistIds: playlistIds ?? [],
     );
 
     await StorageService().insertTrack(track);

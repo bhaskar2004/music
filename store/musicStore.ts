@@ -2,24 +2,27 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Track, DownloadJob, Folder, RecentPlay, ListeningStats, SleepTimerState } from '@/types';
+import { Track, DownloadJob, Playlist, RecentPlay, ListeningStats, SleepTimerState } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
 type ViewId = 'library' | 'search' | 'queue' | 'downloads' | 'favorites' | 'history' | 'stats' | 'settings';
 
 interface MusicStore {
-  // Library & Folders
+  // Library & Playlists
   library: Track[];
-  folders: Folder[];
-  activeFolderId: string | null;
+  playlists: Playlist[];
+  activePlaylistId: string | null;
   
   setLibrary: (tracks: Track[]) => void;
+  setPlaylists: (playlists: Playlist[]) => void;
   addTrack: (track: Track) => void;
   removeTrack: (id: string) => void;
-  addFolder: (name: string) => void;
-  removeFolder: (id: string) => void;
-  moveTrack: (trackId: string, folderId?: string) => void;
-  setActiveFolderId: (id: string | null) => void;
+  addPlaylist: (name: string) => Promise<Playlist | null>;
+  removePlaylist: (id: string) => Promise<void>;
+  toggleTrackInPlaylist: (trackId: string, playlistId: string) => Promise<void>;
+  setActivePlaylistId: (id: string | null) => void;
+  fetchLibrary: () => Promise<void>;
+  fetchPlaylists: () => Promise<void>;
 
   // Favorites
   favorites: string[];
@@ -74,7 +77,7 @@ interface MusicStore {
   toggleTrackSelection: (id: string) => void;
   setSelectionMode: (v: boolean) => void;
   clearSelection: () => void;
-  moveSelectedToFolder: (trackIds: string[], folderId?: string) => void;
+  moveSelectedToPlaylist: (trackIds: string[], playlistId: string) => void;
 
   // Recently Played
   recentlyPlayed: RecentPlay[];
@@ -104,35 +107,98 @@ export const useMusicStore = create<MusicStore>()(
   persist(
     (set, get) => ({
       library: [],
-      folders: [],
-      activeFolderId: null,
+      playlists: [],
+      activePlaylistId: null,
 
-      setLibrary: (tracks) => set({ library: tracks }),
-      addTrack: (track) => set((s) => ({ library: [track, ...s.library] })),
+      setLibrary: (tracks) => set({ library: tracks.map(t => ({ ...t, playlistIds: t.playlistIds || [] })) }),
+      setPlaylists: (playlists) => set({ playlists }),
+      addTrack: (track) => set((s) => ({ 
+        library: [
+          { ...track, playlistIds: track.playlistIds || [] }, 
+          ...s.library
+        ] 
+      })),
       removeTrack: (id) =>
         set((s) => ({
           library: s.library.filter((t) => t.id !== id),
           favorites: s.favorites.filter((fid) => fid !== id),
         })),
         
-      addFolder: (name) => set((s) => ({
-        folders: [...s.folders, { id: uuidv4(), name, createdAt: new Date().toISOString() }],
-      })),
-      removeFolder: (id) => set((s) => ({
-        folders: s.folders.filter((f) => f.id !== id),
-        library: s.library.map((t) => t.folderId === id ? { ...t, folderId: undefined } : t),
-        activeFolderId: s.activeFolderId === id ? null : s.activeFolderId,
-      })),
-      moveTrack: (trackId, folderId) => set((s) => {
-        const updatedLibrary = s.library.map((t) => t.id === trackId ? { ...t, folderId } : t);
-        fetch('/api/library/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trackId, folderId }),
-        }).catch(err => console.error("Failed to sync folder move to backend:", err));
-        return { library: updatedLibrary };
-      }),
-      setActiveFolderId: (id) => set({ activeFolderId: id }),
+      addPlaylist: async (name) => {
+        try {
+          const res = await fetch('/api/playlists', {
+            method: 'POST',
+            body: JSON.stringify({ name }),
+          });
+          const newPlaylist = await res.json();
+          set((s) => ({ playlists: [...s.playlists, newPlaylist] }));
+          return newPlaylist;
+        } catch (err) {
+          console.error("Failed to add playlist:", err);
+          return null;
+        }
+      },
+      removePlaylist: async (id) => {
+        try {
+          await fetch(`/api/playlists/${id}`, { method: 'DELETE' });
+          set((s) => ({
+            playlists: s.playlists.filter((p) => p.id !== id),
+            library: s.library.map((t) => ({
+              ...t,
+              playlistIds: (t.playlistIds || []).filter(pid => pid !== id)
+            })),
+            activePlaylistId: s.activePlaylistId === id ? null : s.activePlaylistId,
+          }));
+        } catch (err) {
+          console.error("Failed to remove playlist:", err);
+        }
+      },
+      toggleTrackInPlaylist: async (trackId, playlistId) => {
+        const track = get().library.find(t => t.id === trackId);
+        if (!track) return;
+        
+        const isAdding = !track.playlistIds?.includes(playlistId);
+        const action = isAdding ? 'add' : 'remove';
+        
+        // Optimistic update
+        set((s) => ({
+          library: s.library.map(t => t.id === trackId ? {
+            ...t,
+            playlistIds: isAdding 
+              ? [...(t.playlistIds || []), playlistId]
+              : (t.playlistIds || []).filter(pid => pid !== playlistId)
+          } : t)
+        }));
+
+        try {
+          await fetch('/api/library/playlist', {
+            method: 'POST',
+            body: JSON.stringify({ trackId, playlistId, action }),
+          });
+        } catch (err) {
+          console.error("Failed to sync playlist toggle:", err);
+        }
+      },
+      setActivePlaylistId: (id) => set({ activePlaylistId: id }),
+      fetchLibrary: async () => {
+        try {
+          const res = await fetch('/api/library');
+          const data = await res.json();
+          if (data.tracks) get().setLibrary(data.tracks);
+          if (data.playlists) get().setPlaylists(data.playlists);
+        } catch (err) {
+          console.error("Failed to fetch library:", err);
+        }
+      },
+      fetchPlaylists: async () => {
+        try {
+          const res = await fetch('/api/playlists');
+          const data = await res.json();
+          set({ playlists: data });
+        } catch (err) {
+          console.error("Failed to fetch playlists:", err);
+        }
+      },
 
       // Favorites
       favorites: [],
@@ -255,15 +321,17 @@ export const useMusicStore = create<MusicStore>()(
       })),
       setSelectionMode: (v) => set({ isSelectionMode: v, selectedTrackIds: v ? get().selectedTrackIds : [] }),
       clearSelection: () => set({ selectedTrackIds: [] }),
-      moveSelectedToFolder: (trackIds, folderId) => set((s) => {
+      moveSelectedToPlaylist: (trackIds: string[], playlistId: string) => set((s) => {
         const updatedLibrary = s.library.map((t) => 
-          trackIds.includes(t.id) ? { ...t, folderId } : t
+          trackIds.includes(t.id) ? { 
+            ...t, 
+            playlistIds: [...(t.playlistIds || []).filter(pid => pid !== playlistId), playlistId] 
+          } : t
         );
         trackIds.forEach(id => {
-          fetch('/api/library/update', {
+          fetch('/api/library/playlist', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ trackId: id, folderId }),
+            body: JSON.stringify({ trackId: id, playlistId, action: 'add' }),
           }).catch(err => console.error("Failed to sync bulk move:", err));
         });
         return { library: updatedLibrary, selectedTrackIds: [], isSelectionMode: false };
@@ -323,7 +391,7 @@ export const useMusicStore = create<MusicStore>()(
         shuffle: state.shuffle,
         repeat: state.repeat,
         favorites: state.favorites,
-        folders: state.folders,
+        playlists: state.playlists,
         recentlyPlayed: state.recentlyPlayed,
         listeningStats: state.listeningStats,
         crossfadeDuration: state.crossfadeDuration,

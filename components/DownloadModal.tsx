@@ -8,12 +8,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { useDownloadProcessor } from '@/hooks/useDownloadProcessor';
 
 export default function DownloadModal() {
-  const { showDownloadModal, setShowDownloadModal, addDownload, updateDownload, addTrack, setActiveView, folders, activeFolderId } =
+  const { showDownloadModal, setShowDownloadModal, addDownload, updateDownload, addTrack, setActiveView, playlists, activePlaylistId } =
     useMusicStore();
   const { processDownload } = useDownloadProcessor();
 
   const [url, setUrl] = useState('');
-  const [selectedFolderId, setSelectedFolderId] = useState<string>('none');
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('none');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus & reset on open
@@ -21,9 +21,9 @@ export default function DownloadModal() {
     if (showDownloadModal) {
       setTimeout(() => inputRef.current?.focus(), 80);
       setUrl('');
-      setSelectedFolderId(activeFolderId || 'none');
+      setSelectedPlaylistId(activePlaylistId || 'none');
     }
-  }, [showDownloadModal, activeFolderId]);
+  }, [showDownloadModal, activePlaylistId]);
 
   // Escape to close
   useEffect(() => {
@@ -91,8 +91,8 @@ export default function DownloadModal() {
         }
 
         for (const videoUrl of urlsToDownload) {
-          const folderIdStr = selectedFolderId !== 'none' ? selectedFolderId : undefined;
-          await processDownload(videoUrl, folderIdStr);
+          const playlistIdStr = selectedPlaylistId !== 'none' ? selectedPlaylistId : undefined;
+          await processDownload(videoUrl, playlistIdStr);
         }
       }
     };
@@ -188,15 +188,15 @@ export default function DownloadModal() {
         </div>
 
         {/* Playlist Selection */}
-        {folders.length > 0 && (
+        {playlists.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
               Target Playlist
             </label>
             <div style={{ position: 'relative' }}>
               <select
-                value={selectedFolderId}
-                onChange={e => setSelectedFolderId(e.target.value)}
+                value={selectedPlaylistId}
+                onChange={e => setSelectedPlaylistId(e.target.value)}
                 style={{
                   width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
                   borderRadius: 'var(--radius)', padding: '12px 14px', color: 'var(--text)',
@@ -205,8 +205,8 @@ export default function DownloadModal() {
                 }}
               >
                 <option value="none">No Playlist (Default)</option>
-                {folders.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
+                {playlists.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
               <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-faint)', fontSize: 10 }}>▼</div>

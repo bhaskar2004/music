@@ -151,9 +151,8 @@ class _TrackTileState extends State<TrackTile> {
           appState.toggleFavorite(track.id);
           Navigator.pop(context);
         },
-        onMoveToPlaylist: (pid) {
-          appState.moveTrackToPlaylist(track.id, pid);
-          Navigator.pop(context);
+        onTogglePlaylist: (pid) {
+          appState.toggleTrackInPlaylist(track.id, pid);
         },
         onDelete: () async {
           Navigator.pop(context);
@@ -360,7 +359,7 @@ class _TrackMenu extends StatelessWidget {
   final VoidCallback onPlayNext;
   final VoidCallback onAddToQueue;
   final VoidCallback onToggleFavorite;
-  final Function(String?) onMoveToPlaylist;
+  final void Function(String) onTogglePlaylist;
   final VoidCallback onDelete;
 
   const _TrackMenu({
@@ -372,7 +371,7 @@ class _TrackMenu extends StatelessWidget {
     required this.onPlayNext,
     required this.onAddToQueue,
     required this.onToggleFavorite,
-    required this.onMoveToPlaylist,
+    required this.onTogglePlaylist,
     required this.onDelete,
   });
 
@@ -477,20 +476,19 @@ class _TrackMenu extends StatelessWidget {
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
                 leading: const Icon(Icons.playlist_add, color: Colors.white70),
-                title: const Text('Move to Playlist',
+                title: const Text('Add to / Remove from Playlist',
                     style: TextStyle(color: Colors.white, fontSize: 14)),
                 children: [
-                  _MenuItem(
-                    icon: Icons.library_music_outlined,
-                    label: 'Library (Remove from Playlist)',
-                    onTap: () => onMoveToPlaylist(null),
-                  ),
-                  ...playlists.map((p) => _MenuItem(
-                        icon: Icons.folder_outlined,
-                        label: p.name,
-                        onTap: () => onMoveToPlaylist(p.id),
-                        isActive: track.playlistId == p.id,
-                      )),
+                  ...playlists.map((p) {
+                    final isIn = track.playlistIds.contains(p.id);
+                    return _MenuItem(
+                      icon: isIn ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                      label: p.name,
+                      onTap: () => onTogglePlaylist(p.id),
+                      isActive: isIn,
+                      activeColor: const Color(0xFF06C167),
+                    );
+                  }),
                 ],
               ),
             ),

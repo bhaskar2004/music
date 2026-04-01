@@ -10,7 +10,7 @@ class Track {
   final String? addedAt;
   final String format;
   final bool isFavorite;
-  final String? playlistId; // maps to folders in web version
+  final List<String> playlistIds; // Many-to-many playlist association
 
   Track({
     required this.id,
@@ -24,7 +24,7 @@ class Track {
     this.addedAt,
     required this.format,
     this.isFavorite = false,
-    this.playlistId,
+    this.playlistIds = const [],
   });
 
   factory Track.fromMap(Map<String, dynamic> map) {
@@ -40,7 +40,9 @@ class Track {
       addedAt: map['addedAt'],
       format: map['format'] ?? 'mp3',
       isFavorite: (map['isFavorite'] ?? 0) == 1,
-      playlistId: map['playlistId'],
+      playlistIds: map['playlistIds'] != null 
+          ? List<String>.from(map['playlistIds']) 
+          : (map['playlistId'] != null ? [map['playlistId'] as String] : []),
     );
   }
 
@@ -56,7 +58,7 @@ class Track {
         'addedAt': addedAt ?? DateTime.now().toIso8601String(),
         'format': format,
         'isFavorite': isFavorite ? 1 : 0,
-        'playlistId': playlistId,
+        'playlistIds': playlistIds,
       };
 
   Track copyWith({
@@ -71,8 +73,8 @@ class Track {
     String? addedAt,
     String? format,
     bool? isFavorite,
-    String? playlistId,
-    bool clearPlaylistId = false,
+    List<String>? playlistIds,
+    bool clearPlaylistIds = false,
   }) {
     return Track(
       id: id ?? this.id,
@@ -86,7 +88,7 @@ class Track {
       addedAt: addedAt ?? this.addedAt,
       format: format ?? this.format,
       isFavorite: isFavorite ?? this.isFavorite,
-      playlistId: clearPlaylistId ? null : (playlistId ?? this.playlistId),
+      playlistIds: clearPlaylistIds ? [] : (playlistIds ?? this.playlistIds),
     );
   }
 
