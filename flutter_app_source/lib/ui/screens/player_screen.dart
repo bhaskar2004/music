@@ -7,7 +7,6 @@ import 'package:just_audio/just_audio.dart';
 import '../../providers/app_state.dart';
 import '../../services/audio_service.dart';
 import '../../services/download_manager.dart';
-import '../../services/download_service.dart';
 import '../../models/track.dart';
 import 'queue_view.dart';
 
@@ -26,7 +25,6 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _dragging = false;
   double _dragValue = 0;
   bool _showLyrics = true;
-  final ScrollController _lyricsScrollController = ScrollController();
 
   String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -503,7 +501,22 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
+  Widget _buildArtwork(String url, {bool isBackground = false, required String title}) {
+    // If it's a local file path (from DownloadService)
+    if (!url.startsWith('http')) {
+      return Image.file(
+        File(url),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _ArtPlaceholder(title: title),
+      );
     }
+
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => _ArtPlaceholder(title: title),
+      errorWidget: (context, url, error) => _ArtPlaceholder(title: title),
+    );
   }
 
   Widget _buildLyricsView(AudioService audio) {

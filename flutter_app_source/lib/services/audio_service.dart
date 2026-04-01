@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../models/track.dart';
 import 'api_service.dart';
 import 'download_service.dart';
@@ -169,8 +170,8 @@ class AudioService {
       if (isYouTube && isSearchResult) {
         try {
           debugPrint('[AudioService] Fetching direct YouTube URL for ${track.title}');
-          final manifest = await ApiService().getAudioManifest(track.id);
-          final streamInfo = manifest.audioOnly.withHighestBitrate();
+          final yt.StreamManifest manifest = await ApiService().getAudioManifest(track.id);
+          final streamInfo = manifest.audioOnly.sortByBitrate().last;
           final directUrl = streamInfo.url.toString();
           
           return AudioSource.uri(

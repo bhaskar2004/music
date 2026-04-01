@@ -100,6 +100,26 @@ class ApiService {
     }
   }
 
+  /// Fetches lyrics from the Next.js backend
+  Future<Map<String, dynamic>?> fetchLyrics(String artist, String title) async {
+    final serverBase = ServerConfig.baseUrl;
+    if (serverBase.isEmpty) return null;
+
+    try {
+      final response = await _dio.get(
+        '$serverBase/api/lyrics',
+        queryParameters: {'title': title, 'artist': artist},
+      );
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[ApiService] fetchLyrics error: $e');
+      return null;
+    }
+  }
+
   /// Fetches the audio manifest using the singleton (for non-download use).
   Future<yt.StreamManifest> getAudioManifest(String videoId) async {
     return await _yt.videos.streamsClient.getManifest(videoId).timeout(
