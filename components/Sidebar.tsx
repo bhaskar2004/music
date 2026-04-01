@@ -6,7 +6,7 @@ import {
   Folder as FolderIcon, Trash2, Search, Clock, BarChart2,
   Settings, RefreshCcw,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
 const navItems = [
@@ -29,10 +29,29 @@ export default function Sidebar() {
 
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const pendingDownloads = downloads.filter(
     d => d.status === 'downloading' || d.status === 'pending'
   ).length;
+
+  if (!mounted) {
+    return (
+      <aside
+        className="desktop-only"
+        style={{
+          width: 232,
+          minWidth: 232,
+          background: 'var(--surface)',
+          borderRight: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
+        }}
+      />
+    );
+  }
 
   return (
     <>
