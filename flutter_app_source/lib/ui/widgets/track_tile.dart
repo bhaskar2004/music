@@ -20,7 +20,12 @@ class TrackTile extends StatefulWidget {
     required this.track,
     this.isSelected = false,
     this.isSelectionMode = false,
+    this.onToggleSelection,
+    this.onLongPressSelection,
   });
+
+  final VoidCallback? onToggleSelection;
+  final VoidCallback? onLongPressSelection;
 
   @override
   State<TrackTile> createState() => _TrackTileState();
@@ -44,7 +49,11 @@ class _TrackTileState extends State<TrackTile> {
   void _handleTap() {
     final appState = context.read<AppState>();
     if (widget.isSelectionMode) {
-      appState.toggleTrackSelection(widget.track.id);
+      if (widget.onToggleSelection != null) {
+        widget.onToggleSelection!();
+      } else {
+        appState.toggleTrackSelection(widget.track.id);
+      }
       return;
     }
     // Block playback if file not on disk
@@ -140,7 +149,13 @@ class _TrackTileState extends State<TrackTile> {
         _isPlaying = currentTrack?.id == widget.track.id;
 
         return GestureDetector(
-          onLongPress: () => context.read<AppState>().setSelectionMode(true),
+          onLongPress: () {
+            if (widget.onLongPressSelection != null) {
+              widget.onLongPressSelection!();
+            } else {
+              context.read<AppState>().setSelectionMode(true);
+            }
+          },
           onTap: _handleTap,
           child: Container(
             decoration: BoxDecoration(

@@ -27,12 +27,24 @@ class _SearchScreenState extends State<SearchScreen>
   bool _isFetchingServer = false;
   double _dlProgress = 0;
 
+  // New selection state for server tracks
+  final Set<String> _serverSelectedIds = {};
+  bool _serverSelectionMode = false;
+
   static const _accent = Color(0xFF06C167);
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
+    _tab.addListener(() {
+      if (_tab.indexIsChanging && _tab.index != 0) {
+        setState(() {
+          _serverSelectionMode = false;
+          _serverSelectedIds.clear();
+        });
+      }
+    });
     _fetchServerLibrary();
   }
 
@@ -52,6 +64,66 @@ class _SearchScreenState extends State<SearchScreen>
     } finally {
       if (mounted) setState(() => _isFetchingServer = false);
     }
+  }
+
+  void _toggleServerSelection(String id) {
+    setState(() {
+      if (_serverSelectedIds.contains(id)) {
+        _serverSelectedIds.remove(id);
+        if (_serverSelectedIds.isEmpty) _serverSelectionMode = false;
+      } else {
+        _serverSelectedIds.add(id);
+      }
+    });
+  }
+
+  void _enterServerSelection(String id) {
+    setState(() {
+      _serverSelectionMode = true;
+      _serverSelectedIds.add(id);
+    });
+  }
+
+  Future<void> _downloadSelectedFromServer() async {
+    final appState = context.read<AppState>();
+    final tracksToDownload = _serverTracks
+        .where((t) => _serverSelectedIds.contains(t.id))
+        .toList();
+
+    if (tracksToDownload.isEmpty) return;
+
+    setState(() {
+      _serverSelectionMode = false;
+      _serverSelectedIds.clear();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Adding ${tracksToDownload.length} songs to downloads…'),
+      backgroundColor: const Color(0xFF1E1E1E),
+    ));
+
+    for (final track in tracksToDownload) {
+      DownloadManager().processJob(track.sourceUrl, appState);
+    }
+
+    appState.setActiveView(ActiveView.downloads);
+  }
+
+  Future<void> _downloadAllFromServer() async {
+    if (_serverTracks.isEmpty) return;
+
+    final appState = context.read<AppState>();
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Adding all ${_serverTracks.length} songs to downloads…'),
+      backgroundColor: const Color(0xFF1E1E1E),
+    ));
+
+    for (final track in _serverTracks) {
+      DownloadManager().processJob(track.sourceUrl, appState);
+    }
+
+    appState.setActiveView(ActiveView.downloads);
   }
 
   Future<void> _search() async {
@@ -108,32 +180,54 @@ class _SearchScreenState extends State<SearchScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: ShaderMask(
-          shaderCallback: (b) => const LinearGradient(
-                  colors: [Color(0xFF06C167), Color(0xFF00FF85)])
-              .createShader(b),
-          child: const Text('Search & Download',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5)),
-        ),
-        bottom: TabBar(
-          controller: _tab,
-          indicatorColor: _accent,
-          indicatorWeight: 2,
-          labelColor: _accent,
-          unselectedLabelColor: Colors.white38,
-          labelStyle:
-              const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-          tabs: const [
-            Tab(text: 'Web Library'),
-            Tab(text: 'YouTube'),
-            Tab(text: 'Direct Link'),
-          ],
-        ),
-      ),
+      appBar: _serverSelectionMode
+          ? AppBar(
+              backgroundColor: const Color(0xFF1A1A1A),
+              leading: IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => setState(() {
+                  _serverSelectionMode = false;
+                  _serverSelectedIds.clear();
+                }),
+              ),
+              title: Text('${_serverSelectedIds.length} Selected',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              actions: [
+                TextButton.icon(
+                  onPressed: _serverSelectedIds.isEmpty ? null : _downloadSelectedFromServer,
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: const Text('Sync'),
+                  style: TextButton.styleFrom(foregroundColor: _accent),
+                ),
+                const SizedBox(width: 8),
+              ],
+            )
+          : AppBar(
+              title: ShaderMask(
+                shaderCallback: (b) => const LinearGradient(
+                        colors: [Color(0xFF06C167), Color(0xFF00FF85)])
+                    .createShader(b),
+                child: const Text('Search & Download',
+                    style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5)),
+              ),
+              bottom: TabBar(
+                controller: _tab,
+                indicatorColor: _accent,
+                indicatorWeight: 2,
+                labelColor: _accent,
+                unselectedLabelColor: Colors.white38,
+                labelStyle:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                tabs: const [
+                  Tab(text: 'Web Library'),
+                  Tab(text: 'YouTube'),
+                  Tab(text: 'Direct Link'),
+                ],
+              ),
+            ),
       body: TabBarView(
         controller: _tab,
         children: [
@@ -166,19 +260,62 @@ class _SearchScreenState extends State<SearchScreen>
                       onRefresh: _fetchServerLibrary,
                       color: _accent,
                       backgroundColor: const Color(0xFF1A1A1A),
-                      child: GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                        gridDelegate:
-                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 180,
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 0.72,
-                        ),
-                        itemCount: _serverTracks.length,
-                        itemBuilder: (ctx, i) => TrackTile(
-                          track: _serverTracks[i],
-                        ),
+                      child: CustomScrollView(
+                        slivers: [
+                          if (!_serverSelectionMode)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      '${_serverTracks.length} tracks found',
+                                      style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.4),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                    const Spacer(),
+                                    TextButton.icon(
+                                      onPressed: _downloadAllFromServer,
+                                      icon: const Icon(Icons.sync_rounded, size: 16),
+                                      label: const Text('Sync All',
+                                          style: TextStyle(fontSize: 12)),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: _accent,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                            sliver: SliverGrid(
+                              gridDelegate:
+                                  const SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: 180,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 0.72,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (ctx, i) {
+                                  final track = _serverTracks[i];
+                                  return TrackTile(
+                                    track: track,
+                                    isSelectionMode: _serverSelectionMode,
+                                    isSelected: _serverSelectedIds.contains(track.id),
+                                    onToggleSelection: () => _toggleServerSelection(track.id),
+                                    onLongPressSelection: () => _enterServerSelection(track.id),
+                                  );
+                                },
+                                childCount: _serverTracks.length,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
