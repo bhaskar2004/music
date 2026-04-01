@@ -27,19 +27,28 @@ export default function FullScreenPlayer() {
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
 
-  // Parse LRC lyrics
+  // Parse LRC lyrics with offset support
   const parsedLyrics = (() => {
     if (!lyrics?.syncedLyrics) return null;
     const lines = lyrics.syncedLyrics.split('\n');
     const result: { time: number; text: string }[] = [];
     const timeRegex = /\[(\d+):(\d+\.\d+)\]/;
+    const offsetRegex = /\[offset:(-?\d+)\]/;
     
+    let offsetMs = 0;
+    lines.forEach(line => {
+      const offsetMatch = offsetRegex.exec(line);
+      if (offsetMatch) {
+        offsetMs = parseInt(offsetMatch[1]);
+      }
+    });
+
     lines.forEach(line => {
       const match = timeRegex.exec(line);
       if (match) {
         const minutes = parseInt(match[1]);
         const seconds = parseFloat(match[2]);
-        const time = minutes * 60 + seconds;
+        const time = (minutes * 60 + seconds) + (offsetMs / 1000.0);
         const text = line.replace(timeRegex, '').trim();
         if (text) result.push({ time, text });
       }
@@ -47,10 +56,36 @@ export default function FullScreenPlayer() {
     return result;
   })();
 
+  // High-precision time sync for smooth highlighting
+  const [smoothTime, setSmoothTime] = useState(currentTime);
+  const rAFRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const audio = document.querySelector('audio');
+    if (!audio || !isPlaying) {
+      setSmoothTime(currentTime);
+      if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+      return;
+    }
+
+    const updateSmoothTime = () => {
+      if (audio) {
+        setSmoothTime(audio.currentTime);
+      }
+      rAFRef.current = requestAnimationFrame(updateSmoothTime);
+    };
+
+    rAFRef.current = requestAnimationFrame(updateSmoothTime);
+    return () => {
+      if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+    };
+  }, [isPlaying, currentTime]);
+
   const currentLineIndex = parsedLyrics 
     ? parsedLyrics.findIndex((line, i) => {
         const nextLine = parsedLyrics[i + 1];
-        return currentTime >= line.time && (!nextLine || currentTime < nextLine.time);
+        const effectiveTime = smoothTime;
+        return effectiveTime >= line.time && (!nextLine || effectiveTime < nextLine.time);
       })
     : -1;
 

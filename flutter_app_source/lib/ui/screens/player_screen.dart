@@ -643,17 +643,31 @@ class _SyncedLyricsViewerState extends State<_SyncedLyricsViewer> {
   void _parseLrc() {
     final lines = widget.lrc.split('\n');
     final regExp = RegExp(r'\[(\d+):(\d+\.\d+)\]');
+    final offsetRegExp = RegExp(r'\[offset:(-?\d+)\]');
+    
+    int offsetMs = 0;
+    for (var line in lines) {
+      final offsetMatch = offsetRegExp.firstMatch(line);
+      if (offsetMatch != null) {
+        offsetMs = int.parse(offsetMatch.group(1)!);
+      }
+    }
+
     _lines = [];
     for (var line in lines) {
       final match = regExp.firstMatch(line);
       if (match != null) {
         final mm = int.parse(match.group(1)!);
         final ss = double.parse(match.group(2)!);
-        final duration = Duration(
+        final baseTime = Duration(
             minutes: mm, seconds: ss.toInt(), milliseconds: ((ss - ss.toInt()) * 1000).toInt());
+        
+        // Apply offset
+        final finalTime = baseTime + Duration(milliseconds: offsetMs);
+        
         final text = line.replaceAll(regExp, '').trim();
         if (text.isNotEmpty) {
-          _lines.add(_LrcLine(duration, text));
+          _lines.add(_LrcLine(finalTime, text));
         }
       }
     }
