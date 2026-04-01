@@ -19,7 +19,7 @@ export default function FullScreenPlayer() {
   } = useMusicStore();
 
   const [visible, setVisible] = useState(false);
-  const [showLyrics, setShowLyrics] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(true);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
 

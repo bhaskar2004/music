@@ -23,7 +23,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   bool _dragging = false;
   double _dragValue = 0;
-  bool _showLyrics = false;
+  bool _showLyrics = true;
   final ScrollController _lyricsScrollController = ScrollController();
 
   String _fmt(Duration d) {
