@@ -602,10 +602,8 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                       },
                     );
                   },
-                ),
               ),
-              ),
-            ),
+            ],
 
             const Divider(color: Colors.white10, height: 32, indent: 20, endIndent: 20),
 

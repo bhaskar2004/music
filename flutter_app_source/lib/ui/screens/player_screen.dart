@@ -708,6 +708,7 @@ class _SleepTimerOption extends StatelessWidget {
       onTap: onTap,
     );
   }
+}
 
 class _SyncedLyricsViewer extends StatefulWidget {
   final String lrc;
@@ -841,10 +842,7 @@ class _LrcLine {
   _LrcLine(this.time, this.text);
 }
 
-### 2. Improved Regional Song Support
-- **Multi-Query Fallback**: If an exact match fails, the system now automatically generates and tries multiple search queries (Artist+Title, Title+Artist, Title only, and Movie+Title).
-- **Metadata Intelligence**: It recognizes naming conventions like "Artist - Movie | Other Info" and uses each piece to find the best lyric match.
-- **Noise Reduction**: Advanced filtering for common suffixes like "Music", "Vevo", and channel names ensures cleaner search queries.
+
 
 class _CtrlBtn extends StatelessWidget {
   final IconData icon;

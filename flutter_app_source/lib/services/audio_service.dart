@@ -8,6 +8,7 @@ import '../models/track.dart';
 import '../models/history_entry.dart';
 import 'api_service.dart';
 import 'download_service.dart';
+import 'storage_service.dart';
 import 'server_config.dart';
 
 /// Audio service that ONLY plays local downloaded files.
@@ -63,9 +64,6 @@ class AudioService {
       }
     });
 
-      }
-    });
-
     _player.processingStateStream.listen((state) {
       if (state == ProcessingState.ready) {
         _fadeIn();
@@ -116,6 +114,9 @@ class AudioService {
     }
 
     sleepTimerEnd.value = DateTime.now().add(duration);
+    _sleepTimer = Timer(duration, () {
+      pause();
+      sleepTimerEnd.value = null;
     });
   }
 
