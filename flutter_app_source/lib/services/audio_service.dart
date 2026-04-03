@@ -17,8 +17,8 @@ class AudioService {
   final AudioPlayer _player = AudioPlayer();
 
   final List<Track> _queue = [];
-  final ConcatenatingAudioSource _playlist =
-      ConcatenatingAudioSource(children: []);
+  final ConcatenatingAudioSource _playlist = // ignore: deprecated_member_use
+      ConcatenatingAudioSource(children: []); // ignore: deprecated_member_use
 
   final ValueNotifier<Track?> currentTrack = ValueNotifier<Track?>(null);
   final ValueNotifier<List<Track>> queueNotifier =
@@ -70,9 +70,8 @@ class AudioService {
       }
     });
 
-    _player.playbackEventStream.listen(
-      (_) {},
-      onError: (Object e, StackTrace st) {
+    _player.playbackEventStream.listen((_) {});
+    _player.playerStateStream.listen((state) {}, onError: (Object e, StackTrace st) {
         debugPrint('[AudioService] error: $e');
         playbackError.value =
             e.toString().split('\n').first.split('Exception: ').last;

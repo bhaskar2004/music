@@ -624,66 +624,68 @@ class _BulkActionBar extends StatelessWidget {
             ],
           ),
           child: Row(
-        children: [
-          Text('$count selected',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 14)),
-          Container(
-              width: 1,
-              height: 20,
-              color: Colors.white12,
-              margin: const EdgeInsets.symmetric(horizontal: 14)),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  if (isAddingSongs && isInPlaylist)
-                    _BarBtn(
-                      icon: Icons.add_rounded,
-                      label: 'Add to $activePlaylistName',
-                      primary: true,
-                      onTap: onAddToCurrentPlaylist,
-                    )
-                  else ...[
-                    _BarBtn(
-                      icon: Icons.queue_music_rounded,
-                      label: 'Add to Queue',
-                      onTap: onAddToQueue,
-                    ),
-                    if (playlists.isNotEmpty)
-                      ...playlists.map(
-                        (p) => Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: _BarBtn(
-                            icon: Icons.folder_rounded,
-                            label: p.value,
-                            onTap: () => onMoveToPlaylist(p.key),
+            children: [
+              Text('$count selected',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14)),
+              Container(
+                  width: 1,
+                  height: 20,
+                  color: Colors.white12,
+                  margin: const EdgeInsets.symmetric(horizontal: 14)),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      if (isAddingSongs && isInPlaylist)
+                        _BarBtn(
+                          icon: Icons.add_rounded,
+                          label: 'Add to $activePlaylistName',
+                          primary: true,
+                          onTap: onAddToCurrentPlaylist,
+                        )
+                      else ...[
+                        _BarBtn(
+                          icon: Icons.queue_music_rounded,
+                          label: 'Add to Queue',
+                          onTap: onAddToQueue,
+                        ),
+                        if (playlists.isNotEmpty)
+                          ...playlists.map(
+                            (p) => Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: _BarBtn(
+                                icon: Icons.folder_rounded,
+                                label: p.value,
+                                onTap: () => onMoveToPlaylist(p.key),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    if (isInPlaylist && !isAddingSongs)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: _BarBtn(
-                          icon: Icons.folder_off_rounded,
-                          label: 'Remove from playlist',
-                          danger: true,
-                          onTap: onRemoveFromPlaylist,
-                        ),
-                      ),
-                  ],
-                ],
+                        if (isInPlaylist && !isAddingSongs)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: _BarBtn(
+                              icon: Icons.folder_off_rounded,
+                              label: 'Remove from playlist',
+                              danger: true,
+                              onTap: onRemoveFromPlaylist,
+                            ),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onCancel,
+                child: const Icon(Icons.close_rounded,
+                    size: 18, color: Colors.white38),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onCancel,
-            child: const Icon(Icons.close_rounded,
-                size: 18, color: Colors.white38),
-          ),
-        ],
+        ),
       ),
     );
   }

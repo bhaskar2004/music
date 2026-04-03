@@ -46,7 +46,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             return SafeArea(
               child: Column(
                 children: [
-                  _buildAppBar(context),
+                  _buildAppBar(context, audio),
                   const Expanded(
                     child: Center(
                       child: Text('No track playing',
@@ -96,7 +96,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               SafeArea(
                 child: Column(
                   children: [
-                    _buildAppBar(context),
+                    _buildAppBar(context, audio),
 
                     const SizedBox(height: 16),
 
@@ -572,7 +572,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context, AudioService audio) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(

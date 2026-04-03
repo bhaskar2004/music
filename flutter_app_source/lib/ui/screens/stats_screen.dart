@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../providers/app_state.dart';
 import '../../services/stats_service.dart';
 import '../../services/storage_service.dart';
-import '../../models/history_entry.dart';
 import '../../models/track.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -16,7 +15,6 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen> {
   bool _isLoading = true;
-  List<HistoryEntry> _history = [];
   int _todayTime = 0;
   int _totalTime = 0;
   Map<String, int> _activity = {};
@@ -30,18 +28,17 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Future<void> _loadStats() async {
+    final appState = Provider.of<AppState>(context, listen: false);
     final history = await StorageService().getHistory();
     final stats = StatsService();
     final today = await stats.getTodayListenTime(history);
     final total = await stats.getTotalListenTime(history);
     final activity = await stats.getLast7DaysActivity(history);
     final topTracks = await stats.getTopTracks(history);
-    final appState = Provider.of<AppState>(context, listen: false);
     final topArtists = await stats.getTopArtists(history, appState.library);
 
     if (mounted) {
       setState(() {
-        _history = history;
         _todayTime = today;
         _totalTime = total;
         _activity = activity;
@@ -60,8 +57,6 @@ class _StatsScreenState extends State<StatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -118,9 +113,9 @@ class _StatsScreenState extends State<StatsScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,7 +139,7 @@ class _StatsScreenState extends State<StatsScreen> {
       height: 200,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
       ),
       child: BarChart(
@@ -196,7 +191,7 @@ class _StatsScreenState extends State<StatsScreen> {
     if (data.isEmpty) return const SizedBox.shrink();
     
     final appState = Provider.of<AppState>(context, listen: false);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -218,7 +213,7 @@ class _StatsScreenState extends State<StatsScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -233,7 +228,7 @@ class _StatsScreenState extends State<StatsScreen> {
                 else
                   Container(
                     width: 48, height: 48, 
-                    decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
                     child: const Icon(Icons.person, color: Colors.blueAccent),
                   ),
                 const SizedBox(width: 16),
@@ -249,7 +244,7 @@ class _StatsScreenState extends State<StatsScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

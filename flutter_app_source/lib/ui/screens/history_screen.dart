@@ -81,14 +81,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: ListTile(
                       leading: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: track.coverUrl.isNotEmpty
-                          ? Image.network(track.coverUrl, width: 44, height: 44, fit: BoxFit.cover,
+                        child: track.coverUrl?.isNotEmpty == true
+                          ? Image.network(track.coverUrl!, width: 44, height: 44, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(color: Colors.grey[800], width: 44, height: 44))
                           : Container(color: Colors.grey[800], width: 44, height: 44, child: const Icon(Icons.music_note, size: 20)),
                       ),

@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../models/track.dart';
 import '../models/download_job.dart';
 import '../providers/app_state.dart';
 import 'download_service.dart';
 import 'server_download_service.dart';
-import 'storage_service.dart';
 
 class DownloadManager {
   static final DownloadManager _instance = DownloadManager._internal();
@@ -72,7 +70,6 @@ class DownloadManager {
     int attempts = 0;
     const maxAttempts = 3;
     bool success = false;
-    dynamic lastError;
 
     while (attempts < maxAttempts && !success) {
       attempts++;
@@ -129,7 +126,6 @@ class DownloadManager {
             progress: 1.0,
             completedTrack: result.track);
       } catch (e) {
-        lastError = e;
         debugPrint('[DL] Attempt $attempts failed: $e');
         if (attempts < maxAttempts) {
           final delaySecs = 3 * attempts; // 3s, 6s, 9s backoff

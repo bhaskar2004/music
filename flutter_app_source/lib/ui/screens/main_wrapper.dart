@@ -602,6 +602,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                       },
                     );
                   },
+                ),
               ),
             ],
 

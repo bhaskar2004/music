@@ -10,9 +10,9 @@ class DownloadService {
 
   // ─── Save directory ────────────────────────────────────────────────────────
 
-  /// Android  → /sdcard/Android/data/<pkg>/files/Wavelength/
+  /// Android  -> /sdcard/Android/data/pkg/files/Wavelength/
   ///            Falls back to app documents if external storage unavailable
-  /// iOS      → <documentsDir>/Wavelength/
+  /// iOS      -> docDir/Wavelength/
   static Future<Directory> getSaveDirectory() async {
     final Directory base;
     if (Platform.isAndroid) {

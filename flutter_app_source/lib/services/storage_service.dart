@@ -8,8 +8,8 @@ import '../models/history_entry.dart';
 import '../models/app_config.dart';
 
 /// Replaces SQLite. All data lives in two JSON files on device local storage:
-///   <appDocDir>/wavelength_library.json
-///   <appDocDir>/wavelength_playlists.json
+///   appDocDir/wavelength_library.json
+///   appDocDir/wavelength_playlists.json
 class StorageService {
   static final StorageService _instance = StorageService._internal();
   factory StorageService() => _instance;

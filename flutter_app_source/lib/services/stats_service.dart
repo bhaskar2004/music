@@ -1,6 +1,5 @@
 import '../models/history_entry.dart';
 import '../models/track.dart';
-import 'storage_service.dart';
 
 class StatsService {
   static final StatsService _instance = StatsService._internal();
@@ -9,7 +8,7 @@ class StatsService {
 
   /// Calculates total listen time in seconds.
   Future<int> getTotalListenTime(List<HistoryEntry> history) async {
-    return history.fold(0, (sum, entry) => sum + entry.durationSeconds);
+    return history.fold<int>(0, (sum, entry) => sum + entry.durationSeconds);
   }
 
   /// Calculates listen time for today in seconds.
@@ -18,7 +17,7 @@ class StatsService {
     final today = DateTime(now.year, now.month, now.day);
     return history
         .where((e) => e.timestamp.isAfter(today))
-        .fold(0, (sum, entry) => sum + entry.durationSeconds);
+        .fold<int>(0, (sum, entry) => sum + entry.durationSeconds);
   }
 
   /// Calculates listen time for yesterday in seconds.
@@ -28,7 +27,7 @@ class StatsService {
     final today = DateTime(now.year, now.month, now.day);
     return history
         .where((e) => e.timestamp.isAfter(yesterday) && e.timestamp.isBefore(today))
-        .fold(0, (sum, entry) => sum + entry.durationSeconds);
+        .fold<int>(0, (sum, entry) => sum + entry.durationSeconds);
   }
 
   /// Returns the top [count] tracks by play count.
@@ -72,7 +71,7 @@ class StatsService {
       
       final dayTime = history
           .where((e) => e.timestamp.isAfter(dayStart) && e.timestamp.isBefore(dayEnd))
-          .fold(0, (sum, entry) => sum + entry.durationSeconds);
+          .fold<int>(0, (sum, entry) => sum + entry.durationSeconds);
           
       activity[dateStr] = dayTime;
     }

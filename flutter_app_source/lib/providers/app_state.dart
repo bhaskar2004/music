@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/track.dart';
@@ -15,7 +14,7 @@ enum ActiveView { library, favorites, queue, downloads, stats, history, settings
 class AppState extends ChangeNotifier {
   List<Track> _library = [];
   List<Playlist> _playlists = [];
-  List<DownloadJob> _downloads = [];
+  final List<DownloadJob> _downloads = [];
   AppConfig _config = AppConfig();
 
   ActiveView _activeView = ActiveView.library;
