@@ -1,16 +1,9 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'storage_service.dart';
 
 /// Manages the base URL for the Next.js server that handles downloads.
-///
-/// Defaults:
-///   Android emulator  → http://10.0.2.2:3000  (maps to host machine)
-///   iOS simulator     → http://localhost:3000
-///   Physical device   → must be configured via settings
 class ServerConfig {
-  static const _prefsKey = 'wavelength_server_url';
-
   static String _defaultUrl() {
     if (kIsWeb) return ''; // Not applicable
     if (Platform.isAndroid) return 'http://10.0.2.2:3000';
@@ -25,11 +18,11 @@ class ServerConfig {
     return _defaultUrl();
   }
 
-  /// Loads the saved server URL from SharedPreferences.
+  /// Loads the saved server URL from StorageService.
   static Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString(_prefsKey);
+      final config = await StorageService().getConfig();
+      final saved = config.serverUrl;
       if (saved != null && saved.trim().isNotEmpty) {
         _cachedUrl = saved.trim().replaceAll(RegExp(r'/+$'), '');
       }
@@ -43,8 +36,8 @@ class ServerConfig {
     final clean = url.trim().replaceAll(RegExp(r'/+$'), '');
     _cachedUrl = clean;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefsKey, clean);
+      final config = await StorageService().getConfig();
+      await StorageService().saveConfig(config.copyWith(serverUrl: clean));
     } catch (e) {
       debugPrint('[ServerConfig] Failed to save URL: $e');
     }
@@ -54,8 +47,8 @@ class ServerConfig {
   static Future<void> reset() async {
     _cachedUrl = '';
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_prefsKey);
+      final config = await StorageService().getConfig();
+      await StorageService().saveConfig(config.copyWith(serverUrl: null));
     } catch (e) {
       debugPrint('[ServerConfig] Failed to reset URL: $e');
     }

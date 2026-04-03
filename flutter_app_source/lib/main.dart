@@ -103,37 +103,59 @@ class _WavelengthAppState extends State<WavelengthApp> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final themeMode = appState.config.themeMode;
+
     return MaterialApp(
       scaffoldMessengerKey: _messengerKey,
       title: 'Wavelength',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF000000),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFFFFFF),
-          secondary: Color(0xFF06C167),
-          surface: Color(0xFF0D0D0D),
-        ),
-        textTheme: GoogleFonts.interTextTheme(
-          Theme.of(context).textTheme.apply(
-                bodyColor: Colors.white,
-                displayColor: Colors.white,
-              ),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF000000),
-          elevation: 0,
-        ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Color(0xFF000000),
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Color(0xFF555555),
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-        ),
-      ),
+      themeMode: themeMode,
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
       home: const MainWrapper(),
+    );
+  }
+
+  ThemeData _buildTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final baseTheme = isDark ? ThemeData.dark() : ThemeData.light();
+    
+    return baseTheme.copyWith(
+      scaffoldBackgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF8F9FA),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF06C167),
+        brightness: brightness,
+        primary: isDark ? Colors.white : Colors.black,
+        secondary: const Color(0xFF06C167),
+        surface: isDark ? const Color(0xFF0D0D0D) : Colors.white,
+      ),
+      textTheme: GoogleFonts.epilogueTextTheme(baseTheme.textTheme).copyWith(
+        displayLarge: GoogleFonts.syne(textStyle: baseTheme.textTheme.displayLarge),
+        displayMedium: GoogleFonts.syne(textStyle: baseTheme.textTheme.displayMedium),
+        displaySmall: GoogleFonts.syne(textStyle: baseTheme.textTheme.displaySmall),
+        headlineLarge: GoogleFonts.syne(textStyle: baseTheme.textTheme.headlineLarge),
+        titleLarge: GoogleFonts.syne(textStyle: baseTheme.textTheme.titleLarge, fontWeight: FontWeight.bold),
+      ).apply(
+        bodyColor: isDark ? Colors.white : Colors.black87,
+        displayColor: isDark ? Colors.white : Colors.black,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleTextStyle: GoogleFonts.syne(
+          color: isDark ? Colors.white : Colors.black,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
     );
   }
 }

@@ -607,11 +607,107 @@ class _PlayerScreenState extends State<PlayerScreen>
               MaterialPageRoute(builder: (_) => const QueueView()),
             ),
           ),
+          ValueListenableBuilder<DateTime?>(
+            valueListenable: audio.sleepTimerEnd,
+            builder: (ctx, end, _) {
+              final active = end != null;
+              return IconButton(
+                icon: Icon(
+                  active ? Icons.timer_rounded : Icons.timer_outlined,
+                  color: active ? _accent : Colors.white.withValues(alpha: 0.5),
+                ),
+                onPressed: () => _showSleepTimerDialog(context, audio),
+              );
+            },
+          ),
         ],
       ),
     );
   }
+
+  void _showSleepTimerDialog(BuildContext context, AudioService audio) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0D0D0D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Sleep Timer',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _SleepTimerOption(
+                label: 'Off',
+                onTap: () {
+                  audio.setSleepTimer(null);
+                  Navigator.pop(ctx);
+                },
+              ),
+              _SleepTimerOption(
+                label: '15 Minutes',
+                onTap: () {
+                  audio.setSleepTimer(const Duration(minutes: 15));
+                  Navigator.pop(ctx);
+                },
+              ),
+              _SleepTimerOption(
+                label: '30 Minutes',
+                onTap: () {
+                  audio.setSleepTimer(const Duration(minutes: 30));
+                  Navigator.pop(ctx);
+                },
+              ),
+              _SleepTimerOption(
+                label: '45 Minutes',
+                onTap: () {
+                  audio.setSleepTimer(const Duration(minutes: 45));
+                  Navigator.pop(ctx);
+                },
+              ),
+              _SleepTimerOption(
+                label: '1 Hour',
+                onTap: () {
+                  audio.setSleepTimer(const Duration(hours: 1));
+                  Navigator.pop(ctx);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+
+class _SleepTimerOption extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _SleepTimerOption({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.white70, fontSize: 16),
+      ),
+      onTap: onTap,
+    );
+  }
 
 class _SyncedLyricsViewer extends StatefulWidget {
   final String lrc;

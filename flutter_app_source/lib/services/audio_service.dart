@@ -1,9 +1,11 @@
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../models/track.dart';
+import '../models/history_entry.dart';
 import 'api_service.dart';
 import 'download_service.dart';
 import 'server_config.dart';
@@ -28,18 +30,45 @@ class AudioService {
   final ValueNotifier<Map<String, dynamic>?> lyrics =
       ValueNotifier<Map<String, dynamic>?>(null);
   final ValueNotifier<bool> isLoadingLyrics = ValueNotifier<bool>(false);
+  
+  // Tracking for history
+  Stopwatch? _listenStopwatch;
+  String? _lastTrackId;
+  static const _historyThresholdSeconds = 30;
+
+  // Sleep Timer
+  Timer? _sleepTimer;
+  final ValueNotifier<DateTime?> sleepTimerEnd = ValueNotifier<DateTime?>(null);
+
+  // Crossfade state
+  Timer? _fadeTimer;
 
   AudioService() {
     _player.currentIndexStream.listen((index) {
       if (index != null && index < _queue.length) {
         final newTrack = _queue[index];
         if (currentTrack.value?.id != newTrack.id) {
-          currentTrack.value = newTrack;
-          _fetchLyrics(newTrack);
+          _handleTrackChange(newTrack);
         }
       } else if (_queue.isEmpty) {
-        currentTrack.value = null;
-        lyrics.value = null;
+        _handleTrackChange(null);
+      }
+    });
+
+    _player.playingStream.listen((playing) {
+      if (playing) {
+        _listenStopwatch?.start();
+      } else {
+        _listenStopwatch?.stop();
+      }
+    });
+
+      }
+    });
+
+    _player.processingStateStream.listen((state) {
+      if (state == ProcessingState.ready) {
+        _fadeIn();
       }
     });
 
@@ -51,6 +80,58 @@ class AudioService {
             e.toString().split('\n').first.split('Exception: ').last;
       },
     );
+  }
+
+  void _handleTrackChange(Track? newTrack) {
+    // Save history for previous track if threshold met
+    if (_lastTrackId != null && _listenStopwatch != null) {
+      final elapsed = _listenStopwatch!.elapsed.inSeconds;
+      if (elapsed >= _historyThresholdSeconds) {
+        StorageService().saveHistoryEntry(HistoryEntry(
+          trackId: _lastTrackId!,
+          timestamp: DateTime.now(),
+          durationSeconds: elapsed,
+        ));
+      }
+    }
+
+    // Reset for new track
+    _lastTrackId = newTrack?.id;
+    _listenStopwatch = Stopwatch();
+    if (_player.playing) _listenStopwatch!.start();
+
+    currentTrack.value = newTrack;
+    if (newTrack != null) {
+      _fetchLyrics(newTrack);
+    } else {
+      lyrics.value = null;
+    }
+  }
+
+  void setSleepTimer(Duration? duration) {
+    _sleepTimer?.cancel();
+    if (duration == null || duration.inSeconds == 0) {
+      sleepTimerEnd.value = null;
+      return;
+    }
+
+    sleepTimerEnd.value = DateTime.now().add(duration);
+    });
+  }
+
+  void _fadeIn() {
+    _fadeTimer?.cancel();
+    _player.setVolume(0);
+    double vol = 0;
+    _fadeTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      vol += 0.05;
+      if (vol >= 1.0) {
+        _player.setVolume(1.0);
+        timer.cancel();
+      } else {
+        _player.setVolume(vol);
+      }
+    });
   }
 
   AudioPlayer get player => _player;

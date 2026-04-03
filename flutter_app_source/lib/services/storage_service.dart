@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
 import '../models/playlist.dart';
+import '../models/history_entry.dart';
+import '../models/app_config.dart';
 
 /// Replaces SQLite. All data lives in two JSON files on device local storage:
 ///   <appDocDir>/wavelength_library.json
@@ -23,6 +25,16 @@ class StorageService {
   Future<File> _playlistsFile() async {
     final dir = await getApplicationDocumentsDirectory();
     return File('${dir.path}/wavelength_playlists.json');
+  }
+
+  Future<File> _historyFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/wavelength_history.json');
+  }
+
+  Future<File> _configFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/wavelength_config.json');
   }
 
   // ─── Tracks ───────────────────────────────────────────────────────────────
@@ -141,5 +153,54 @@ class StorageService {
 
   Future<void> saveTracks(List<Track> tracks) async {
     await _saveTracks(tracks);
+  }
+
+  // ─── History ─────────────────────────────────────────────────────────────
+
+  Future<List<HistoryEntry>> getHistory() async {
+    try {
+      final file = await _historyFile();
+      if (!await file.exists()) return [];
+      final raw = await file.readAsString();
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .map((e) => HistoryEntry.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (e) {
+      debugPrint('[StorageService] getHistory error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveHistoryEntry(HistoryEntry entry) async {
+    final history = await getHistory();
+    history.add(entry);
+    // Keep only last 2000 entries to avoid massive files
+    if (history.length > 2000) {
+      history.removeRange(0, history.length - 2000);
+    }
+    final file = await _historyFile();
+    await file.writeAsString(
+      jsonEncode(history.map((e) => e.toMap()).toList()),
+    );
+  }
+
+  // ─── App Config ──────────────────────────────────────────────────────────
+
+  Future<AppConfig> getConfig() async {
+    try {
+      final file = await _configFile();
+      if (!await file.exists()) return AppConfig();
+      final raw = await file.readAsString();
+      return AppConfig.fromMap(Map<String, dynamic>.from(jsonDecode(raw)));
+    } catch (e) {
+      debugPrint('[StorageService] getConfig error: $e');
+      return AppConfig();
+    }
+  }
+
+  Future<void> saveConfig(AppConfig config) async {
+    final file = await _configFile();
+    await file.writeAsString(jsonEncode(config.toMap()));
   }
 }

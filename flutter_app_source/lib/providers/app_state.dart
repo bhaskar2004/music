@@ -1,19 +1,22 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/track.dart';
 import '../models/playlist.dart';
 import '../models/download_job.dart';
+import '../models/app_config.dart';
 import '../services/storage_service.dart';
 import '../services/api_service.dart';
 
 enum SortOption { recent, title, artist, duration }
 
-enum ActiveView { library, favorites, queue, downloads }
+enum ActiveView { library, favorites, queue, downloads, stats, history, settings }
 
 class AppState extends ChangeNotifier {
   List<Track> _library = [];
   List<Playlist> _playlists = [];
   List<DownloadJob> _downloads = [];
+  AppConfig _config = AppConfig();
 
   ActiveView _activeView = ActiveView.library;
   String? _activePlaylistId;
@@ -37,6 +40,7 @@ class AppState extends ChangeNotifier {
   bool get isAddingSongs => _isAddingSongs;
   int get pendingDownloadsCount =>
       _downloads.where((d) => d.isActive).length;
+  AppConfig get config => _config;
 
   List<String> get favorites =>
       _library.where((t) => t.isFavorite).map((t) => t.id).toList();
@@ -89,6 +93,7 @@ class AppState extends ChangeNotifier {
   Future<void> initialize() async {
     _library = await StorageService().getTracks();
     _playlists = await StorageService().getPlaylists();
+    _config = await StorageService().getConfig();
     notifyListeners();
   }
 
@@ -314,6 +319,26 @@ class AppState extends ChangeNotifier {
     _downloads[idx].status = DownloadStatus.pending;
     _downloads[idx].progress = 0;
     _downloads[idx].error = null;
+    notifyListeners();
+  }
+
+  // ─── Settings ─────────────────────────────────────────────────────────────
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _config = _config.copyWith(themeMode: mode);
+    await StorageService().saveConfig(_config);
+    notifyListeners();
+  }
+
+  Future<void> setCrossfadeDuration(int seconds) async {
+    _config = _config.copyWith(crossfadeDuration: seconds);
+    await StorageService().saveConfig(_config);
+    notifyListeners();
+  }
+
+  Future<void> setServerUrl(String url) async {
+    _config = _config.copyWith(serverUrl: url);
+    await StorageService().saveConfig(_config);
     notifyListeners();
   }
 }

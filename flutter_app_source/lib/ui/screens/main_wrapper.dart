@@ -10,6 +10,9 @@ import 'favorites_screen.dart';
 import 'queue_view.dart';
 import 'downloads_screen.dart';
 import 'search_screen.dart';
+import 'stats_screen.dart';
+import 'history_screen.dart';
+import 'settings_screen.dart';
 import '../widgets/now_playing_bar.dart';
 import '../widgets/download_bottom_sheet.dart';
 
@@ -86,6 +89,12 @@ class _MainWrapperState extends State<MainWrapper> {
         return 2;
       case ActiveView.downloads:
         return 3;
+      case ActiveView.stats:
+        return 4;
+      case ActiveView.history:
+        return 5;
+      case ActiveView.settings:
+        return 6;
     }
   }
 
@@ -99,6 +108,12 @@ class _MainWrapperState extends State<MainWrapper> {
         return const QueueView();
       case ActiveView.downloads:
         return const DownloadsScreen();
+      case ActiveView.stats:
+        return const StatsScreen();
+      case ActiveView.history:
+        return const HistoryScreen();
+      case ActiveView.settings:
+        return const SettingsScreen();
     }
   }
 
@@ -118,32 +133,44 @@ class _MainWrapperState extends State<MainWrapper> {
       ),
 
       // Use a Column body so now playing bar + screens + nav all layout properly
-      body: Column(
-        children: [
-          // Main content area (screens + search)
-          Expanded(
-            child: Stack(
-              children: [
-                Offstage(
-                  offstage: _showSearch,
-                  child: IndexedStack(
-                    index: _indexFromView(activeView),
-                    children: ActiveView.values
-                        .map((v) => _buildScreen(v))
-                        .toList(),
-                  ),
-                ),
-                if (_showSearch) const SearchScreen(),
-              ],
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: appState.config.themeMode == ThemeMode.light
+                ? [const Color(0xFFF8F9FA), const Color(0xFFE9ECEF)]
+                : [const Color(0xFF000000), const Color(0xFF0A0A0A), const Color(0xFF111111)],
+            stops: const [0.0, 0.5, 1.0],
           ),
+        ),
+        child: Column(
+          children: [
+            // Main content area (screens + search)
+            Expanded(
+              child: Stack(
+                children: [
+                  Offstage(
+                    offstage: _showSearch,
+                    child: IndexedStack(
+                      index: _indexFromView(activeView),
+                      children: ActiveView.values
+                          .map((v) => _buildScreen(v))
+                          .toList(),
+                    ),
+                  ),
+                  if (_showSearch) const SearchScreen(),
+                ],
+              ),
+            ),
 
-          // Now playing bar - properly positioned above bottom nav
-          const NowPlayingBar(),
+            // Now playing bar - properly positioned above bottom nav
+            const NowPlayingBar(),
 
-          // Bottom Navigation Bar
-          _buildBottomNav(appState, activeView, playlists, pendingCount, audio),
-        ],
+            // Bottom Navigation Bar
+            _buildBottomNav(appState, activeView, playlists, pendingCount, audio),
+          ],
+        ),
       ),
     );
   }
@@ -577,15 +604,40 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                   },
                 ),
               ),
-            ] else
-              const Expanded(
-                child: Center(
-                  child: Text('No playlists yet.\nTap + to create one.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: Color(0xFF444444), fontSize: 13)),
-                ),
               ),
+            ),
+
+            const Divider(color: Colors.white10, height: 32, indent: 20, endIndent: 20),
+
+            _DrawerItem(
+              icon: Icons.bar_chart_rounded,
+              label: 'Statistics',
+              isActive: appState.activeView == ActiveView.stats,
+              onTap: () {
+                appState.setActiveView(ActiveView.stats);
+                widget.onClose();
+              },
+            ),
+            _DrawerItem(
+              icon: Icons.history_rounded,
+              label: 'Recently Played',
+              isActive: appState.activeView == ActiveView.history,
+              onTap: () {
+                appState.setActiveView(ActiveView.history);
+                widget.onClose();
+              },
+            ),
+            _DrawerItem(
+              icon: Icons.settings_outlined,
+              label: 'Settings',
+              isActive: appState.activeView == ActiveView.settings,
+              onTap: () {
+                appState.setActiveView(ActiveView.settings);
+                widget.onClose();
+              },
+            ),
+
+            const SizedBox(height: 16),
 
             // Bottom add from URL button
             Padding(
