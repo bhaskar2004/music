@@ -286,7 +286,7 @@ class AudioService {
         return null;
       }
 
-      final streamUrl = '$serverBase/audio/${track.filename}';
+      final streamUrl = '$serverBase/api/stream/${track.id}';
       debugPrint('[AudioService] Streaming from server: $streamUrl');
       
       Uri? artUri;
