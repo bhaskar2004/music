@@ -6,6 +6,7 @@ import '../models/download_job.dart';
 import '../models/app_config.dart';
 import '../services/storage_service.dart';
 import '../services/api_service.dart';
+import '../services/server_config.dart';
 
 enum SortOption { recent, title, artist, duration }
 
@@ -55,9 +56,13 @@ class AppState extends ChangeNotifier {
   List<Track> get filteredTracks {
     List<Track> tracks = [..._library];
 
-    // Main filtering: only show downloaded songs in screens like Library and Favorites.
+    // Main filtering: only show downloaded songs in screens like Library and Favorites
+    // EXCEPT if we have a server URL configured, in which case we can stream.
     if (_activeView != ActiveView.downloads) {
-      tracks = tracks.where((t) => _downloadedIds.contains(t.id)).toList();
+      final hasServer = _config.serverUrl != null && _config.serverUrl!.trim().isNotEmpty;
+      if (!hasServer) {
+        tracks = tracks.where((t) => _downloadedIds.contains(t.id)).toList();
+      }
     }
 
     if (_activePlaylistId != null) {
@@ -362,6 +367,7 @@ class AppState extends ChangeNotifier {
   Future<void> setServerUrl(String url) async {
     _config = _config.copyWith(serverUrl: url);
     await StorageService().saveConfig(_config);
+    await ServerConfig.setBaseUrl(url); // Ensure ServerConfig is synced
     notifyListeners();
   }
 }

@@ -105,6 +105,8 @@ class _TrackTileState extends State<TrackTile> {
     final track = widget.track;
     final isFav = appState.favorites.contains(track.id);
 
+    final canStream = _isDownloaded || (appState.config.serverUrl?.isNotEmpty ?? false);
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -114,6 +116,7 @@ class _TrackTileState extends State<TrackTile> {
         playlists: playlists,
         isFavorite: isFav,
         isDownloaded: _isDownloaded,
+        canStream: canStream,
         onDownload: () {
           Navigator.pop(context);
           DownloadManager().processJob(track.sourceUrl, appState);
@@ -342,6 +345,7 @@ class _TrackMenu extends StatelessWidget {
   final List playlists;
   final bool isFavorite;
   final bool isDownloaded;
+  final bool canStream;
   final VoidCallback onDownload;
   final VoidCallback onPlayNext;
   final VoidCallback onAddToQueue;
@@ -354,6 +358,7 @@ class _TrackMenu extends StatelessWidget {
     required this.playlists,
     required this.isFavorite,
     required this.isDownloaded,
+    required this.canStream,
     required this.onDownload,
     required this.onPlayNext,
     required this.onAddToQueue,
@@ -434,8 +439,8 @@ class _TrackMenu extends StatelessWidget {
 
           const Divider(color: Color(0xFF1E1E1E), height: 1),
 
-          // Queue section — only makes sense when downloaded
-          if (isDownloaded) ...[
+          // Queue section — makes sense when downloaded OR when can stream from server
+          if (canStream) ...[
             _MenuSection(label: 'QUEUE'),
             _MenuItem(
               icon: Icons.skip_next_rounded,
