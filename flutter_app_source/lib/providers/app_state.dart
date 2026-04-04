@@ -7,6 +7,7 @@ import '../models/app_config.dart';
 import '../services/storage_service.dart';
 import '../services/api_service.dart';
 import '../services/server_config.dart';
+import '../services/download_service.dart';
 
 enum SortOption { recent, title, artist, duration }
 
