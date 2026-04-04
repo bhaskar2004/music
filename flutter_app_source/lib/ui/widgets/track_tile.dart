@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/track.dart';
 
@@ -158,6 +159,7 @@ class _TrackTileState extends State<TrackTile> {
       valueListenable: audio.currentTrack,
       builder: (ctx, currentTrack, _) {
         _isPlaying = currentTrack?.id == widget.track.id;
+        final isBuffering = _isPlaying && (audio.player.processingState == ProcessingState.buffering || audio.player.processingState == ProcessingState.loading);
 
         return GestureDetector(
           onLongPress: () {
@@ -249,8 +251,14 @@ class _TrackTileState extends State<TrackTile> {
                               color: Colors.black.withValues(alpha: 0.45),
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: const Center(
-                              child: _EqualizerAnimation(),
+                            child: Center(
+                              child: isBuffering 
+                                ? const SizedBox(
+                                    width: 24, 
+                                    height: 24, 
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF06C167))
+                                  )
+                                : const _EqualizerAnimation(),
                             ),
                           ),
                         ),

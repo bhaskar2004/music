@@ -159,7 +159,7 @@ class AudioService {
     await _player.play();
   }
 
-  /// Play a list starting at [startIndex]. Skips tracks not yet downloaded.
+  /// Play a list starting at [startIndex].
   Future<void> playAll(List<Track> tracks, {int startIndex = 0}) async {
     if (tracks.isEmpty) return;
     playbackError.value = null;
@@ -167,33 +167,43 @@ class AudioService {
     _queue.clear();
     await _playlist.clear();
 
-    // Only include tracks with a local file
-    final playable = <Track>[];
+    // Map original startIndex to tracks
+    final mainTrack = startIndex >= 0 && startIndex < tracks.length ? tracks[startIndex] : tracks.first;
+
+    // Building sources one by one can be slow. 
+    // We prioritize the tapped track to start playback quickly.
+    final firstSource = await _buildAudioSource(mainTrack);
+    if (firstSource != null) {
+      _queue.add(mainTrack);
+      await _playlist.add(firstSource);
+    }
+
+    // Add others. We don't wait for all of them to start playing the first one.
+    // However, to keep code simple and avoid race conditions with just_audio's playlist,
+    // we'll still build them in sequence but start playback as soon as the first is ready.
+    
+    if (_queue.isNotEmpty) {
+      await _player.setAudioSource(_playlist);
+      currentTrack.value = _queue[0];
+      unawaited(_player.play());
+    }
+
+    // Fill the rest of the queue in background
     for (final t in tracks) {
+      if (t.id == mainTrack.id) continue;
       final src = await _buildAudioSource(t);
       if (src != null) {
         _queue.add(t);
         await _playlist.add(src);
-        playable.add(t);
       }
     }
 
-    if (playable.isEmpty) {
-      playbackError.value =
-          'No downloaded tracks found. Please download songs first.';
+    if (_queue.isEmpty) {
+      playbackError.value = 'Failed to load any tracks for playback.';
       return;
     }
 
     queueNotifier.value = List.from(_queue);
-
-    // Map original startIndex to new index within playable list
-    final targetTrack = startIndex < tracks.length ? tracks[startIndex] : tracks.first;
-    final newIndex = _queue.indexWhere((t) => t.id == targetTrack.id);
-    final safeIndex = newIndex >= 0 ? newIndex : 0;
-
-    await _player.setAudioSource(_playlist, initialIndex: safeIndex);
-    currentTrack.value = _queue[safeIndex];
-    await _player.play();
   }
 
   /// Insert a track to play immediately after the current one.
@@ -243,12 +253,10 @@ class AudioService {
     if (localPath == null) {
       final serverBase = ServerConfig.baseUrl;
       
-      // If it's a YouTube search result (not in local library/server library yet), 
-      // stream directly from YouTube for immediate playback.
+      // If no local file, try to stream from YouTube or Server.
       final isYouTube = track.sourceUrl.contains('youtube.com') || track.sourceUrl.contains('youtu.be');
-      final isSearchResult = track.addedAt == null;
 
-      if (isYouTube && isSearchResult) {
+      if (isYouTube) {
         try {
           debugPrint('[AudioService] Fetching direct YouTube URL for ${track.title}');
           final yt.StreamManifest manifest = await ApiService().getAudioManifest(track.id);

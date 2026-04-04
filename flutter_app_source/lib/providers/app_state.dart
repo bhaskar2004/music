@@ -15,6 +15,7 @@ class AppState extends ChangeNotifier {
   List<Track> _library = [];
   List<Playlist> _playlists = [];
   final List<DownloadJob> _downloads = [];
+  final Set<String> _downloadedIds = {};
   AppConfig _config = AppConfig();
 
   ActiveView _activeView = ActiveView.library;
@@ -30,6 +31,7 @@ class AppState extends ChangeNotifier {
   List<Track> get library => List.unmodifiable(_library);
   List<Playlist> get playlists => List.unmodifiable(_playlists);
   List<DownloadJob> get downloads => List.unmodifiable(_downloads);
+  Set<String> get downloadedIds => Set.unmodifiable(_downloadedIds);
   ActiveView get activeView => _activeView;
   String? get activePlaylistId => _activePlaylistId;
   SortOption get sortBy => _sortBy;
@@ -52,6 +54,11 @@ class AppState extends ChangeNotifier {
 
   List<Track> get filteredTracks {
     List<Track> tracks = [..._library];
+
+    // Main filtering: only show downloaded songs in screens like Library and Favorites.
+    if (_activeView != ActiveView.downloads) {
+      tracks = tracks.where((t) => _downloadedIds.contains(t.id)).toList();
+    }
 
     if (_activePlaylistId != null) {
       if (_isAddingSongs) {
@@ -93,7 +100,20 @@ class AppState extends ChangeNotifier {
     _library = await StorageService().getTracks();
     _playlists = await StorageService().getPlaylists();
     _config = await StorageService().getConfig();
+
+    // Verify which tracks are already downloaded on device
+    _downloadedIds.clear();
+    for (final track in _library) {
+      if (await _isActuallyDownloaded(track)) {
+        _downloadedIds.add(track.id);
+      }
+    }
+
     notifyListeners();
+  }
+
+  Future<bool> _isActuallyDownloaded(Track track) async {
+    return await DownloadService.isDownloaded(track);
   }
 
   // ─── Navigation ───────────────────────────────────────────────────────────
@@ -178,6 +198,7 @@ class AppState extends ChangeNotifier {
   Future<void> removeTrack(String id) async {
     await StorageService().deleteTrack(id);
     _library.removeWhere((t) => t.id == id);
+    _downloadedIds.remove(id);
     notifyListeners();
   }
 
@@ -303,7 +324,10 @@ class AppState extends ChangeNotifier {
     if (artist != null) job.artist = artist;
     if (coverUrl != null) job.coverUrl = coverUrl;
     if (error != null) job.error = error;
-    if (completedTrack != null) addTrack(completedTrack);
+    if (completedTrack != null) {
+      addTrack(completedTrack);
+      _downloadedIds.add(completedTrack.id);
+    }
     notifyListeners();
   }
 
