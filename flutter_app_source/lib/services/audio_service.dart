@@ -256,9 +256,34 @@ class AudioService {
       // If no local file, try to stream from YouTube or Server.
       final isYouTube = track.sourceUrl.contains('youtube.com') || track.sourceUrl.contains('youtu.be');
 
+      if (isYouTube && serverBase.isNotEmpty) {
+        final streamUrl = '$serverBase/api/stream/youtube?v=${track.id}';
+        debugPrint('[AudioService] Streaming YouTube through server: $streamUrl');
+        
+        Uri? artUri;
+        if (track.coverUrl != null) {
+          if (track.coverUrl!.startsWith('http')) {
+            artUri = Uri.parse(track.coverUrl!);
+          } else {
+            artUri = Uri.file(track.coverUrl!);
+          }
+        }
+
+        return AudioSource.uri(
+          Uri.parse(streamUrl),
+          tag: MediaItem(
+            id: track.id,
+            album: track.album,
+            title: track.title,
+            artist: track.artist,
+            artUri: artUri,
+          ),
+        );
+      }
+
       if (isYouTube) {
         try {
-          debugPrint('[AudioService] Fetching direct YouTube URL for ${track.title}');
+          debugPrint('[AudioService] Falling back to direct YouTube stream for ${track.title}');
           final yt.StreamManifest manifest = await ApiService().getAudioManifest(track.id);
           final streamInfo = manifest.audioOnly.sortByBitrate().last;
           final directUrl = streamInfo.url.toString();
@@ -275,7 +300,6 @@ class AudioService {
           );
         } catch (e) {
           debugPrint('[AudioService] YouTube direct stream failed: $e');
-          // Fallback to server streaming if direct fails
         }
       }
 
