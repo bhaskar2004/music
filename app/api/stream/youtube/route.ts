@@ -30,64 +30,82 @@ export async function GET(req: NextRequest) {
   } else {
     console.log(`[YT-STREAM] Cache miss for ${videoId}, fetching new URL...`);
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const args = [
-      url,
-      '--get-url',
-      '--format', 'bestaudio',
-      '--no-playlist',
-      '--no-warnings',
-      '--no-check-certificates',
-      '--cookies-from-browser', 'chrome'
-    ];
-
-    try {
-      const child = spawn(YT_DLP_PATH, args);
-      let directUrl = '';
-      let errorOutput = '';
-
-      child.stdout.on('data', (data) => {
-        directUrl += data.toString();
-      });
-
-      child.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-
-      const exitCode = await new Promise<number>((resolve) => {
-        child.on('close', resolve);
-      });
-
-      if (exitCode !== 0 || !directUrl.trim()) {
-        console.error('[YT-STREAM] yt-dlp failed:', errorOutput);
-        return NextResponse.json({ error: 'Failed to fetch YouTube stream URL' }, { status: 500 });
+    
+    const tryFetchUrl = async (useCookies: boolean) => {
+      const args = [
+        url,
+        '--get-url',
+        '-f', 'bestaudio',
+        '--no-playlist',
+        '--no-warnings',
+        '--no-check-certificates',
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+      ];
+      if (useCookies) {
+        args.push('--cookies-from-browser', 'chrome');
       }
 
-      cleanDirectUrl = directUrl.trim();
+      const child = spawn(YT_DLP_PATH, args);
+      let output = '';
+      let error = '';
+
+      child.stdout.on('data', (d) => output += d.toString());
+      child.stderr.on('data', (d) => error += d.toString());
+
+      const code = await new Promise<number>((resolve) => child.on('close', resolve));
+      return { code, output: output.trim(), error: error.trim() };
+    };
+
+    try {
+      // Attempt 1: Without cookies
+      let result = await tryFetchUrl(false);
+      
+      // Attempt 2: With cookies if needed (only if chrome is likely available or first attempt failed with auth error)
+      if (result.code !== 0 || !result.output) {
+        console.warn('[YT-STREAM] Initial fetch failed, trying with cookies...', result.error);
+        const cookieResult = await tryFetchUrl(true);
+        if (cookieResult.code === 0 && cookieResult.output) {
+          result = cookieResult;
+        }
+      }
+
+      if (result.code !== 0 || !result.output) {
+        console.error('[YT-STREAM] yt-dlp failed completely:', result.error);
+        return NextResponse.json({ error: 'YouTube extraction failed', details: result.error }, { status: 500 });
+      }
+
+      cleanDirectUrl = result.output.split('\n')[0]; // Take first URL if multiple
       urlCache.set(videoId, { url: cleanDirectUrl, expires: Date.now() + CACHE_TTL });
     } catch (err: any) {
-      console.error('[YT-STREAM] Unexpected error:', err.message);
+      console.error('[YT-STREAM] Unexpected error during extraction:', err.message);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
 
   try {
-    // Proxy with Range support
     const proxyHeaders: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+      'Referer': 'https://www.youtube.com/',
     };
     if (range) {
       proxyHeaders['Range'] = range;
     }
 
-    const response = await fetch(cleanDirectUrl, { headers: proxyHeaders });
+    const response = await fetch(cleanDirectUrl, { 
+      headers: proxyHeaders,
+      // Increase timeout for slow proxying
+      // @ts-ignore
+      next: { revalidate: 0 } 
+    });
 
     if (!response.ok && response.status !== 206) {
-      // If fetching fails, clear cache as URL might have expired
+      console.error(`[YT-STREAM] Upstream proxy failed with status ${response.status} for ${videoId}`);
       urlCache.delete(videoId);
-      return NextResponse.json({ error: 'Failed to proxy YouTube stream' }, { status: response.status });
+      return NextResponse.json({ error: 'Upstream proxy failed' }, { status: response.status });
     }
 
     const headers = new Headers();
+    // Default to audio/mpeg but try to be more accurate if possible
     const contentType = response.headers.get('Content-Type') || 'audio/mpeg';
     headers.set('Content-Type', contentType);
     
@@ -100,13 +118,14 @@ export async function GET(req: NextRequest) {
     
     headers.set('Accept-Ranges', 'bytes');
     headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Cache-Control', 'public, max-age=3600');
 
     return new NextResponse(response.body, {
       status: response.status,
       headers,
     });
   } catch (err: any) {
-    console.error('[YT-STREAM] Proxy error:', err.message);
+    console.error('[YT-STREAM] Proxy logic error:', err.message);
     urlCache.delete(videoId);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
