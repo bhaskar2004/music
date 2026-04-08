@@ -10,6 +10,78 @@ function isValidId(id: string): boolean {
   return /^[a-f0-9-]{36}$/.test(id);
 }
 
+/** Convert a Node.js Readable into a web ReadableStream with backpressure. */
+function nodeStreamToWeb(nodeStream: fs.ReadStream): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      // Pause immediately — we pull on demand
+      nodeStream.pause();
+
+      nodeStream.on('error', (err) => {
+        try { controller.error(err); } catch { /* already closed */ }
+        nodeStream.destroy();
+      });
+
+      nodeStream.on('end', () => {
+        try { controller.close(); } catch { /* already closed */ }
+      });
+    },
+
+    pull(controller) {
+      return new Promise<void>((resolve) => {
+        const chunk = nodeStream.read();
+        if (chunk !== null) {
+          controller.enqueue(new Uint8Array(chunk));
+          resolve();
+          return;
+        }
+        // No data available yet — wait for 'readable'
+        const onReadable = () => {
+          cleanup();
+          const data = nodeStream.read();
+          if (data !== null) {
+            controller.enqueue(new Uint8Array(data));
+          }
+          resolve();
+        };
+        const onEnd = () => {
+          cleanup();
+          try { controller.close(); } catch { /* already closed */ }
+          resolve();
+        };
+        const onError = (err: Error) => {
+          cleanup();
+          try { controller.error(err); } catch { /* already closed */ }
+          resolve();
+        };
+        const cleanup = () => {
+          nodeStream.removeListener('readable', onReadable);
+          nodeStream.removeListener('end', onEnd);
+          nodeStream.removeListener('error', onError);
+        };
+        nodeStream.on('readable', onReadable);
+        nodeStream.on('end', onEnd);
+        nodeStream.on('error', onError);
+      });
+    },
+
+    cancel() {
+      nodeStream.destroy();
+    },
+  });
+}
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+  'Access-Control-Allow-Headers': 'Range',
+  'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -60,46 +132,33 @@ export async function GET(
     if (isNaN(start) || start < 0 || start >= fileSize || end >= fileSize || start > end) {
       return new NextResponse(null, {
         status: 416,
-        headers: { 'Content-Range': `bytes */${fileSize}` },
+        headers: { 'Content-Range': `bytes */${fileSize}`, ...CORS_HEADERS },
       });
     }
 
     const chunkSize = end - start + 1;
-
     const stream = fs.createReadStream(filePath, { start, end });
-    const body = new ReadableStream({
-      start(controller) {
-        stream.on('data', (chunk) => controller.enqueue(chunk));
-        stream.on('end', () => controller.close());
-        stream.on('error', (err) => controller.error(err));
-      },
-    });
 
-    return new NextResponse(body, {
+    return new NextResponse(nodeStreamToWeb(stream), {
       status: 206,
       headers: {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunkSize.toString(),
         'Content-Type': 'audio/mpeg',
+        ...CORS_HEADERS,
       },
     });
   }
 
   const stream = fs.createReadStream(filePath);
-  const body = new ReadableStream({
-    start(controller) {
-      stream.on('data', (chunk) => controller.enqueue(chunk));
-      stream.on('end', () => controller.close());
-      stream.on('error', (err) => controller.error(err));
-    },
-  });
 
-  return new NextResponse(body, {
+  return new NextResponse(nodeStreamToWeb(stream), {
     headers: {
       'Content-Length': fileSize.toString(),
       'Content-Type': 'audio/mpeg',
       'Accept-Ranges': 'bytes',
+      ...CORS_HEADERS,
     },
   });
 }

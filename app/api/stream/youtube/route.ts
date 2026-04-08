@@ -11,6 +11,17 @@ const YT_DLP_PATH = path.join(binDir, binName);
 const urlCache = new Map<string, { url: string; expires: number }>();
 const CACHE_TTL = 3600 * 1000; // 1 hour
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+  'Access-Control-Allow-Headers': 'Range',
+  'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const videoId = searchParams.get('v');
@@ -60,7 +71,7 @@ export async function GET(req: NextRequest) {
       // Attempt 1: Without cookies
       let result = await tryFetchUrl(false);
       
-      // Attempt 2: With cookies if needed (only if chrome is likely available or first attempt failed with auth error)
+      // Attempt 2: With cookies if needed
       if (result.code !== 0 || !result.output) {
         console.warn('[YT-STREAM] Initial fetch failed, trying with cookies...', result.error);
         const cookieResult = await tryFetchUrl(true);
@@ -71,14 +82,20 @@ export async function GET(req: NextRequest) {
 
       if (result.code !== 0 || !result.output) {
         console.error('[YT-STREAM] yt-dlp failed completely:', result.error);
-        return NextResponse.json({ error: 'YouTube extraction failed', details: result.error }, { status: 500 });
+        return NextResponse.json(
+          { error: 'YouTube extraction failed', details: result.error },
+          { status: 500, headers: CORS_HEADERS }
+        );
       }
 
       cleanDirectUrl = result.output.split('\n')[0]; // Take first URL if multiple
       urlCache.set(videoId, { url: cleanDirectUrl, expires: Date.now() + CACHE_TTL });
     } catch (err: any) {
       console.error('[YT-STREAM] Unexpected error during extraction:', err.message);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500, headers: CORS_HEADERS }
+      );
     }
   }
 
@@ -91,21 +108,50 @@ export async function GET(req: NextRequest) {
       proxyHeaders['Range'] = range;
     }
 
-    const response = await fetch(cleanDirectUrl, { 
+    const response = await fetch(cleanDirectUrl, {
       headers: proxyHeaders,
-      // Increase timeout for slow proxying
-      // @ts-ignore
-      next: { revalidate: 0 } 
+      cache: 'no-store',  // Prevent Next.js from buffering/caching
     });
 
     if (!response.ok && response.status !== 206) {
       console.error(`[YT-STREAM] Upstream proxy failed with status ${response.status} for ${videoId}`);
       urlCache.delete(videoId);
-      return NextResponse.json({ error: 'Upstream proxy failed' }, { status: response.status });
+      return NextResponse.json(
+        { error: 'Upstream proxy failed' },
+        { status: response.status, headers: CORS_HEADERS }
+      );
     }
 
+    // Read the upstream body via a reader and re-emit as a new ReadableStream
+    // to ensure proper streaming without full-body buffering.
+    const upstream = response.body;
+    if (!upstream) {
+      return NextResponse.json(
+        { error: 'Empty upstream response' },
+        { status: 502, headers: CORS_HEADERS }
+      );
+    }
+
+    const reader = upstream.getReader();
+    const streamBody = new ReadableStream({
+      async pull(controller) {
+        try {
+          const { done, value } = await reader.read();
+          if (done) {
+            controller.close();
+          } else {
+            controller.enqueue(value);
+          }
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+      cancel() {
+        reader.cancel().catch(() => {});
+      },
+    });
+
     const headers = new Headers();
-    // Default to audio/mpeg but try to be more accurate if possible
     const contentType = response.headers.get('Content-Type') || 'audio/mpeg';
     headers.set('Content-Type', contentType);
     
@@ -117,16 +163,23 @@ export async function GET(req: NextRequest) {
     }
     
     headers.set('Accept-Ranges', 'bytes');
-    headers.set('Access-Control-Allow-Origin', '*');
     headers.set('Cache-Control', 'public, max-age=3600');
 
-    return new NextResponse(response.body, {
+    // Merge CORS headers
+    for (const [key, val] of Object.entries(CORS_HEADERS)) {
+      headers.set(key, val);
+    }
+
+    return new NextResponse(streamBody, {
       status: response.status,
       headers,
     });
   } catch (err: any) {
     console.error('[YT-STREAM] Proxy logic error:', err.message);
     urlCache.delete(videoId);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500, headers: CORS_HEADERS }
+    );
   }
 }
