@@ -246,92 +246,25 @@ class AudioService {
 
   // ─── Internal ──────────────────────────────────────────────────────────────
 
-  /// Returns an AudioSource backed by the local file, or null + sets error.
-  Future<AudioSource?> _buildAudioSource(Track track) async {
-    final localPath = await DownloadService.getLocalFilePath(track);
+  /// Extracts a YouTube video ID from a URL like:
+  /// - https://www.youtube.com/watch?v=dQw4w9WgXcQ
+  /// - https://youtu.be/dQw4w9WgXcQ
+  /// - https://youtube.com/watch?v=dQw4w9WgXcQ&feature=share
+  /// Returns null if not a valid YouTube URL.
+  static String? _extractYouTubeVideoId(String url) {
+    // Try standard watch URLs
+    final watchMatch = RegExp(r'[?&]v=([a-zA-Z0-9_-]{11})').firstMatch(url);
+    if (watchMatch != null) return watchMatch.group(1);
 
-    if (localPath == null) {
-      final serverBase = ServerConfig.baseUrl;
-      
-      // If no local file, try to stream from YouTube or Server.
-      final isYouTube = track.sourceUrl.contains('youtube.com') || track.sourceUrl.contains('youtu.be');
+    // Try youtu.be short URLs
+    final shortMatch = RegExp(r'youtu\.be/([a-zA-Z0-9_-]{11})').firstMatch(url);
+    if (shortMatch != null) return shortMatch.group(1);
 
-      if (isYouTube) {
-        // Preference 1: Server-side proxy (fast & clean)
-        if (serverBase.isNotEmpty) {
-          try {
-            final streamUrl = '$serverBase/api/stream/youtube?v=${track.id}';
-            debugPrint('[AudioService] Attempting server-side YouTube stream: $streamUrl');
-            
-            return AudioSource.uri(
-              Uri.parse(streamUrl),
-              tag: MediaItem(
-                id: track.id,
-                album: track.album,
-                title: track.title,
-                artist: track.artist,
-                artUri: track.coverUrl != null ? (track.coverUrl!.startsWith('http') ? Uri.parse(track.coverUrl!) : Uri.file(track.coverUrl!)) : null,
-              ),
-            );
-          } catch (e) {
-            debugPrint('[AudioService] Server-side YouTube stream failed, trying direct: $e');
-          }
-        }
+    return null;
+  }
 
-        // Preference 2: Direct YouTube stream
-        try {
-          debugPrint('[AudioService] Fetching direct YouTube URL for ${track.title}');
-          final yt.StreamManifest manifest = await ApiService().getAudioManifest(track.id);
-          final streamInfo = manifest.audioOnly.sortByBitrate().last;
-          final directUrl = streamInfo.url.toString();
-          
-          return AudioSource.uri(
-            Uri.parse(directUrl),
-            tag: MediaItem(
-              id: track.id,
-              album: track.album,
-              title: track.title,
-              artist: track.artist,
-              artUri: track.coverUrl != null && track.coverUrl!.startsWith('http') ? Uri.parse(track.coverUrl!) : null,
-            ),
-          );
-        } catch (e) {
-          debugPrint('[AudioService] YouTube direct stream failed: $e');
-        }
-      }
-
-      if (serverBase.isEmpty) {
-        playbackError.value =
-            '"${track.title}" is not downloaded yet. Tap the download icon or set server URL in settings.';
-        debugPrint('[AudioService] File not found and server URL not set for ${track.title}');
-        return null;
-      }
-
-      final streamUrl = '$serverBase/api/stream/${track.id}';
-      debugPrint('[AudioService] Streaming from server: $streamUrl');
-      
-      Uri? artUri;
-      if (track.coverUrl != null) {
-        if (track.coverUrl!.startsWith('http')) {
-          artUri = Uri.parse(track.coverUrl!);
-        } else {
-          artUri = Uri.file(track.coverUrl!);
-        }
-      }
-
-      return AudioSource.uri(
-        Uri.parse(streamUrl),
-        tag: MediaItem(
-          id: track.id,
-          album: track.album,
-          title: track.title,
-          artist: track.artist,
-          artUri: artUri,
-        ),
-      );
-    }
-
-    debugPrint('[AudioService] Playing local: $localPath');
+  /// Builds a MediaItem tag for notification / lock-screen metadata.
+  MediaItem _buildMediaItem(Track track) {
     Uri? artUri;
     if (track.coverUrl != null) {
       if (track.coverUrl!.startsWith('http')) {
@@ -340,17 +273,102 @@ class AudioService {
         artUri = Uri.file(track.coverUrl!);
       }
     }
-
-    return AudioSource.uri(
-      Uri.file(localPath),
-      tag: MediaItem(
-        id: track.id,
-        album: track.album,
-        title: track.title,
-        artist: track.artist,
-        artUri: artUri,
-      ),
+    return MediaItem(
+      id: track.id,
+      album: track.album,
+      title: track.title,
+      artist: track.artist,
+      artUri: artUri,
     );
+  }
+
+  /// Returns an AudioSource backed by the local file, or null + sets error.
+  ///
+  /// Priority chain:
+  ///   1. Local downloaded file
+  ///   2. Server file stream (`/api/stream/{uuid}`) — for synced library tracks
+  ///   3. Server YouTube proxy (`/api/stream/youtube?v={videoId}`) — for YouTube search results
+  ///   4. Direct YouTube stream via youtube_explode_dart — fallback when no server
+  Future<AudioSource?> _buildAudioSource(Track track) async {
+    final localPath = await DownloadService.getLocalFilePath(track);
+
+    // ── 1. Local file ───────────────────────────────────────────────────────
+    if (localPath != null) {
+      debugPrint('[AudioService] Playing local: $localPath');
+      return AudioSource.uri(
+        Uri.file(localPath),
+        tag: _buildMediaItem(track),
+      );
+    }
+
+    final serverBase = ServerConfig.baseUrl;
+    final isYouTube = track.sourceUrl.contains('youtube.com') || track.sourceUrl.contains('youtu.be');
+
+    // Detect whether this is a server library track (UUID id) or a YouTube
+    // search result (11-char YouTube video ID as id).
+    final isServerLibraryTrack = RegExp(r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$').hasMatch(track.id);
+
+    // ── 2. Server file stream (for synced library tracks) ───────────────────
+    // These tracks already have an mp3 on the server at /api/stream/{uuid}.
+    if (isServerLibraryTrack && serverBase.isNotEmpty) {
+      final streamUrl = '$serverBase/api/stream/${track.id}';
+      debugPrint('[AudioService] Streaming server library track: $streamUrl');
+      return AudioSource.uri(
+        Uri.parse(streamUrl),
+        tag: _buildMediaItem(track),
+      );
+    }
+
+    // ── 3. YouTube streaming (for search results) ───────────────────────────
+    if (isYouTube) {
+      // Extract the real video ID from the source URL (don't trust track.id
+      // for synced tracks — it's a UUID, not a video ID).
+      final videoId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
+
+      // 3a. Server-side YouTube proxy
+      if (serverBase.isNotEmpty) {
+        final streamUrl = '$serverBase/api/stream/youtube?v=$videoId';
+        debugPrint('[AudioService] Streaming via server YouTube proxy: $streamUrl');
+        return AudioSource.uri(
+          Uri.parse(streamUrl),
+          tag: _buildMediaItem(track),
+        );
+      }
+
+      // 3b. Direct YouTube stream (no server available)
+      try {
+        debugPrint('[AudioService] Fetching direct YouTube URL for "${track.title}" (videoId=$videoId)');
+        final yt.StreamManifest manifest = await ApiService().getAudioManifest(videoId);
+        final streamInfo = manifest.audioOnly.sortByBitrate().last;
+        final directUrl = streamInfo.url.toString();
+
+        return AudioSource.uri(
+          Uri.parse(directUrl),
+          tag: _buildMediaItem(track),
+        );
+      } catch (e) {
+        debugPrint('[AudioService] YouTube direct stream failed: $e');
+        playbackError.value =
+            'Could not stream "${track.title}". Connect to server or download first.';
+        return null;
+      }
+    }
+
+    // ── 4. Non-YouTube, non-local, server stream ────────────────────────────
+    if (serverBase.isNotEmpty) {
+      final streamUrl = '$serverBase/api/stream/${track.id}';
+      debugPrint('[AudioService] Streaming from server: $streamUrl');
+      return AudioSource.uri(
+        Uri.parse(streamUrl),
+        tag: _buildMediaItem(track),
+      );
+    }
+
+    // Nothing worked
+    playbackError.value =
+        '"${track.title}" is not downloaded yet. Tap the download icon or set server URL in settings.';
+    debugPrint('[AudioService] No playback source available for ${track.title}');
+    return null;
   }
 
   // ─── Controls ──────────────────────────────────────────────────────────────
