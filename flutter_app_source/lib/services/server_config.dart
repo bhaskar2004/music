@@ -6,8 +6,8 @@ import 'storage_service.dart';
 class ServerConfig {
   static String _defaultUrl() {
     if (kIsWeb) return ''; // Not applicable
-    if (Platform.isAndroid) return 'http://10.0.2.2:3000';
-    return 'http://localhost:3000';
+    // Return the Cloudflare Tunnel URL for external access
+    return 'https://thermal-named-smilies-camp.trycloudflare.com';
   }
 
   static String _cachedUrl = '';

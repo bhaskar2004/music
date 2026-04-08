@@ -364,6 +364,7 @@ export async function GET(req: NextRequest) {
       'Content-Type': contentType,
       'Content-Length': stats.size.toString(),
       'Content-Disposition': `attachment; filename="${filename}"`,
+      'X-Accel-Buffering': 'no',
       'Access-Control-Allow-Origin': '*',
     },
   });
@@ -377,6 +378,7 @@ export async function OPTIONS() {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
+      'X-Accel-Buffering': 'no',
     },
   });
 }

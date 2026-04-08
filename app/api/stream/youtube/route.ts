@@ -25,6 +25,7 @@ export async function OPTIONS() {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const videoId = searchParams.get('v');
+  console.log(`[YT-STREAM] Received request for videoId: ${videoId} from ${req.headers.get('user-agent')}`);
 
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     return NextResponse.json({ error: 'Invalid or missing YouTube Video ID' }, { status: 400 });
@@ -164,6 +165,7 @@ export async function GET(req: NextRequest) {
     
     headers.set('Accept-Ranges', 'bytes');
     headers.set('Cache-Control', 'public, max-age=3600');
+    headers.set('X-Accel-Buffering', 'no');
 
     // Merge CORS headers
     for (const [key, val] of Object.entries(CORS_HEADERS)) {

@@ -45,3 +45,5 @@ next-env.d.ts
 /data/
 /public/audio/
 /.gemini/
+/cloudflared
+/cloudflared-linux-amd64.deb

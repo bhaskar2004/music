@@ -146,6 +146,7 @@ export async function GET(
         'Accept-Ranges': 'bytes',
         'Content-Length': chunkSize.toString(),
         'Content-Type': 'audio/mpeg',
+        'X-Accel-Buffering': 'no',
         ...CORS_HEADERS,
       },
     });
@@ -158,6 +159,7 @@ export async function GET(
       'Content-Length': fileSize.toString(),
       'Content-Type': 'audio/mpeg',
       'Accept-Ranges': 'bytes',
+      'X-Accel-Buffering': 'no',
       ...CORS_HEADERS,
     },
   });
