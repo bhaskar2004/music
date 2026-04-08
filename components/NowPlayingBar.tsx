@@ -6,7 +6,7 @@ import { formatDuration } from '@/lib/utils';
 import {
   Play, Pause, SkipBack, SkipForward,
   Volume2, VolumeX, Shuffle, Repeat, Repeat1,
-  ListMusic, Heart, Maximize2, Music2,
+  ListMusic, Heart, Maximize2, Music2, Radio,
 } from 'lucide-react';
 import Image from 'next/image';
 import SleepTimerDropdown from './SleepTimerDropdown';
@@ -42,6 +42,8 @@ export default function NowPlayingBar() {
     incrementPlayCount,
     addListenTime,
     queue,
+    toggleAutoplay,
+    isAutoplayEnabled,
   } = useMusicStore();
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -382,6 +384,10 @@ export default function NowPlayingBar() {
 
             <ControlBtn onClick={toggleRepeat} active={repeat !== 'off'} title={`Repeat: ${repeat}`} ariaLabel={`Repeat ${repeat}`} className="desktop-only">
               {repeat === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
+            </ControlBtn>
+
+            <ControlBtn onClick={toggleAutoplay} active={isAutoplayEnabled} title={`Autoplay (Infinite Radio) ${isAutoplayEnabled ? 'On' : 'Off'}`} ariaLabel="Autoplay toggle" className="desktop-only">
+              <Radio size={16} />
             </ControlBtn>
           </div>
 

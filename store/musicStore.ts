@@ -44,6 +44,12 @@ interface MusicStore {
   isLoadingLyrics: boolean;
   fetchLyrics: (title: string, artist: string) => Promise<void>;
 
+  // Autoplay
+  isAutoplayEnabled: boolean;
+  toggleAutoplay: () => void;
+  autoplayNext: () => Promise<void>;
+  isAutoplayLoading: boolean;
+
   setCurrentTrack: (track: Track | null) => void;
   setIsPlaying: (v: boolean) => void;
   setVolume: (v: number) => void;
@@ -227,6 +233,67 @@ export const useMusicStore = create<MusicStore>()(
       lyrics: null,
       isLoadingLyrics: false,
 
+      // Autoplay fields
+      isAutoplayEnabled: true,
+      toggleAutoplay: () => set((s) => ({ isAutoplayEnabled: !s.isAutoplayEnabled })),
+      isAutoplayLoading: false,
+      autoplayNext: async () => {
+        const { currentTrack, queue, isAutoplayLoading } = get();
+        if (!currentTrack || isAutoplayLoading) return;
+
+        set({ isAutoplayLoading: true });
+        console.log(`[Autoplay] fetching similar tracks for "${currentTrack.title}"`);
+
+        try {
+          const cleanTitle = currentTrack.title
+            .replace(/\(.*?\)|\[.*?\]/gi, '')
+            .replace(/official\s*(music\s*)?video|lyric(al)?\s*video|audio|full\s*song|hd|4k|music\s*video/gi, '')
+            .trim();
+          const query = `${currentTrack.artist} ${cleanTitle} music`;
+          const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+          if (res.ok) {
+            const data = await res.json();
+            const existingIds = new Set(queue.map(t => t.id));
+            const newTracks = (data.results || []).filter((t: any) => !existingIds.has(`search-${t.id}`) && !existingIds.has(t.id) && t.id !== currentTrack.id).slice(0, 5);
+
+            if (newTracks.length > 0) {
+              const tracksToAdd = newTracks.map((t: any) => ({
+                id: `search-${t.id}`,
+                title: t.title,
+                artist: t.artist,
+                album: 'Unknown',
+                duration: Math.round(t.duration / 1000) || 0,
+                filename: `${t.id}.mp3`,
+                coverUrl: t.thumbnail,
+                sourceUrl: t.url,
+                format: 'mp3',
+              }));
+
+              set((s) => ({ queue: [...s.queue, ...tracksToAdd] }));
+              
+              // Proceed to next newly added track
+              const updatedQueue = get().queue;
+              const idx = updatedQueue.findIndex((t) => t.id === currentTrack.id);
+              if (idx !== -1 && idx < updatedQueue.length - 1) {
+                const nextTrack = updatedQueue[idx + 1];
+                set({ currentTrack: nextTrack, isPlaying: true, currentTime: 0 });
+              }
+            } else {
+              console.log("[Autoplay] no related tracks found");
+              set({ isPlaying: false });
+            }
+          } else {
+            console.warn(`[Autoplay] Search API failed: ${res.status}`);
+            set({ isPlaying: false });
+          }
+        } catch (err) {
+          console.error("[Autoplay] Error:", err);
+          set({ isPlaying: false });
+        } finally {
+          set({ isAutoplayLoading: false });
+        }
+      },
+
       setCurrentTrack: (track) => {
         set({ currentTrack: track, currentTime: 0, lyrics: null });
         if (track) {
@@ -262,22 +329,28 @@ export const useMusicStore = create<MusicStore>()(
       setQueue: (tracks) => set({ queue: tracks }),
 
       playNext: () => {
-        const { queue, currentTrack, shuffle, repeat } = get();
+        const { queue, currentTrack, shuffle, repeat, isAutoplayEnabled, autoplayNext } = get();
         if (!queue.length) return;
         const idx = queue.findIndex((t) => t.id === currentTrack?.id);
         let next: Track | null = null;
+
         if (shuffle) {
           const others = queue.filter((t) => t.id !== currentTrack?.id);
           next = others[Math.floor(Math.random() * others.length)] ?? null;
         } else if (repeat === 'one') {
           next = currentTrack;
         } else if (idx === queue.length - 1 && repeat === 'off') {
-          set({ isPlaying: false });
+          if (isAutoplayEnabled) {
+            autoplayNext();
+          } else {
+            set({ isPlaying: false });
+          }
           return;
         } else {
           next = queue[(idx + 1) % queue.length] ?? null;
         }
-        set({ currentTrack: next, isPlaying: true, currentTime: 0 });
+        
+        if (next) set({ currentTrack: next, isPlaying: true, currentTime: 0 });
       },
 
       playPrev: () => {
@@ -426,6 +499,7 @@ export const useMusicStore = create<MusicStore>()(
         listeningStats: state.listeningStats,
         crossfadeDuration: state.crossfadeDuration,
         theme: state.theme,
+        isAutoplayEnabled: state.isAutoplayEnabled,
       }),
     }
   )
