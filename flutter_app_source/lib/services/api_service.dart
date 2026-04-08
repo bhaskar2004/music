@@ -130,6 +130,50 @@ class ApiService {
     );
   }
 
+  /// Searches YouTube for tracks similar to [current].
+  /// Builds a query from artist + title keywords and filters out duplicates.
+  Future<List<Track>> searchRelatedTracks(Track current, {Set<String>? excludeIds}) async {
+    try {
+      // Build a search query from artist + simplified title
+      // Strip common suffixes like "Official Video", "Lyric Video", etc.
+      final cleanTitle = current.title
+          .replaceAll(RegExp(r'\(.*?\)|\[.*?\]', caseSensitive: false), '')
+          .replaceAll(RegExp(
+            r'official\s*(music\s*)?video|lyric(al)?\s*video|audio|full\s*song|hd|4k|music\s*video',
+            caseSensitive: false,
+          ), '')
+          .trim();
+
+      // Use artist + cleaned title keywords for a "vibe" search
+      final query = '${current.artist} $cleanTitle music';
+      debugPrint('[ApiService] Autoplay query: "$query"');
+
+      final searchResults = await _yt.search.search(query);
+      final exclude = excludeIds ?? {};
+
+      return searchResults
+          .where((video) =>
+              !exclude.contains(video.id.value) &&
+              video.id.value != current.id)
+          .take(5)
+          .map((video) => Track(
+                id: video.id.value,
+                title: video.title,
+                artist: video.author,
+                album: 'Unknown',
+                duration: video.duration?.inSeconds ?? 0,
+                filename: '${video.id.value}.mp3',
+                coverUrl: video.thumbnails.highResUrl,
+                sourceUrl: video.url,
+                format: 'mp3',
+              ))
+          .toList();
+    } catch (e) {
+      debugPrint('[ApiService] searchRelatedTracks error: $e');
+      return [];
+    }
+  }
+
   void dispose() {
     // Singleton — do not close between calls
   }

@@ -27,6 +27,8 @@ class AudioService {
   final ValueNotifier<LoopMode> loopModeNotifier =
       ValueNotifier<LoopMode>(LoopMode.off);
   final ValueNotifier<String?> playbackError = ValueNotifier<String?>(null);
+  final ValueNotifier<bool> isAutoplayEnabled = ValueNotifier<bool>(true);
+  bool _isAutoplayLoading = false;
 
   final ValueNotifier<Map<String, dynamic>?> lyrics =
       ValueNotifier<Map<String, dynamic>?>(null);
@@ -67,6 +69,10 @@ class AudioService {
     _player.processingStateStream.listen((state) {
       if (state == ProcessingState.ready) {
         _fadeIn();
+      }
+      // Autoplay: when queue is fully exhausted, fetch more similar tracks
+      if (state == ProcessingState.completed && isAutoplayEnabled.value) {
+        _autoplayNext();
       }
     });
 
@@ -241,6 +247,55 @@ class AudioService {
       debugPrint('[AudioService] Error fetching lyrics: $e');
     } finally {
       isLoadingLyrics.value = false;
+    }
+  }
+
+  void toggleAutoplay() {
+    isAutoplayEnabled.value = !isAutoplayEnabled.value;
+    debugPrint('[AudioService] Autoplay: ${isAutoplayEnabled.value}');
+  }
+
+  // ─── Autoplay / Radio ─────────────────────────────────────────────────────
+
+  Future<void> _autoplayNext() async {
+    if (_isAutoplayLoading) return;
+    final last = currentTrack.value;
+    if (last == null) return;
+
+    _isAutoplayLoading = true;
+    debugPrint('[AudioService] Autoplay: fetching similar tracks for "${last.title}"');
+
+    try {
+      // Collect IDs already in queue to avoid duplicates
+      final existingIds = _queue.map((t) => t.id).toSet();
+      final related = await ApiService().searchRelatedTracks(last, excludeIds: existingIds);
+
+      if (related.isEmpty) {
+        debugPrint('[AudioService] Autoplay: no related tracks found');
+        return;
+      }
+
+      debugPrint('[AudioService] Autoplay: adding ${related.length} tracks to queue');
+
+      for (final track in related) {
+        final src = await _buildAudioSource(track);
+        if (src != null) {
+          _queue.add(track);
+          await _playlist.add(src);
+        }
+      }
+
+      queueNotifier.value = List.from(_queue);
+
+      // Start playing the next track
+      if (_player.hasNext) {
+        await _player.seekToNext();
+        await _player.play();
+      }
+    } catch (e) {
+      debugPrint('[AudioService] Autoplay error: $e');
+    } finally {
+      _isAutoplayLoading = false;
     }
   }
 

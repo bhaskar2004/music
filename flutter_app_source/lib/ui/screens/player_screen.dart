@@ -599,6 +599,19 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
             onPressed: () => setState(() => _showLyrics = !_showLyrics),
           ),
+          // Autoplay / Radio toggle
+          ValueListenableBuilder<bool>(
+            valueListenable: audio.isAutoplayEnabled,
+            builder: (ctx, autoplay, _) => IconButton(
+              icon: Icon(
+                autoplay ? Icons.cell_tower_rounded : Icons.cell_tower_outlined,
+                color: autoplay ? _accent : Colors.white.withValues(alpha: 0.5),
+                size: 22,
+              ),
+              tooltip: autoplay ? 'Autoplay On' : 'Autoplay Off',
+              onPressed: () => audio.toggleAutoplay(),
+            ),
+          ),
           IconButton(
             icon: Icon(Icons.queue_music_rounded,
                 color: Colors.white.withValues(alpha: 0.5)),
