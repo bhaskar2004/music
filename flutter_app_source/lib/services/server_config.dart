@@ -8,7 +8,7 @@ class ServerConfig {
   /// GitHub raw URL where the tunnel script publishes the current URL.
   /// This is fetched on startup so the app auto-discovers the server.
   static const _tunnelDiscoveryUrl =
-      'https://api.github.com/repos/bhaskar2004/music/contents/tunnel-url.txt';
+      'https://raw.githubusercontent.com/bhaskar2004/music/main/tunnel-url.txt';
 
   static String _cachedUrl = '';
 
@@ -42,20 +42,14 @@ class ServerConfig {
       debugPrint('[ServerConfig] Fetching tunnel URL from GitHub...');
       final client = HttpClient()
         ..connectionTimeout = const Duration(seconds: 5);
-      final request = await client.getUrl(Uri.parse(_tunnelDiscoveryUrl));
-      // Accept JSON from GitHub API
-      request.headers.set('Accept', 'application/vnd.github.v3+json');
+      final request = await client.getUrl(Uri.parse('$_tunnelDiscoveryUrl?t=${DateTime.now().millisecondsSinceEpoch}'));
       request.headers.set('User-Agent', 'WavelengthApp');
+      request.headers.set('Cache-Control', 'no-cache');
       final response = await request.close();
 
       if (response.statusCode == 200) {
         final body = await response.transform(utf8.decoder).join();
-        final json = jsonDecode(body) as Map<String, dynamic>;
-        // GitHub API returns file content base64-encoded
-        final content = utf8.decode(base64.decode(
-          (json['content'] as String).replaceAll('\n', ''),
-        ));
-        final url = content.trim().replaceAll(RegExp(r'/+$'), '');
+        final url = body.trim().replaceAll(RegExp(r'/+$'), '');
 
         if (url.startsWith('https://') && url.contains('trycloudflare.com')) {
           debugPrint('[ServerConfig] ✓ Got tunnel URL: $url');
