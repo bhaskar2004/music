@@ -77,6 +77,10 @@ interface MusicStore {
   setActiveView: (v: ViewId) => void;
   showDownloadModal: boolean;
   setShowDownloadModal: (v: boolean) => void;
+  showPartyModal: boolean;
+  setShowPartyModal: (v: boolean) => void;
+  partyId: string | null;
+  setPartyId: (id: string | null) => void;
   selectedTrack: Track | null;
   setSelectedTrack: (t: Track | null) => void;
   showFullScreenPlayer: boolean;
@@ -419,6 +423,10 @@ export const useMusicStore = create<MusicStore>()(
       setActiveView: (v) => set({ activeView: v }),
       showDownloadModal: false,
       setShowDownloadModal: (v) => set({ showDownloadModal: v }),
+      showPartyModal: false,
+      setShowPartyModal: (v) => set({ showPartyModal: v }),
+      partyId: null,
+      setPartyId: (id) => set({ partyId: id }),
       selectedTrack: null,
       setSelectedTrack: (t) => set({ selectedTrack: t }),
       showFullScreenPlayer: false,

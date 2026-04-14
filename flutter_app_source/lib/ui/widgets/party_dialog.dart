@@ -21,7 +21,7 @@ class _PartyDialogState extends State<PartyDialog> {
   @override
   void initState() {
     super.initState();
-    final current = SyncService().currentPartyId;
+    final current = SyncService().currentPartyId.value;
     if (current != null) {
       _partyIdCtrl.text = current;
     }
@@ -67,7 +67,7 @@ class _PartyDialogState extends State<PartyDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final current = SyncService().currentPartyId;
+    final current = SyncService().currentPartyId.value;
     
     return AlertDialog(
       title: const Text('Listen Together', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),

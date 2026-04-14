@@ -8,6 +8,7 @@ import '../../providers/app_state.dart';
 import '../../services/audio_service.dart';
 import '../../services/download_manager.dart';
 import '../../models/track.dart';
+import '../../services/sync_service.dart';
 import 'queue_view.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -583,14 +584,52 @@ class _PlayerScreenState extends State<PlayerScreen>
             color: Colors.white,
             onPressed: () => Navigator.pop(context),
           ),
-          Text(
-            'NOW PLAYING',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.4),
-              letterSpacing: 1.5,
-            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'NOW PLAYING',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white.withValues(alpha: 0.4),
+                  letterSpacing: 1.5,
+                ),
+              ),
+              ValueListenableBuilder<String?>(
+                valueListenable: SyncService().currentPartyId,
+                builder: (ctx, partyId, _) {
+                  if (partyId == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _accent.withValues(alpha: 0.15),
+                        border: Border.all(color: _accent.withValues(alpha: 0.3)),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.groups_rounded, size: 10, color: _accent),
+                          const SizedBox(width: 4),
+                          Text(
+                            partyId,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: _accent,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
           IconButton(
             icon: Icon(

@@ -4,7 +4,7 @@ import { useMusicStore } from '@/store/musicStore';
 import {
   Library, ListMusic, Download, Plus, Music2, Heart,
   Folder as FolderIcon, Trash2, Search, Clock, BarChart2,
-  Settings, RefreshCcw,
+  Settings, RefreshCcw, Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -25,6 +25,7 @@ export default function Sidebar() {
     activeView, setActiveView, library, downloads, favorites,
     setShowDownloadModal, playlists, addPlaylist, removePlaylist,
     activePlaylistId, setActivePlaylistId, recentlyPlayed,
+    setShowPartyModal,
   } = useMusicStore();
 
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -434,6 +435,33 @@ export default function Sidebar() {
           >
             <Plus size={15} strokeWidth={2.8} />
             Add Music
+          </button>
+
+          <button
+            className="sidebar-add-btn tap-active"
+            onClick={() => setShowPartyModal(true)}
+            aria-label="Listen Together"
+            style={{
+              width: '100%', padding: '10px 16px',
+              background: 'var(--surface2)',
+              color: 'var(--text)', border: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
+              borderRadius: 10,
+              fontFamily: 'Syne, sans-serif',
+              fontWeight: 700, fontSize: 13,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
+              letterSpacing: '0.02em',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'var(--surface3)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'var(--surface2)';
+            }}
+          >
+            <Users size={15} strokeWidth={2.4} color="var(--accent)" />
+            Listen Together
           </button>
 
           <div style={{

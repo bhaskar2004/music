@@ -17,6 +17,8 @@ import RecentlyPlayedView from '@/components/RecentlyPlayedView';
 import StatsView from '@/components/StatsView';
 import SettingsView from '@/components/SettingsView';
 import FullScreenPlayer from '@/components/FullScreenPlayer';
+import PartyModal from '@/components/PartyModal';
+import { connectSyncService } from '@/lib/syncService';
 
 export default function Home() {
   const { fetchLibrary, activeView, showFullScreenPlayer, theme } = useMusicStore();
@@ -24,6 +26,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchLibrary().finally(() => setLoading(false));
+    connectSyncService(); // connect to socket
   }, [fetchLibrary]);
 
   // Apply theme
@@ -79,6 +82,7 @@ export default function Home() {
         <MobileNav />
         <NowPlayingBar />
         <DownloadModal />
+        <PartyModal />
         {showFullScreenPlayer && <FullScreenPlayer />}
       </div>
     </ErrorBoundary>

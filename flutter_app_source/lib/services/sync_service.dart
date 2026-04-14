@@ -8,7 +8,7 @@ class SyncService {
   SyncService._internal();
 
   io.Socket? _socket;
-  String? currentPartyId;
+  final ValueNotifier<String?> currentPartyId = ValueNotifier<String?>(null);
 
   // Listeners for incoming sync events
   Function(Map<String, dynamic>)? onSyncReceived;
@@ -31,8 +31,8 @@ class SyncService {
     _socket!.onConnect((_) {
       debugPrint('[SyncService] ✓ Connected to server');
       isConnected.value = true;
-      if (currentPartyId != null) {
-        _socket!.emit('join_party', currentPartyId);
+      if (currentPartyId.value != null) {
+        _socket!.emit('join_party', currentPartyId.value);
       }
     });
 
@@ -53,17 +53,17 @@ class SyncService {
 
   void joinParty(String partyId) {
     if (_socket == null || !_socket!.connected) connect();
-    currentPartyId = partyId;
+    currentPartyId.value = partyId;
     if (_socket != null && _socket!.connected) {
       _socket!.emit('join_party', partyId);
     }
   }
 
   void leaveParty() {
-    if (currentPartyId != null && _socket != null && _socket!.connected) {
-      _socket!.emit('leave_party', currentPartyId);
+    if (currentPartyId.value != null && _socket != null && _socket!.connected) {
+      _socket!.emit('leave_party', currentPartyId.value);
     }
-    currentPartyId = null;
+    currentPartyId.value = null;
   }
 
   void broadcastPlayback({
@@ -71,10 +71,10 @@ class SyncService {
     required String trackId,
     required int positionMs,
   }) {
-    if (_socket == null || !_socket!.connected || currentPartyId == null) return;
+    if (_socket == null || !_socket!.connected || currentPartyId.value == null) return;
 
     _socket!.emit('sync_playback', {
-      'partyId': currentPartyId,
+      'partyId': currentPartyId.value,
       'action': action,
       'trackId': trackId,
       'positionMs': positionMs,
