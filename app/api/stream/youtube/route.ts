@@ -100,6 +100,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Prefetch mode: only warm the URL cache, don't stream ──
+  const prefetch = searchParams.get('prefetch');
+  if (prefetch === '1') {
+    console.log(`[YT-STREAM] Prefetch complete for ${videoId}`);
+    return NextResponse.json(
+      { ok: true, videoId, cached: true },
+      { headers: CORS_HEADERS }
+    );
+  }
+
   try {
     const proxyHeaders: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',

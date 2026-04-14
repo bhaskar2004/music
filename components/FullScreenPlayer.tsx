@@ -144,10 +144,6 @@ export default function FullScreenPlayer() {
         .fsp-progress-bar:hover .fsp-fill { background: #fff !important; }
         .fsp-vinyl { animation: vinylSpin 3s linear infinite; animation-play-state: paused; }
         .fsp-vinyl.playing { animation-play-state: running; }
-        .fsp-lyrics-container { scrollbar-width: none; -ms-overflow-style: none; }
-        .fsp-lyrics-container::-webkit-scrollbar { display: none; }
-        .fsp-lyric-line { transition: all 0.45s cubic-bezier(0.4,0,0.2,1); cursor: pointer; }
-        .fsp-lyric-line:hover { color: rgba(255,255,255,0.9) !important; }
         .control-btn { transition: all 0.18s cubic-bezier(0.4,0,0.2,1) !important; }
         .control-btn:hover { transform: scale(1.12) !important; }
         .play-btn { transition: all 0.18s cubic-bezier(0.4,0,0.2,1) !important; }
@@ -449,38 +445,18 @@ export default function FullScreenPlayer() {
           {/* RIGHT: Lyrics panel */}
           {showLyrics && (
             <div
-              className="fsp-lyrics-panel"
+              className="fsp-lyrics-panel lyrics-panel"
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
                 minWidth: 0, alignSelf: 'stretch',
               }}
             >
-              <div style={{ marginBottom: 20 }}>
-                <p style={{
-                  fontFamily: 'DM Sans, sans-serif',
-                  fontSize: 11, fontWeight: 500, letterSpacing: '0.15em',
-                  textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)',
-                }}>
-                  Lyrics
-                </p>
-              </div>
+              <p className="lyrics-panel-header">Lyrics</p>
 
-              {/* Gradient fade container */}
               <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-                {/* Top fade */}
-                <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, height: 80, zIndex: 2, pointerEvents: 'none',
-                  background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)',
-                }} />
-                {/* Bottom fade */}
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, zIndex: 2, pointerEvents: 'none',
-                  background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%)',
-                }} />
-
                 <div
                   ref={lyricsContainerRef}
-                  className="fsp-lyrics-container"
+                  className="lyrics-scroll-container"
                   style={{
                     height: '100%', maxHeight: 480,
                     overflowY: 'auto',
@@ -490,38 +466,32 @@ export default function FullScreenPlayer() {
                   }}
                 >
                   {isLoadingLyrics ? (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>
-                        Finding lyrics…
-                      </span>
+                    <div className="lyrics-loading">
+                      <span>Finding lyrics…</span>
                     </div>
                   ) : lyrics ? (
                     parsedLyrics ? (
                       parsedLyrics.map((line, i) => {
                         const isActive = i === currentLineIndex;
                         const isPast = i < currentLineIndex;
+                        const isRecentPast = isPast && currentLineIndex - i <= 2;
+                        const isUpcoming = !isPast && !isActive && i - currentLineIndex <= 2;
+
+                        let lineClass = 'lyric-line';
+                        if (isActive) lineClass += ' lyric-line--active';
+                        else if (isRecentPast) lineClass += ' lyric-line--recent-past';
+                        else if (isPast) lineClass += ' lyric-line--past';
+                        else if (isUpcoming) lineClass += ' lyric-line--upcoming';
+                        else lineClass += ' lyric-line--future';
+
                         return (
                           <div
                             key={i}
                             ref={isActive ? activeLineRef : null}
-                            className="fsp-lyric-line"
+                            className={lineClass}
                             onClick={() => {
                               const audio = document.querySelector('audio');
                               if (audio) { audio.currentTime = line.time; setCurrentTime(line.time); }
-                            }}
-                            style={{
-                              fontFamily: isActive ? 'Instrument Serif, serif' : 'DM Sans, sans-serif',
-                              fontSize: isActive ? 28 : 20,
-                              fontStyle: isActive ? 'italic' : 'normal',
-                              fontWeight: isActive ? 400 : 400,
-                              color: isActive
-                                ? '#ffffff'
-                                : isPast
-                                  ? 'rgba(255,255,255,0.18)'
-                                  : 'rgba(255,255,255,0.28)',
-                              lineHeight: 1.3,
-                              padding: `${isActive ? 14 : 10}px 0`,
-                              letterSpacing: isActive ? '-0.2px' : '0.01em',
                             }}
                           >
                             {line.text}
@@ -530,10 +500,7 @@ export default function FullScreenPlayer() {
                       })
                     ) : lyrics.plainLyrics ? (
                       lyrics.plainLyrics.split('\n').map((line, i) => (
-                        <div key={i} style={{
-                          fontFamily: 'DM Sans, sans-serif', fontSize: 16,
-                          color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, padding: '2px 0',
-                        }}>
+                        <div key={i} className="lyric-line lyric-line--plain">
                           {line || '\u00A0'}
                         </div>
                       ))

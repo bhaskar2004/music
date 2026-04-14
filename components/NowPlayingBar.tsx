@@ -86,7 +86,9 @@ export default function NowPlayingBar() {
     if (!audio || !currentTrack) return;
     
     if (currentTrack.id.startsWith('search-')) {
-      audio.src = `/api/proxy?url=${encodeURIComponent(currentTrack.sourceUrl)}`;
+      // Use the fast --get-url pipeline (cached, no transcoding)
+      const videoId = currentTrack.id.replace('search-', '');
+      audio.src = `/api/stream/youtube?v=${encodeURIComponent(videoId)}`;
     } else {
       audio.src = `/api/stream/${currentTrack.id}`;
     }
@@ -137,7 +139,8 @@ export default function NowPlayingBar() {
 
       if (nextTrack && nextTrack.id !== ct?.id) {
         if (nextTrack.id.startsWith('search-')) {
-          audio2.src = `/api/proxy?url=${encodeURIComponent(nextTrack.sourceUrl)}`;
+          const videoId = nextTrack.id.replace('search-', '');
+          audio2.src = `/api/stream/youtube?v=${encodeURIComponent(videoId)}`;
         } else {
           audio2.src = `/api/stream/${nextTrack.id}`;
         }

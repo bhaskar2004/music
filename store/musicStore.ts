@@ -298,6 +298,16 @@ export const useMusicStore = create<MusicStore>()(
         set({ currentTrack: track, currentTime: 0, lyrics: null });
         if (track) {
           get().fetchLyrics(track.title, track.artist);
+          // Pre-fetch next track URL for instant playback
+          const { queue } = get();
+          const idx = queue.findIndex(t => t.id === track.id);
+          if (idx !== -1 && idx < queue.length - 1) {
+            const nextTrack = queue[idx + 1];
+            if (nextTrack.id.startsWith('search-')) {
+              const videoId = nextTrack.id.replace('search-', '');
+              fetch(`/api/stream/youtube?v=${encodeURIComponent(videoId)}&prefetch=1`).catch(() => {});
+            }
+          }
         }
       },
       

@@ -203,6 +203,10 @@
   0%, 100% { box-shadow: 0 30px 100px rgba(0,0,0,0.6); }
   50% { box-shadow: 0 30px 120px rgba(0,0,0,0.8), 0 0 60px rgba(255,255,255,0.05); }
 }
+@keyframes lyricsPulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.6; }
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    COMPONENTS LAYER - All custom classes
@@ -465,6 +469,167 @@
     background: rgba(0, 0, 0, 0.97);
     backdrop-filter: blur(60px) saturate(1.5);
     -webkit-backdrop-filter: blur(60px) saturate(1.5);
+  }
+
+  /* ── Lyrics Panel Styles ──────────────────────────────────────── */
+  .lyrics-panel {
+    position: relative;
+  }
+
+  .lyrics-panel-header {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.2);
+    margin-bottom: 20px;
+    padding-left: 4px;
+  }
+
+  .lyrics-scroll-container {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 12%,
+      black 88%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 12%,
+      black 88%,
+      transparent 100%
+    );
+  }
+  .lyrics-scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .lyric-line {
+    position: relative;
+    cursor: pointer;
+    transition:
+      color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+      text-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+      padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+      font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 8px 0;
+    border-radius: 8px;
+    line-height: 1.35;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .lyric-line:hover {
+    color: rgba(255, 255, 255, 0.85) !important;
+    text-shadow: 0 0 24px rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* Active line */
+  .lyric-line--active {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 30px;
+    color: #ffffff;
+    text-shadow:
+      0 0 40px rgba(255, 255, 255, 0.25),
+      0 0 80px rgba(16, 185, 129, 0.12);
+    padding: 16px 0;
+    transform: translateX(4px);
+    letter-spacing: -0.3px;
+  }
+
+  /* Upcoming lines (next 1-2) */
+  .lyric-line--upcoming {
+    font-size: 21px;
+    color: rgba(255, 255, 255, 0.38);
+    font-weight: 400;
+    padding: 10px 0;
+  }
+
+  /* Future lines */
+  .lyric-line--future {
+    font-size: 19px;
+    color: rgba(255, 255, 255, 0.22);
+    font-weight: 400;
+    padding: 8px 0;
+  }
+
+  /* Past lines */
+  .lyric-line--past {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.12);
+    font-weight: 400;
+    padding: 7px 0;
+    transform: translateX(-2px);
+  }
+
+  /* Recently passed lines (1-2 lines ago) */
+  .lyric-line--recent-past {
+    font-size: 19px;
+    color: rgba(255, 255, 255, 0.18);
+    font-weight: 400;
+    padding: 8px 0;
+  }
+
+  /* Plain / unsynchronized lyrics */
+  .lyric-line--plain {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 400;
+    line-height: 1.85;
+    padding: 2px 0;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* Empty state */
+  .lyrics-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    opacity: 0.35;
+    flex: 1;
+  }
+  .lyrics-empty-state span {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.04em;
+  }
+
+  /* Loading state */
+  .lyrics-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+  }
+  .lyrics-loading span {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.25);
+    letter-spacing: 0.06em;
+    animation: lyricsPulse 1.5s ease-in-out infinite;
+  }
+
+  @media (max-width: 768px) {
+    .lyric-line--active {
+      font-size: 24px;
+      padding: 12px 0;
+    }
+    .lyric-line--upcoming {
+      font-size: 18px;
+    }
+    .lyric-line--future {
+      font-size: 16px;
+    }
   }
 
   /* ── Drag & Drop ────────────────────────────────────────────────── */
