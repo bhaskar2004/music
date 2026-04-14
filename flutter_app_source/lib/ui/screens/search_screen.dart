@@ -103,7 +103,7 @@ class _SearchScreenState extends State<SearchScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Adding ${tracksToDownload.length} songs to downloads…'),
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: const Color(0xFF333333),
     ));
 
     for (final track in tracksToDownload) {
@@ -132,7 +132,7 @@ class _SearchScreenState extends State<SearchScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Adding all ${_serverTracks.length} songs to downloads…'),
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: const Color(0xFF333333),
     ));
 
     for (final track in _serverTracks) {
@@ -140,8 +140,7 @@ class _SearchScreenState extends State<SearchScreen>
         await DownloadManager().processJob(track.sourceUrl, appState);
       } catch (e) {
         if (e.toString().contains('ALREADY_EXISTS')) {
-          // Skip silently for "Sync All" to avoid SnackBar flood, 
-          // or show a summary later. For now, just skip.
+          // Skip silently for "Sync All"
         }
       }
     }
@@ -181,7 +180,7 @@ class _SearchScreenState extends State<SearchScreen>
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Downloading "${track.title}"…'),
           duration: const Duration(seconds: 2),
-          backgroundColor: const Color(0xFF1E1E1E),
+          backgroundColor: const Color(0xFF333333),
         ));
         _urlCtrl.clear();
         appState.setActiveView(ActiveView.downloads);
@@ -204,18 +203,21 @@ class _SearchScreenState extends State<SearchScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: _serverSelectionMode
           ? AppBar(
-              backgroundColor: const Color(0xFF1A1A1A),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              scrolledUnderElevation: 0,
               leading: IconButton(
-                icon: const Icon(Icons.close_rounded),
+                icon: const Icon(Icons.close_rounded, color: Colors.black87),
                 onPressed: () => setState(() {
                   _serverSelectionMode = false;
                   _serverSelectedIds.clear();
                 }),
               ),
               title: Text('${_serverSelectedIds.length} Selected',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
               actions: [
                 TextButton.icon(
                   onPressed: _serverSelectedIds.isEmpty ? null : _downloadSelectedFromServer,
@@ -227,24 +229,25 @@ class _SearchScreenState extends State<SearchScreen>
               ],
             )
           : AppBar(
-              title: ShaderMask(
-                shaderCallback: (b) => const LinearGradient(
-                        colors: [Color(0xFF06C167), Color(0xFF00FF85)])
-                    .createShader(b),
-                child: const Text('Search & Download',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5)),
-              ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              surfaceTintColor: Colors.transparent,
+              title: const Text('Search & Download',
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      color: Colors.black)),
               bottom: TabBar(
                 controller: _tab,
                 indicatorColor: _accent,
                 indicatorWeight: 2,
-                labelColor: _accent,
-                unselectedLabelColor: Colors.white38,
+                labelColor: Colors.black,
+                unselectedLabelColor: const Color(0xFF999999),
                 labelStyle:
                     const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                dividerColor: const Color(0xFFE8E8E8),
                 tabs: const [
                   Tab(text: 'Web Library'),
                   Tab(text: 'YouTube'),
@@ -266,10 +269,10 @@ class _SearchScreenState extends State<SearchScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(Icons.cloud_off_rounded,
-                              size: 48, color: Colors.white12),
+                              size: 48, color: Color(0xFFDDDDDD)),
                           const SizedBox(height: 16),
                           const Text('No songs found on server',
-                              style: TextStyle(color: Colors.white38)),
+                              style: TextStyle(color: Color(0xFF999999))),
                           const SizedBox(height: 24),
                           TextButton.icon(
                             onPressed: _fetchServerLibrary,
@@ -283,7 +286,7 @@ class _SearchScreenState extends State<SearchScreen>
                   : RefreshIndicator(
                       onRefresh: _fetchServerLibrary,
                       color: _accent,
-                      backgroundColor: const Color(0xFF1A1A1A),
+                      backgroundColor: Colors.white,
                       child: CustomScrollView(
                         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                         slivers: [
@@ -295,8 +298,8 @@ class _SearchScreenState extends State<SearchScreen>
                                   children: [
                                     Text(
                                       '${_serverTracks.length} tracks found',
-                                      style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.4),
+                                      style: const TextStyle(
+                                          color: Color(0xFF999999),
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500),
                                     ),
@@ -357,17 +360,17 @@ class _SearchScreenState extends State<SearchScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1A1A1A),
+                          color: const Color(0xFFF2F2F2),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF2A2A2A)),
+                          border: Border.all(color: const Color(0xFFE8E8E8)),
                         ),
                         child: TextField(
                           controller: _searchCtrl,
                           style: const TextStyle(
-                              color: Colors.white, fontSize: 14),
+                              color: Colors.black87, fontSize: 14),
                           decoration: const InputDecoration(
                             hintText: 'Search YouTube…',
-                            hintStyle: TextStyle(color: Color(0xFF444444)),
+                            hintStyle: TextStyle(color: Color(0xFFBBBBBB)),
                             border: InputBorder.none,
                             icon: Icon(Icons.search_rounded,
                                 color: Color(0xFF888888)),
@@ -390,10 +393,10 @@ class _SearchScreenState extends State<SearchScreen>
                             ? const Padding(
                                 padding: EdgeInsets.all(10),
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.black),
+                                    strokeWidth: 2, color: Colors.white),
                               )
                             : const Icon(Icons.search_rounded,
-                                color: Colors.black, size: 22),
+                                color: Colors.white, size: 22),
                       ),
                     ),
                   ],
@@ -440,14 +443,15 @@ class _SearchScreenState extends State<SearchScreen>
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: const Icon(Icons.link_rounded,
-                        color: Colors.black, size: 32),
+                        color: Colors.white, size: 32),
                   ),
                   const SizedBox(height: 20),
                   const Text('Direct Download',
                       style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5)),
+                          letterSpacing: -0.5,
+                          color: Colors.black)),
                   const SizedBox(height: 8),
                   const Text(
                     'Paste any YouTube URL to download audio directly to your library',
@@ -459,17 +463,17 @@ class _SearchScreenState extends State<SearchScreen>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A1A),
+                      color: const Color(0xFFF2F2F2),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF2A2A2A)),
+                      border: Border.all(color: const Color(0xFFE8E8E8)),
                     ),
                     child: TextField(
                       controller: _urlCtrl,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      style: const TextStyle(color: Colors.black87, fontSize: 13),
                       decoration: const InputDecoration(
                         hintText: 'https://youtube.com/watch?v=…',
                         hintStyle:
-                            TextStyle(color: Color(0xFF444444), fontSize: 13),
+                            TextStyle(color: Color(0xFFBBBBBB), fontSize: 13),
                         border: InputBorder.none,
                       ),
                     ),
@@ -480,7 +484,7 @@ class _SearchScreenState extends State<SearchScreen>
                       borderRadius: BorderRadius.circular(99),
                       child: LinearProgressIndicator(
                         value: _dlProgress,
-                        backgroundColor: const Color(0xFF1E1E1E),
+                        backgroundColor: const Color(0xFFF2F2F2),
                         valueColor: const AlwaysStoppedAnimation(_accent),
                         minHeight: 5,
                       ),
@@ -497,7 +501,7 @@ class _SearchScreenState extends State<SearchScreen>
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.black),
+                                  strokeWidth: 2, color: Colors.white),
                             )
                           : const Icon(Icons.download_rounded),
                       label: Text(
@@ -507,7 +511,7 @@ class _SearchScreenState extends State<SearchScreen>
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _accent,
-                        foregroundColor: Colors.black,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
@@ -532,10 +536,10 @@ class _SearchHint extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.music_note_outlined, color: Color(0xFF333333), size: 52),
+          Icon(Icons.music_note_outlined, color: Color(0xFFDDDDDD), size: 52),
           SizedBox(height: 12),
           Text('Search for songs, artists, or albums',
-              style: TextStyle(color: Color(0xFF555555), fontSize: 14)),
+              style: TextStyle(color: Color(0xFF999999), fontSize: 14)),
         ],
       ),
     );

@@ -21,6 +21,7 @@ class QueueView extends StatelessWidget {
     final appState = context.read<AppState>();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: ValueListenableBuilder<List<Track>>(
           valueListenable: audio.queueNotifier,
@@ -40,18 +41,12 @@ class QueueView extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ShaderMask(
-                              shaderCallback: (b) =>
-                                  const LinearGradient(colors: [
-                                Color(0xFF06C167),
-                                Color(0xFF00FF85)
-                              ]).createShader(b),
-                              child: const Text('Queue',
-                                  style: TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -1.5)),
-                            ),
+                            const Text('Queue',
+                                style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -1.5,
+                                    color: Colors.black)),
                             Text(
                               '${queue.length} tracks · ${_formatDuration(totalSec)}',
                               style: const TextStyle(
@@ -72,7 +67,7 @@ class QueueView extends StatelessWidget {
                                   horizontal: 12, vertical: 7),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE53E3E)
-                                    .withValues(alpha: 0.1),
+                                    .withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                     color: const Color(0xFFE53E3E)
@@ -104,7 +99,7 @@ class QueueView extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(Icons.queue_music_rounded,
-                              color: Color(0xFF333333), size: 48),
+                              color: Color(0xFFDDDDDD), size: 48),
                           const SizedBox(height: 16),
                           const Text('No tracks in queue',
                               style: TextStyle(
@@ -118,21 +113,18 @@ class QueueView extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 20, vertical: 10),
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [
-                                    Color(0xFF06C167),
-                                    Color(0xFF00FF85)
-                                  ]),
+                                  color: Colors.black,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.play_arrow_rounded,
-                                        color: Colors.black, size: 18),
+                                        color: Colors.white, size: 18),
                                     SizedBox(width: 6),
                                     Text('Play All from Library',
                                         style: TextStyle(
-                                            color: Colors.black,
+                                            color: Colors.white,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 13)),
                                   ],
@@ -262,13 +254,13 @@ class _QueueRow extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isActive
-              ? const Color(0xFF06C167).withValues(alpha: 0.05)
-              : const Color(0xFF0A0A0A),
+              ? const Color(0xFF06C167).withValues(alpha: 0.06)
+              : const Color(0xFFF8F8F8),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isActive
                 ? const Color(0xFF06C167).withValues(alpha: 0.2)
-                : const Color(0xFF1E1E1E),
+                : const Color(0xFFEEEEEE),
           ),
         ),
         child: Row(
@@ -278,7 +270,7 @@ class _QueueRow extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: const Color(0xFFF0F0F0),
                   borderRadius: BorderRadius.circular(6)),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
@@ -292,7 +284,7 @@ class _QueueRow extends StatelessWidget {
                             fit: BoxFit.cover,
                           ))
                     : const Icon(Icons.music_note,
-                        color: Colors.white24, size: 20),
+                        color: Color(0xFFCCCCCC), size: 20),
               ),
             ),
             const SizedBox(width: 12),
@@ -308,7 +300,7 @@ class _QueueRow extends StatelessWidget {
                         fontSize: 13,
                         color: isActive
                             ? const Color(0xFF06C167)
-                            : Colors.white),
+                            : Colors.black87),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

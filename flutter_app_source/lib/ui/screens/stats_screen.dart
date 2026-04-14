@@ -21,6 +21,8 @@ class _StatsScreenState extends State<StatsScreen> {
   List<MapEntry<String, int>> _topTracks = [];
   List<MapEntry<String, int>> _topArtists = [];
 
+  static const _accent = Color(0xFF06C167);
+
   @override
   void initState() {
     super.initState();
@@ -58,19 +60,23 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: _accent));
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            floating: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const Text('Statistics', 
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
+              child: const Text('Statistics',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 32,
+                      letterSpacing: -1.5,
+                      color: Colors.black)),
+            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -81,14 +87,14 @@ class _StatsScreenState extends State<StatsScreen> {
                   _buildSummaryCards(),
                   const SizedBox(height: 32),
                   const Text('Activity', 
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black)),
                   const SizedBox(height: 16),
                   _buildActivityChart(),
                   const SizedBox(height: 32),
                   _buildTopSection('Top Tracks', _topTracks, isTrack: true),
                   const SizedBox(height: 32),
                   _buildTopSection('Top Artists', _topArtists, isTrack: false),
-                  const SizedBox(height: 100), // Space for NowPlayingBar
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
@@ -113,18 +119,18 @@ class _StatsScreenState extends State<StatsScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: const Color(0xFFF8F8F8),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: Colors.blueAccent, size: 28),
+            Icon(icon, color: _accent, size: 28),
             const SizedBox(height: 16),
-            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+            Text(label, style: const TextStyle(color: Color(0xFF888888), fontSize: 14)),
             const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black)),
           ],
         ),
       ),
@@ -139,8 +145,9 @@ class _StatsScreenState extends State<StatsScreen> {
       height: 200,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: const Color(0xFFF8F8F8),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: BarChart(
         BarChartData(
@@ -158,7 +165,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   final labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(labels[date.weekday - 1], style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                    child: Text(labels[date.weekday - 1], style: const TextStyle(color: Color(0xFF888888), fontSize: 10)),
                   );
                 },
               ),
@@ -175,7 +182,7 @@ class _StatsScreenState extends State<StatsScreen> {
               barRods: [
                 BarChartRodData(
                   toY: _activity[days[i]]!.toDouble(),
-                  color: Colors.blueAccent,
+                  color: _accent,
                   width: 16,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                 )
@@ -195,7 +202,7 @@ class _StatsScreenState extends State<StatsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black)),
         const SizedBox(height: 16),
         ...data.map((e) {
           String name = e.key;
@@ -213,8 +220,9 @@ class _StatsScreenState extends State<StatsScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: const Color(0xFFF8F8F8),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFEEEEEE)),
             ),
             child: Row(
               children: [
@@ -222,22 +230,22 @@ class _StatsScreenState extends State<StatsScreen> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(imageUrl, width: 48, height: 48, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(color: Colors.grey[800], width: 48, height: 48),
+                      errorBuilder: (_, __, ___) => Container(color: const Color(0xFFF0F0F0), width: 48, height: 48),
                     ),
                   )
                 else
                   Container(
                     width: 48, height: 48, 
-                    decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.person, color: Colors.blueAccent),
+                    decoration: BoxDecoration(color: _accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Icon(Icons.person, color: _accent),
                   ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Text(sub, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(sub, style: const TextStyle(color: Color(0xFF888888), fontSize: 13)),
                     ],
                   ),
                 ),

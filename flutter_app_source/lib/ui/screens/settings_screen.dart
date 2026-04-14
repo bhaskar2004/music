@@ -6,21 +6,27 @@ import '../../services/server_config.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
+  static const _accent = Color(0xFF06C167);
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final config = appState.config;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          const SliverAppBar(
-            floating: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: Text('Settings', 
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
+              child: const Text('Settings',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 32,
+                      letterSpacing: -1.5,
+                      color: Colors.black)),
+            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -68,9 +74,9 @@ class SettingsScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         ListTile(
-                          title: const Text('Server URL'),
-                          subtitle: Text(ServerConfig.baseUrl),
-                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          title: const Text('Server URL', style: TextStyle(color: Colors.black87)),
+                          subtitle: Text(ServerConfig.baseUrl, style: const TextStyle(color: Color(0xFF888888))),
+                          trailing: const Icon(Icons.chevron_right, color: Color(0xFFBBBBBB)),
                           onTap: () => _showServerUrlDialog(context, appState),
                         ),
                       ],
@@ -82,17 +88,17 @@ class SettingsScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         ListTile(
-                          title: const Text('Library Size'),
-                          subtitle: Text('${appState.library.length} tracks'),
-                          trailing: const Text('Calculate size...', style: TextStyle(color: Colors.blueAccent)),
+                          title: const Text('Library Size', style: TextStyle(color: Colors.black87)),
+                          subtitle: Text('${appState.library.length} tracks', style: const TextStyle(color: Color(0xFF888888))),
+                          trailing: const Text('Calculate size...', style: TextStyle(color: _accent)),
                         ),
-                        const Divider(color: Colors.white10),
+                        const Divider(color: Color(0xFFEEEEEE)),
                         ListTile(
-                          title: const Text('Downloads'),
-                          subtitle: Text('${appState.downloads.length} items in history'),
+                          title: const Text('Downloads', style: TextStyle(color: Colors.black87)),
+                          subtitle: Text('${appState.downloads.length} items in history', style: const TextStyle(color: Color(0xFF888888))),
                           trailing: TextButton(
-                            onPressed: () {}, // TODO: Clear download history
-                            child: const Text('Clear', style: TextStyle(color: Colors.redAccent)),
+                            onPressed: () {},
+                            child: const Text('Clear', style: TextStyle(color: Color(0xFFE53E3E))),
                           ),
                         ),
                       ],
@@ -111,16 +117,16 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(title, style: const TextStyle(fontSize: 14, color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+      child: Text(title, style: const TextStyle(fontSize: 12, color: _accent, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
     );
   }
 
   Widget _buildSettingCard({required Widget child}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        color: const Color(0xFFF8F8F8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
       ),
       child: child,
     );
@@ -133,13 +139,14 @@ class SettingsScreen extends StatelessWidget {
     required ValueChanged<T?> onChanged,
   }) {
     return ListTile(
-      title: Text(label),
+      title: Text(label, style: const TextStyle(color: Colors.black87)),
       trailing: DropdownButton<T>(
         value: value,
         items: items,
         onChanged: onChanged,
         underline: const SizedBox(),
-        dropdownColor: Colors.grey[900],
+        dropdownColor: Colors.white,
+        style: const TextStyle(color: Colors.black87, fontSize: 14),
       ),
     );
   }
@@ -157,8 +164,8 @@ class SettingsScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ListTile(
-          title: Text(label),
-          trailing: Text('${value.toInt()}$unit', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+          title: Text(label, style: const TextStyle(color: Colors.black87)),
+          trailing: Text('${value.toInt()}$unit', style: const TextStyle(fontWeight: FontWeight.bold, color: _accent)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -168,7 +175,8 @@ class SettingsScreen extends StatelessWidget {
             max: max,
             divisions: divisions,
             onChanged: onChanged,
-            activeColor: Colors.blueAccent,
+            activeColor: _accent,
+            inactiveColor: const Color(0xFFE0E0E0),
           ),
         ),
         const SizedBox(height: 8),
@@ -181,22 +189,41 @@ class SettingsScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Server URL'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Server URL', style: TextStyle(color: Colors.black)),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
+          style: const TextStyle(color: Colors.black87),
+          decoration: InputDecoration(
             hintText: 'http://10.0.2.2:3000',
-            border: OutlineInputBorder(),
+            hintStyle: const TextStyle(color: Color(0xFFBBBBBB)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _accent),
+            ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF888888))),
+          ),
           ElevatedButton(
             onPressed: () {
               appState.setServerUrl(controller.text);
               Navigator.pop(context);
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             child: const Text('Save'),
           ),
         ],

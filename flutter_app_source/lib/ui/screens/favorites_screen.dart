@@ -14,6 +14,7 @@ class FavoritesScreen extends StatelessWidget {
     final audio = context.read<AudioService>();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -28,16 +29,12 @@ class FavoritesScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ShaderMask(
-                          shaderCallback: (b) => const LinearGradient(
-                            colors: [Color(0xFF06C167), Color(0xFF00FF85)],
-                          ).createShader(b),
-                          child: const Text('Favorites',
-                              style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -1.5)),
-                        ),
+                        const Text('Favorites',
+                            style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -1.5,
+                                color: Colors.black)),
                         Text(
                           '${favorites.length} ${favorites.length == 1 ? 'track' : 'tracks'}',
                           style: const TextStyle(
@@ -80,18 +77,20 @@ class FavoritesScreen extends StatelessWidget {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1A1A1A),
+                          color: const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: const Color(0xFF2A2A2A)),
+                              color: const Color(0xFFE8E8E8)),
                         ),
                         child: const Icon(Icons.favorite_border_rounded,
-                            color: Color(0xFF444444), size: 34),
+                            color: Color(0xFFCCCCCC), size: 34),
                       ),
                       const SizedBox(height: 18),
                       const Text('No favorites yet',
                           style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 20)),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                              color: Colors.black)),
                       const SizedBox(height: 8),
                       const Text(
                         'Tap the heart on any track to save it here.',
@@ -147,24 +146,20 @@ class _Btn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          gradient: primary
-              ? const LinearGradient(
-                  colors: [Color(0xFF06C167), Color(0xFF00FF85)])
-              : null,
-          color: primary ? null : const Color(0xFF1E1E1E),
+          color: primary ? Colors.black : const Color(0xFFF2F2F2),
           borderRadius: BorderRadius.circular(99),
           border: primary
               ? null
-              : Border.all(color: const Color(0xFF2A2A2A)),
+              : Border.all(color: const Color(0xFFE8E8E8)),
         ),
         child: Row(
           children: [
             Icon(icon,
-                size: 14, color: primary ? Colors.black : Colors.white70),
+                size: 14, color: primary ? Colors.white : const Color(0xFF606060)),
             const SizedBox(width: 5),
             Text(label,
                 style: TextStyle(
-                    color: primary ? Colors.black : Colors.white70,
+                    color: primary ? Colors.white : const Color(0xFF606060),
                     fontWeight: FontWeight.w700,
                     fontSize: 13)),
           ],

@@ -10,8 +10,6 @@ import '../widgets/download_bottom_sheet.dart';
 class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
 
-
-
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
@@ -20,6 +18,7 @@ class DownloadsScreen extends StatelessWidget {
         appState.downloads.where((d) => !d.isActive).toList();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -34,16 +33,12 @@ class DownloadsScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ShaderMask(
-                          shaderCallback: (b) => const LinearGradient(
-                            colors: [Color(0xFF06C167), Color(0xFF00FF85)],
-                          ).createShader(b),
-                          child: const Text('Downloads',
-                              style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -1.5)),
-                        ),
+                        const Text('Downloads',
+                            style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -1.5,
+                                color: Colors.black)),
                         Text(
                           '${active.isNotEmpty ? '${active.length} active · ' : ''}${appState.downloads.length} total',
                           style: const TextStyle(
@@ -129,18 +124,18 @@ class _NewDownloadBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-                color: const Color(0xFF06C167).withValues(alpha: 0.3),
+                color: const Color(0xFF06C167).withValues(alpha: 0.2),
                 blurRadius: 12,
                 offset: const Offset(0, 4)),
           ],
         ),
         child: const Row(
           children: [
-            Icon(Icons.download_rounded, color: Colors.black, size: 16),
+            Icon(Icons.download_rounded, color: Colors.white, size: 16),
             SizedBox(width: 6),
             Text('New Download',
                 style: TextStyle(
-                    color: Colors.black,
+                    color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 13)),
           ],
@@ -161,7 +156,7 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: const TextStyle(
-          color: Color(0xFF888888),
+          color: Color(0xFF999999),
           fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
@@ -214,7 +209,7 @@ class _DownloadRow extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0A0A),
+        color: Colors.white,
         border: Border(
           left: BorderSide(
             color: job.status == DownloadStatus.done
@@ -223,14 +218,21 @@ class _DownloadRow extends StatelessWidget {
                     ? _danger
                     : isActive
                         ? _accent
-                        : const Color(0xFF2A2A2A),
+                        : const Color(0xFFE8E8E8),
             width: 3,
           ),
-          right: const BorderSide(color: Color(0xFF1E1E1E)),
-          top: const BorderSide(color: Color(0xFF1E1E1E)),
-          bottom: const BorderSide(color: Color(0xFF1E1E1E)),
+          right: const BorderSide(color: Color(0xFFEEEEEE)),
+          top: const BorderSide(color: Color(0xFFEEEEEE)),
+          bottom: const BorderSide(color: Color(0xFFEEEEEE)),
         ),
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -243,7 +245,7 @@ class _DownloadRow extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: const Color(0xFFF2F2F2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: job.coverUrl != null
@@ -260,13 +262,13 @@ class _DownloadRow extends StatelessWidget {
                               ),
                       )
                     : const Icon(Icons.music_note,
-                        color: Color(0xFF444444), size: 22),
+                        color: Color(0xFFCCCCCC), size: 22),
               ),
               if (isActive)
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black54,
+                      color: Colors.white.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Center(
@@ -274,7 +276,7 @@ class _DownloadRow extends StatelessWidget {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2, color: Color(0xFF06C167)),
                       ),
                     ),
                   ),
@@ -297,7 +299,7 @@ class _DownloadRow extends StatelessWidget {
                         style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
-                            color: Colors.white),
+                            color: Colors.black87),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -307,7 +309,7 @@ class _DownloadRow extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _statusColor.withValues(alpha: 0.12),
+                        color: _statusColor.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                             color: _statusColor.withValues(alpha: 0.2)),
@@ -369,7 +371,7 @@ class _DownloadRow extends StatelessWidget {
                               job.status == DownloadStatus.pending
                           ? null
                           : job.progress,
-                      backgroundColor: const Color(0xFF2A2A2A),
+                      backgroundColor: const Color(0xFFF0F0F0),
                       valueColor:
                           const AlwaysStoppedAnimation(_accent),
                       minHeight: 5,
@@ -380,12 +382,12 @@ class _DownloadRow extends StatelessWidget {
                 // Done state
                 if (job.status == DownloadStatus.done) ...[
                   const SizedBox(height: 6),
-                  Row(
+                  const Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded,
+                      Icon(Icons.check_circle_rounded,
                           color: _accent, size: 13),
-                      const SizedBox(width: 5),
-                      const Text('Added to library',
+                      SizedBox(width: 5),
+                      Text('Added to library',
                           style: TextStyle(
                               color: _accent,
                               fontSize: 11,
@@ -402,7 +404,7 @@ class _DownloadRow extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _danger.withValues(alpha: 0.06),
+                      color: _danger.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(6),
                       border:
                           Border.all(color: _danger.withValues(alpha: 0.15)),
@@ -431,22 +433,22 @@ class _DownloadRow extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
+                          color: const Color(0xFFF2F2F2),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                              color: const Color(0xFF2A2A2A)),
+                              color: const Color(0xFFE8E8E8)),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.refresh_rounded,
-                                size: 13, color: Colors.white70),
+                                size: 13, color: Color(0xFF606060)),
                             SizedBox(width: 5),
                             Text('Retry Download',
                                 style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.white70)),
+                                    color: Color(0xFF606060))),
                           ],
                         ),
                       ),
@@ -466,7 +468,7 @@ class _DownloadRow extends StatelessWidget {
                 height: 28,
                 decoration: BoxDecoration(
                   border:
-                      Border.all(color: const Color(0xFF2A2A2A)),
+                      Border.all(color: const Color(0xFFE8E8E8)),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Icon(Icons.close_rounded,
@@ -503,12 +505,12 @@ class _EmptyState extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A),
+              color: const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFF2A2A2A)),
+              border: Border.all(color: const Color(0xFFE8E8E8)),
             ),
             child: const Icon(Icons.download_outlined,
-                color: Color(0xFF444444), size: 30),
+                color: Color(0xFFCCCCCC), size: 30),
           ),
           const SizedBox(height: 16),
           const Text('No downloads yet',
@@ -521,12 +523,12 @@ class _EmptyState extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                   horizontal: 20, vertical: 11),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.black,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Text('Add from URL',
                   style: TextStyle(
-                      color: Colors.black,
+                      color: Colors.white,
                       fontWeight: FontWeight.w700,
                       fontSize: 14)),
             ),

@@ -6,7 +6,7 @@ class AppConfig {
   final String? serverUrl;
 
   AppConfig({
-    this.themeMode = ThemeMode.dark,
+    this.themeMode = ThemeMode.light,
     this.crossfadeDuration = 0,
     this.serverUrl,
   });

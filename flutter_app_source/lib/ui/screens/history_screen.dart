@@ -46,25 +46,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF06C167)));
     }
 
     final appState = Provider.of<AppState>(context);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            floating: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const Text('Recently Played', 
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 48, 20, 0),
+              child: const Text('Recently Played',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 32,
+                      letterSpacing: -1.5,
+                      color: Colors.black)),
+            ),
           ),
           if (_history.isEmpty)
             const SliverFillRemaining(
-              child: Center(child: Text('No history yet. Start listening!', style: TextStyle(color: Colors.grey))),
+              child: Center(child: Text('No history yet. Start listening!', style: TextStyle(color: Color(0xFF888888)))),
             )
           else
             SliverList(
@@ -79,22 +83,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   if (track == null) return const SizedBox.shrink();
 
                   return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color: const Color(0xFFF8F8F8),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFEEEEEE)),
                     ),
                     child: ListTile(
                       leading: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: track.coverUrl?.isNotEmpty == true
                           ? Image.network(track.coverUrl!, width: 44, height: 44, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(color: Colors.grey[800], width: 44, height: 44))
-                          : Container(color: Colors.grey[800], width: 44, height: 44, child: const Icon(Icons.music_note, size: 20)),
+                              errorBuilder: (_, __, ___) => Container(color: const Color(0xFFF0F0F0), width: 44, height: 44))
+                          : Container(color: const Color(0xFFF0F0F0), width: 44, height: 44, child: const Icon(Icons.music_note, size: 20, color: Color(0xFFCCCCCC))),
                       ),
-                      title: Text(track.title, style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text(track.artist, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                      trailing: Text(_formatDateTime(entry.timestamp), style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                      title: Text(track.title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(track.artist, style: const TextStyle(color: Color(0xFF888888), fontSize: 13)),
+                      trailing: Text(_formatDateTime(entry.timestamp), style: const TextStyle(color: Color(0xFFBBBBBB), fontSize: 11)),
                     ),
                   );
                 },

@@ -122,13 +122,14 @@ class _WavelengthAppState extends State<WavelengthApp> {
     final baseTheme = isDark ? ThemeData.dark() : ThemeData.light();
     
     return baseTheme.copyWith(
-      scaffoldBackgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF8F9FA),
+      scaffoldBackgroundColor: isDark ? const Color(0xFF000000) : Colors.white,
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF06C167),
         brightness: brightness,
         primary: isDark ? Colors.white : Colors.black,
         secondary: const Color(0xFF06C167),
         surface: isDark ? const Color(0xFF0D0D0D) : Colors.white,
+        onSurface: isDark ? Colors.white : Colors.black87,
       ),
       textTheme: GoogleFonts.epilogueTextTheme(baseTheme.textTheme).copyWith(
         displayLarge: GoogleFonts.syne(textStyle: baseTheme.textTheme.displayLarge),
@@ -141,14 +142,29 @@ class _WavelengthAppState extends State<WavelengthApp> {
         displayColor: isDark ? Colors.white : Colors.black,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: isDark ? Colors.transparent : Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         titleTextStyle: GoogleFonts.syne(
           color: isDark ? Colors.white : Colors.black,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black87),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: isDark ? const Color(0xFF0D0D0D) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      ),
+      dividerTheme: DividerThemeData(
+        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE8E8E8),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {

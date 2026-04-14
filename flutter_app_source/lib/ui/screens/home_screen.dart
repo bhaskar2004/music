@@ -57,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final playlists = appState.playlists;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Stack(
           children: [
@@ -77,21 +78,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                ShaderMask(
-                                  shaderCallback: (b) =>
-                                      const LinearGradient(colors: [
-                                    Color(0xFF06C167),
-                                    Color(0xFF00FF85)
-                                  ]).createShader(b),
-                                  child: Text(
-                                    isAddingSongs
-                                        ? 'Add Songs'
-                                        : activePlaylist?.name ?? 'Library',
-                                    style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: -1.5),
-                                  ),
+                                Text(
+                                  isAddingSongs
+                                      ? 'Add Songs'
+                                      : activePlaylist?.name ?? 'Library',
+                                  style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -1.5,
+                                      color: Colors.black),
                                 ),
                                 Text(
                                   '${tracks.length} ${tracks.length == 1 ? 'track' : 'tracks'}',
@@ -128,7 +123,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                   onTap: () {
                                     appState.syncWithServer();
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Syncing with server...'), duration: Duration(seconds: 1)),
+                                      SnackBar(
+                                        content: const Text('Syncing with server...'),
+                                        duration: const Duration(seconds: 1),
+                                        backgroundColor: const Color(0xFF333333),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
                                     );
                                   },
                                 ),
@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(Icons.search_off_rounded,
-                              color: Color(0xFF444444), size: 40),
+                              color: Color(0xFFCCCCCC), size: 40),
                           const SizedBox(height: 12),
                           Text(
                             'No tracks match "${appState.searchQuery}"',
@@ -298,11 +298,11 @@ class _IconBtn extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
+          color: const Color(0xFFF2F2F2),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF2A2A2A)),
+          border: Border.all(color: const Color(0xFFE8E8E8)),
         ),
-        child: Icon(icon, size: 18, color: Colors.white70),
+        child: Icon(icon, size: 18, color: const Color(0xFF606060)),
       ),
     );
   }
@@ -322,32 +322,32 @@ class _SortButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isOpen ? const Color(0xFF1E1E1E) : const Color(0xFF1A1A1A),
+          color: isOpen ? const Color(0xFFE8FFE8) : const Color(0xFFF2F2F2),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
               color: isOpen
                   ? const Color(0xFF06C167)
-                  : const Color(0xFF2A2A2A)),
+                  : const Color(0xFFE8E8E8)),
         ),
         child: Row(
           children: [
             Icon(Icons.swap_vert_rounded,
                 size: 15,
-                color: isOpen ? const Color(0xFF06C167) : Colors.white54),
+                color: isOpen ? const Color(0xFF06C167) : const Color(0xFF888888)),
             const SizedBox(width: 5),
             Text(label,
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color:
-                        isOpen ? const Color(0xFF06C167) : Colors.white70)),
+                        isOpen ? const Color(0xFF06C167) : const Color(0xFF606060))),
             const SizedBox(width: 4),
             Icon(
               isOpen
                   ? Icons.keyboard_arrow_up_rounded
                   : Icons.keyboard_arrow_down_rounded,
               size: 14,
-              color: isOpen ? const Color(0xFF06C167) : Colors.white38,
+              color: isOpen ? const Color(0xFF06C167) : const Color(0xFFBBBBBB),
             ),
           ],
         ),
@@ -367,9 +367,16 @@ class _SortDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: SortOption.values.map((opt) {
@@ -391,7 +398,7 @@ class _SortDropdown extends StatelessWidget {
                             : FontWeight.w500,
                         color: isSelected
                             ? const Color(0xFF06C167)
-                            : Colors.white70),
+                            : const Color(0xFF606060)),
                   ),
                   if (isSelected)
                     const Icon(Icons.check_rounded,
@@ -417,9 +424,9 @@ class _SearchBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: const Color(0xFFF2F2F2),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
       ),
       child: Row(
         children: [
@@ -431,11 +438,11 @@ class _SearchBar extends StatelessWidget {
               controller: controller,
               onChanged: onChanged,
               autofocus: true,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: const TextStyle(color: Colors.black87, fontSize: 14),
               decoration: const InputDecoration(
                 hintText: 'Search library…',
                 hintStyle:
-                    TextStyle(color: Color(0xFF444444), fontSize: 14),
+                    TextStyle(color: Color(0xFFBBBBBB), fontSize: 14),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -534,13 +541,13 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg = const Color(0xFF1E1E1E);
-    Color fg = Colors.white70;
-    BorderSide border = const BorderSide(color: Color(0xFF2A2A2A));
+    Color bg = const Color(0xFFF2F2F2);
+    Color fg = const Color(0xFF606060);
+    BorderSide border = const BorderSide(color: Color(0xFFE8E8E8));
 
     if (isPrimary) {
-      bg = Colors.white;
-      fg = Colors.black;
+      bg = Colors.black;
+      fg = Colors.white;
       border = BorderSide.none;
     } else if (accent) {
       bg = const Color(0xFF06C167).withValues(alpha: 0.1);
@@ -548,8 +555,8 @@ class _Pill extends StatelessWidget {
       border = BorderSide(
           color: const Color(0xFF06C167).withValues(alpha: 0.2));
     } else if (muted) {
-      bg = Colors.white.withValues(alpha: 0.05);
-      fg = Colors.white38;
+      bg = Colors.black.withValues(alpha: 0.04);
+      fg = const Color(0xFFBBBBBB);
     }
 
     return GestureDetector(
@@ -613,25 +620,25 @@ class _BulkActionBar extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.8),
+            color: Colors.white.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            border: Border.all(color: const Color(0xFFE8E8E8)),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.6),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 24,
-                  spreadRadius: 4),
+                  spreadRadius: 0),
             ],
           ),
           child: Row(
             children: [
               Text('$count selected',
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 14)),
+                      fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87)),
               Container(
                   width: 1,
                   height: 20,
-                  color: Colors.white12,
+                  color: const Color(0xFFE8E8E8),
                   margin: const EdgeInsets.symmetric(horizontal: 14)),
               Expanded(
                 child: SingleChildScrollView(
@@ -681,7 +688,7 @@ class _BulkActionBar extends StatelessWidget {
               GestureDetector(
                 onTap: onCancel,
                 child: const Icon(Icons.close_rounded,
-                    size: 18, color: Colors.white38),
+                    size: 18, color: Color(0xFFBBBBBB)),
               ),
             ],
           ),
@@ -709,10 +716,10 @@ class _BarBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color bg = Colors.transparent;
-    Color fg = Colors.white60;
+    Color fg = const Color(0xFF606060);
     if (primary) {
       bg = const Color(0xFF06C167);
-      fg = Colors.black;
+      fg = Colors.white;
     } else if (danger) {
       fg = const Color(0xFFE53E3E).withValues(alpha: 0.8);
     }
@@ -755,19 +762,20 @@ class _EmptyState extends StatelessWidget {
             width: 88,
             height: 88,
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A),
+              color: const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: const Color(0xFF2A2A2A)),
+              border: Border.all(color: const Color(0xFFE8E8E8)),
             ),
             child: const Icon(Icons.library_music_outlined,
-                color: Color(0xFF444444), size: 38),
+                color: Color(0xFFCCCCCC), size: 38),
           ),
           const SizedBox(height: 20),
           const Text('Your library is empty',
               style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 20,
-                  letterSpacing: -0.3)),
+                  letterSpacing: -0.3,
+                  color: Colors.black)),
           const SizedBox(height: 8),
           const Text(
             'Paste a YouTube or SoundCloud URL\nto download music directly to your library.',

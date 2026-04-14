@@ -44,7 +44,7 @@ class _TrackTileState extends State<TrackTile> {
         height: double.infinity,
         width: double.infinity,
         errorWidget: (context, url, error) => const Center(
-          child: Icon(Icons.broken_image_rounded, color: Colors.white24),
+          child: Icon(Icons.broken_image_rounded, color: Color(0xFFCCCCCC)),
         ),
       );
     } else {
@@ -58,7 +58,7 @@ class _TrackTileState extends State<TrackTile> {
         );
       }
       return const Center(
-        child: Icon(Icons.broken_image_rounded, color: Colors.white24),
+        child: Icon(Icons.broken_image_rounded, color: Color(0xFFCCCCCC)),
       );
     }
   }
@@ -176,7 +176,7 @@ class _TrackTileState extends State<TrackTile> {
           child: Container(
             decoration: BoxDecoration(
               color: widget.isSelected
-                  ? const Color(0xFF06C167).withValues(alpha: 0.1)
+                  ? const Color(0xFF06C167).withValues(alpha: 0.08)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
@@ -195,12 +195,12 @@ class _TrackTileState extends State<TrackTile> {
                       // Cover
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFF121212),
+                          color: const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             if (_isPlaying)
                               BoxShadow(
-                                color: const Color(0xFF06C167).withValues(alpha: 0.2),
+                                color: const Color(0xFF06C167).withValues(alpha: 0.15),
                                 blurRadius: 15,
                                 spreadRadius: 2,
                               ),
@@ -214,11 +214,11 @@ class _TrackTileState extends State<TrackTile> {
                                   width: 48,
                                   height: 48,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF1E1E1E),
+                                    color: const Color(0xFFEEEEEE),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: const Icon(Icons.music_note_rounded,
-                                      color: Color(0xFF333333), size: 28),
+                                      color: Color(0xFFCCCCCC), size: 28),
                                 ),
                               ),
                       ),
@@ -230,9 +230,9 @@ class _TrackTileState extends State<TrackTile> {
                           right: 8,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.black54,
+                              color: Colors.white.withValues(alpha: 0.9),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white24),
+                              border: Border.all(color: const Color(0xFFE0E0E0)),
                             ),
                             child: Icon(
                               widget.isSelected
@@ -240,7 +240,7 @@ class _TrackTileState extends State<TrackTile> {
                                   : Icons.circle_outlined,
                               color: widget.isSelected
                                   ? const Color(0xFF06C167)
-                                  : Colors.white70,
+                                  : const Color(0xFF999999),
                               size: 24,
                             ),
                           ),
@@ -251,7 +251,7 @@ class _TrackTileState extends State<TrackTile> {
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.45),
+                              color: Colors.black.withValues(alpha: 0.35),
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: Center(
@@ -273,7 +273,7 @@ class _TrackTileState extends State<TrackTile> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
+                            color: Colors.white.withValues(alpha: 0.85),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -292,8 +292,8 @@ class _TrackTileState extends State<TrackTile> {
                           top: 2,
                           right: 2,
                           child: IconButton(
-                            icon: const Icon(Icons.more_vert,
-                                color: Colors.white, size: 20),
+                            icon: Icon(Icons.more_vert,
+                                color: Colors.white.withValues(alpha: 0.85), size: 20),
                             onPressed: _showMenu,
                           ),
                         ),
@@ -312,7 +312,7 @@ class _TrackTileState extends State<TrackTile> {
                           fontSize: 13,
                           letterSpacing: -0.2,
                           color:
-                              _isPlaying ? const Color(0xFF06C167) : Colors.white,
+                              _isPlaying ? const Color(0xFF06C167) : Colors.black87,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -320,8 +320,8 @@ class _TrackTileState extends State<TrackTile> {
                       const SizedBox(height: 2),
                       Text(
                         widget.track.artist,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
+                        style: const TextStyle(
+                          color: Color(0xFF888888),
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
@@ -371,7 +371,7 @@ class _TrackMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF121212),
+        color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -395,8 +395,8 @@ class _TrackMenu extends StatelessWidget {
                       : Container(
                           width: 48,
                           height: 48,
-                          color: const Color(0xFF1E1E1E),
-                          child: const Icon(Icons.music_note, color: Colors.white24),
+                          color: const Color(0xFFF2F2F2),
+                          child: const Icon(Icons.music_note, color: Color(0xFFCCCCCC)),
                         ),
                 ),
                 const SizedBox(width: 16),
@@ -405,7 +405,7 @@ class _TrackMenu extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(track.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                       Text(track.artist,
@@ -417,7 +417,7 @@ class _TrackMenu extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const Divider(color: Color(0xFF1E1E1E), height: 1),
+          const Divider(color: Color(0xFFEEEEEE), height: 1),
 
           // Download / Already downloaded indicator
           if (!isDownloaded)
@@ -437,7 +437,7 @@ class _TrackMenu extends StatelessWidget {
               onTap: () {},
             ),
 
-          const Divider(color: Color(0xFF1E1E1E), height: 1),
+          const Divider(color: Color(0xFFEEEEEE), height: 1),
 
           // Queue section — makes sense when downloaded OR when can stream from server
           if (canStream) ...[
@@ -452,7 +452,7 @@ class _TrackMenu extends StatelessWidget {
               label: 'Add to Queue',
               onTap: onAddToQueue,
             ),
-            const Divider(color: Color(0xFF1E1E1E), height: 1),
+            const Divider(color: Color(0xFFEEEEEE), height: 1),
           ],
 
           // Playlists section
@@ -467,9 +467,9 @@ class _TrackMenu extends StatelessWidget {
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
-                leading: const Icon(Icons.playlist_add, color: Colors.white70),
+                leading: const Icon(Icons.playlist_add, color: Color(0xFF888888)),
                 title: const Text('Add to / Remove from Playlist',
-                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                    style: TextStyle(color: Colors.black87, fontSize: 14)),
                 children: [
                   ...playlists.map((p) {
                     final isIn = track.playlistIds.contains(p.id);
@@ -484,7 +484,7 @@ class _TrackMenu extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(color: Color(0xFF1E1E1E), height: 1),
+            const Divider(color: Color(0xFFEEEEEE), height: 1),
           ],
 
           // Dangerous section
@@ -513,7 +513,7 @@ class _MenuSection extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          color: Color(0xFF444444),
+          color: Color(0xFF999999),
           fontSize: 10,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.2,
@@ -544,7 +544,7 @@ class _MenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = danger
         ? const Color(0xFFE53E3E)
-        : (isActive ? (activeColor ?? const Color(0xFF06C167)) : Colors.white);
+        : (isActive ? (activeColor ?? const Color(0xFF06C167)) : Colors.black87);
 
     return ListTile(
       leading: Icon(icon, color: color.withValues(alpha: 0.7), size: 20),

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/app_state.dart';
@@ -127,50 +126,37 @@ class _MainWrapperState extends State<MainWrapper> {
 
     return Scaffold(
       key: _scaffoldKey,
+      backgroundColor: Colors.white,
       drawer: _PlaylistDrawer(
         appState: appState,
         onClose: () => _scaffoldKey.currentState?.closeDrawer(),
       ),
-
-      // Use a Column body so now playing bar + screens + nav all layout properly
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: appState.config.themeMode == ThemeMode.light
-                ? [const Color(0xFFF8F9FA), const Color(0xFFE9ECEF)]
-                : [const Color(0xFF000000), const Color(0xFF0A0A0A), const Color(0xFF111111)],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
-        child: Column(
-          children: [
-            // Main content area (screens + search)
-            Expanded(
-              child: Stack(
-                children: [
-                  Offstage(
-                    offstage: _showSearch,
-                    child: IndexedStack(
-                      index: _indexFromView(activeView),
-                      children: ActiveView.values
-                          .map((v) => _buildScreen(v))
-                          .toList(),
-                    ),
+      body: Column(
+        children: [
+          // Main content area
+          Expanded(
+            child: Stack(
+              children: [
+                Offstage(
+                  offstage: _showSearch,
+                  child: IndexedStack(
+                    index: _indexFromView(activeView),
+                    children: ActiveView.values
+                        .map((v) => _buildScreen(v))
+                        .toList(),
                   ),
-                  if (_showSearch) const SearchScreen(),
-                ],
-              ),
+                ),
+                if (_showSearch) const SearchScreen(),
+              ],
             ),
+          ),
 
-            // Now playing bar - properly positioned above bottom nav
-            const NowPlayingBar(),
+          // Now playing bar
+          const NowPlayingBar(),
 
-            // Bottom Navigation Bar
-            _buildBottomNav(appState, activeView, playlists, pendingCount, audio),
-          ],
-        ),
+          // Bottom Navigation Bar
+          _buildBottomNav(appState, activeView, playlists, pendingCount, audio),
+        ],
       ),
     );
   }
@@ -179,95 +165,90 @@ class _MainWrapperState extends State<MainWrapper> {
       List playlists, int pendingCount, AudioService audio) {
     final currentIndex = _showSearch ? 4 : _indexFromView(activeView);
 
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF000000).withValues(alpha: 0.92),
-            border: const Border(
-              top: BorderSide(color: Color(0xFF1A1A1A), width: 0.5),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 2),
-              child: Row(
-                children: [
-                  // Playlist drawer toggle
-                  _NavPlaylistBtn(
-                    hasPlaylists: playlists.isNotEmpty,
-                    hasActivePlaylist: appState.activePlaylistId != null,
-                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                  ),
-
-                  // Nav items
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _NavItem(
-                          icon: Icons.library_music_outlined,
-                          activeIcon: Icons.library_music,
-                          label: 'Library',
-                          isActive: currentIndex == 0,
-                          onTap: () {
-                            setState(() => _showSearch = false);
-                            appState.setActiveView(_viewFromIndex(0));
-                          },
-                        ),
-                        _NavItem(
-                          icon: Icons.favorite_border_rounded,
-                          activeIcon: Icons.favorite_rounded,
-                          label: 'Favorites',
-                          isActive: currentIndex == 1,
-                          onTap: () {
-                            setState(() => _showSearch = false);
-                            appState.setActiveView(_viewFromIndex(1));
-                          },
-                        ),
-                        _NavItem(
-                          icon: Icons.queue_music_outlined,
-                          activeIcon: Icons.queue_music,
-                          label: 'Queue',
-                          isActive: currentIndex == 2,
-                          onTap: () {
-                            setState(() => _showSearch = false);
-                            appState.setActiveView(_viewFromIndex(2));
-                          },
-                        ),
-                        _NavItem(
-                          icon: Icons.download_outlined,
-                          activeIcon: Icons.download_rounded,
-                          label: 'Downloads',
-                          isActive: currentIndex == 3,
-                          badgeCount: pendingCount,
-                          onTap: () {
-                            setState(() => _showSearch = false);
-                            appState.setActiveView(_viewFromIndex(3));
-                          },
-                        ),
-                        _NavItem(
-                          icon: Icons.search_outlined,
-                          activeIcon: Icons.search_rounded,
-                          label: 'Search',
-                          isActive: currentIndex == 4,
-                          onTap: () {
-                            setState(() => _showSearch = true);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Add from URL quick button
-                  _NavAddBtn(
-                    onTap: () => DownloadBottomSheet.show(context),
-                  ),
-                ],
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Color(0xFFE8E8E8), width: 0.5),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 2),
+          child: Row(
+            children: [
+              // Playlist drawer toggle
+              _NavPlaylistBtn(
+                hasPlaylists: playlists.isNotEmpty,
+                hasActivePlaylist: appState.activePlaylistId != null,
+                onTap: () => _scaffoldKey.currentState?.openDrawer(),
               ),
-            ),
+
+              // Nav items
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _NavItem(
+                      icon: Icons.library_music_outlined,
+                      activeIcon: Icons.library_music,
+                      label: 'Library',
+                      isActive: currentIndex == 0,
+                      onTap: () {
+                        setState(() => _showSearch = false);
+                        appState.setActiveView(_viewFromIndex(0));
+                      },
+                    ),
+                    _NavItem(
+                      icon: Icons.favorite_border_rounded,
+                      activeIcon: Icons.favorite_rounded,
+                      label: 'Favorites',
+                      isActive: currentIndex == 1,
+                      onTap: () {
+                        setState(() => _showSearch = false);
+                        appState.setActiveView(_viewFromIndex(1));
+                      },
+                    ),
+                    _NavItem(
+                      icon: Icons.queue_music_outlined,
+                      activeIcon: Icons.queue_music,
+                      label: 'Queue',
+                      isActive: currentIndex == 2,
+                      onTap: () {
+                        setState(() => _showSearch = false);
+                        appState.setActiveView(_viewFromIndex(2));
+                      },
+                    ),
+                    _NavItem(
+                      icon: Icons.download_outlined,
+                      activeIcon: Icons.download_rounded,
+                      label: 'Downloads',
+                      isActive: currentIndex == 3,
+                      badgeCount: pendingCount,
+                      onTap: () {
+                        setState(() => _showSearch = false);
+                        appState.setActiveView(_viewFromIndex(3));
+                      },
+                    ),
+                    _NavItem(
+                      icon: Icons.search_outlined,
+                      activeIcon: Icons.search_rounded,
+                      label: 'Search',
+                      isActive: currentIndex == 4,
+                      onTap: () {
+                        setState(() => _showSearch = true);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              // Add from URL quick button
+              _NavAddBtn(
+                onTap: () => DownloadBottomSheet.show(context),
+              ),
+            ],
           ),
         ),
       ),
@@ -315,7 +296,7 @@ class _NavItem extends StatelessWidget {
                     isActive ? activeIcon : icon,
                     key: ValueKey(isActive),
                     size: 24,
-                    color: isActive ? Colors.white : const Color(0xFF555555),
+                    color: isActive ? Colors.black : const Color(0xFF909090),
                   ),
                 ),
                 if (badgeCount > 0)
@@ -332,7 +313,7 @@ class _NavItem extends StatelessWidget {
                       child: Text(
                         '$badgeCount',
                         style: const TextStyle(
-                          color: Colors.black,
+                          color: Colors.white,
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                         ),
@@ -347,7 +328,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive ? Colors.white : const Color(0xFF555555),
+                color: isActive ? Colors.black : const Color(0xFF909090),
               ),
             ),
             // Active indicator dot
@@ -391,7 +372,7 @@ class _NavPlaylistBtn extends StatelessWidget {
           size: 22,
           color: hasActivePlaylist
               ? const Color(0xFF06C167)
-              : Colors.white24,
+              : const Color(0xFFBBBBBB),
         ),
       ),
     );
@@ -417,13 +398,13 @@ class _NavAddBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF06C167).withValues(alpha: 0.25),
+              color: const Color(0xFF06C167).withValues(alpha: 0.2),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: const Icon(Icons.add_rounded, color: Colors.black, size: 18),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
       ),
     );
   }
@@ -460,7 +441,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
     final library = appState.library;
 
     return Drawer(
-      backgroundColor: const Color(0xFF080808),
+      backgroundColor: Colors.white,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,16 +452,12 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  ShaderMask(
-                    shaderCallback: (b) => const LinearGradient(
-                      colors: [Color(0xFF06C167), Color(0xFF00FF85)],
-                    ).createShader(b),
-                    child: const Text('Playlists',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 24,
-                            letterSpacing: -0.5)),
-                  ),
+                  const Text('Playlists',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 24,
+                          letterSpacing: -0.5,
+                          color: Colors.black)),
                   GestureDetector(
                     onTap: () =>
                         setState(() => _isCreating = !_isCreating),
@@ -514,13 +491,13 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                         controller: _nameCtrl,
                         autofocus: true,
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 14),
+                            color: Colors.black87, fontSize: 14),
                         decoration: InputDecoration(
                           hintText: 'Playlist name…',
                           hintStyle: const TextStyle(
-                              color: Color(0xFF444444)),
+                              color: Color(0xFF999999)),
                           filled: true,
-                          fillColor: const Color(0xFF141414),
+                          fillColor: const Color(0xFFF2F2F2),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 10),
                           border: OutlineInputBorder(
@@ -540,7 +517,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                       onTap: () =>
                           setState(() => _isCreating = false),
                       child: const Icon(Icons.close_rounded,
-                          color: Colors.white38),
+                          color: Color(0xFF999999)),
                     ),
                   ],
                 ),
@@ -568,7 +545,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                 padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
                 child: Text('MY PLAYLISTS',
                     style: TextStyle(
-                        color: Color(0xFF444444),
+                        color: Color(0xFF999999),
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.2)),
@@ -606,7 +583,7 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
               ),
             ],
 
-            const Divider(color: Colors.white10, height: 32, indent: 20, endIndent: 20),
+            Divider(color: Colors.black.withValues(alpha: 0.06), height: 32, indent: 20, endIndent: 20),
 
             _DrawerItem(
               icon: Icons.bar_chart_rounded,
@@ -665,11 +642,11 @@ class _PlaylistDrawerState extends State<_PlaylistDrawer> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.add_rounded,
-                          color: Colors.black, size: 18),
+                          color: Colors.white, size: 18),
                       SizedBox(width: 8),
                       Text('Add from URL',
                           style: TextStyle(
-                              color: Colors.black,
+                              color: Colors.white,
                               fontWeight: FontWeight.w800,
                               fontSize: 14)),
                     ],
@@ -720,7 +697,7 @@ class _DrawerItem extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 18,
-                color: isActive ? Colors.black : Colors.white54),
+                color: isActive ? Colors.white : const Color(0xFF666666)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -728,7 +705,7 @@ class _DrawerItem extends StatelessWidget {
                 children: [
                   Text(label,
                       style: TextStyle(
-                          color: isActive ? Colors.black : Colors.white,
+                          color: isActive ? Colors.white : Colors.black87,
                           fontWeight: isActive
                               ? FontWeight.w800
                               : FontWeight.w500,
@@ -737,8 +714,8 @@ class _DrawerItem extends StatelessWidget {
                     Text(subtitle!,
                         style: TextStyle(
                             color: isActive
-                                ? Colors.black54
-                                : const Color(0xFF555555),
+                                ? Colors.white70
+                                : const Color(0xFF999999),
                             fontSize: 11)),
                 ],
               ),
@@ -785,7 +762,7 @@ class _PermissionDialogState extends State<_PermissionDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF0D0D0D),
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -802,7 +779,7 @@ class _PermissionDialogState extends State<_PermissionDialog> {
                 borderRadius: BorderRadius.circular(18),
               ),
               child: const Icon(Icons.folder_rounded,
-                  color: Colors.black, size: 32),
+                  color: Colors.white, size: 32),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -811,7 +788,7 @@ class _PermissionDialogState extends State<_PermissionDialog> {
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
                 letterSpacing: -0.5,
-                color: Colors.white,
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 12),
@@ -819,7 +796,7 @@ class _PermissionDialogState extends State<_PermissionDialog> {
               'Wavelength needs storage access to save downloaded songs to your device so you can listen offline.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 fontSize: 14,
                 height: 1.45,
               ),
@@ -832,7 +809,7 @@ class _PermissionDialogState extends State<_PermissionDialog> {
                 onPressed: _requesting ? null : _requestPermissions,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF06C167),
-                  foregroundColor: Colors.black,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
@@ -842,7 +819,7 @@ class _PermissionDialogState extends State<_PermissionDialog> {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.black),
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : const Text('Grant Access',
                         style: TextStyle(
@@ -856,10 +833,10 @@ class _PermissionDialogState extends State<_PermissionDialog> {
               child: TextButton(
                 onPressed: () => PermissionService.openAppInfo(),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.white54,
+                  foregroundColor: Colors.black54,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
-                    side: const BorderSide(color: Color(0xFF222222)),
+                    side: const BorderSide(color: Color(0xFFE0E0E0)),
                   ),
                 ),
                 child: const Text('Open Settings',
@@ -873,7 +850,7 @@ class _PermissionDialogState extends State<_PermissionDialog> {
               child: Text(
                 'Skip for now',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.25),
+                  color: Colors.black.withValues(alpha: 0.25),
                   fontSize: 12,
                 ),
               ),

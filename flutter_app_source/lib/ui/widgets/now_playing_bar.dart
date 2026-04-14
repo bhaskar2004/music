@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -55,151 +54,150 @@ class NowPlayingBar extends StatelessWidget {
             margin: const EdgeInsets.fromLTRB(8, 0, 8, 4),
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: const Color(0xFFE8E8E8),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _accent.withValues(alpha: 0.08),
-                  blurRadius: 24,
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
                   spreadRadius: 0,
-                  offset: const Offset(0, 4),
+                  offset: const Offset(0, 2),
                 ),
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 20,
+                  color: _accent.withValues(alpha: 0.04),
+                  blurRadius: 24,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: Container(
-                  color: const Color(0xFF0D0D0D).withValues(alpha: 0.85),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Seek progress strip
+                _SeekStrip(audio: audio),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                  child: Row(
                     children: [
-                      // Seek progress strip
-                      _SeekStrip(audio: audio),
+                      // Artwork with subtle shadow
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: (track.coverUrl != null)
+                              ? _buildArtwork(track.coverUrl!)
+                              : _artPlaceholder(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
 
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-                        child: Row(
+                      // Track info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Artwork with glow
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _accent.withValues(alpha: 0.15),
-                                    blurRadius: 12,
-                                    spreadRadius: 0,
-                                  ),
-                                ],
+                            Text(
+                              track.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: Colors.black87,
+                                letterSpacing: -0.3,
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: (track.coverUrl != null)
-                                    ? _buildArtwork(track.coverUrl!)
-                                    : _artPlaceholder(),
-                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(width: 12),
-
-                            // Track info
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    track.title,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                      letterSpacing: -0.3,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    track.artist,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.5),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                            const SizedBox(height: 2),
+                            Text(
+                              track.artist,
+                              style: const TextStyle(
+                                color: Color(0xFF888888),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ),
-
-                            // Favorite button
-                            GestureDetector(
-                              onTap: () => appState.toggleFavorite(track.id),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 200),
-                                  transitionBuilder: (child, anim) =>
-                                      ScaleTransition(scale: anim, child: child),
-                                  child: Icon(
-                                    isFav
-                                        ? Icons.favorite_rounded
-                                        : Icons.favorite_border_rounded,
-                                    key: ValueKey(isFav),
-                                    color: isFav ? _accent : Colors.white38,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Play/Pause button
-                            StreamBuilder<bool>(
-                              stream: audio.player.playingStream,
-                              builder: (context, snapshot) {
-                                final playing = snapshot.data ?? false;
-                                return GestureDetector(
-                                  onTap: () =>
-                                      playing ? audio.pause() : audio.resume(),
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [_accent, _accentLight],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      playing
-                                          ? Icons.pause_rounded
-                                          : Icons.play_arrow_rounded,
-                                      color: Colors.black,
-                                      size: 24,
-                                    ),
-                                  ),
-                                );
-                              },
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
+
+                      // Favorite button
+                      GestureDetector(
+                        onTap: () => appState.toggleFavorite(track.id),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (child, anim) =>
+                                ScaleTransition(scale: anim, child: child),
+                            child: Icon(
+                              isFav
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              key: ValueKey(isFav),
+                              color: isFav ? _accent : const Color(0xFFBBBBBB),
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Play/Pause button
+                      StreamBuilder<bool>(
+                        stream: audio.player.playingStream,
+                        builder: (context, snapshot) {
+                          final playing = snapshot.data ?? false;
+                          return GestureDetector(
+                            onTap: () =>
+                                playing ? audio.pause() : audio.resume(),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [_accent, _accentLight],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _accent.withValues(alpha: 0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                playing
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         );
@@ -237,14 +235,14 @@ class NowPlayingBar extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF1A1A1A),
-            _accent.withValues(alpha: 0.1),
+            const Color(0xFFF2F2F2),
+            _accent.withValues(alpha: 0.08),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      child: const Icon(Icons.music_note_rounded, color: Colors.white24, size: 22),
+      child: const Icon(Icons.music_note_rounded, color: Color(0xFFCCCCCC), size: 22),
     );
   }
 }
@@ -272,7 +270,7 @@ class _SeekStrip extends StatelessWidget {
               child: Stack(
                 children: [
                   Container(
-                    color: Colors.white.withValues(alpha: 0.06),
+                    color: const Color(0xFFF0F0F0),
                   ),
                   FractionallySizedBox(
                     widthFactor: pct,

@@ -90,10 +90,10 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
       ),
       child: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF111111),
+          color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           border: Border(
-            top: BorderSide(color: Color(0xFF2A2A2A)),
+            top: BorderSide(color: Color(0xFFE8E8E8)),
           ),
         ),
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
@@ -107,7 +107,7 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF404040),
+                  color: const Color(0xFFDDDDDD),
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
@@ -127,7 +127,7 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.download_rounded,
-                      color: Colors.black, size: 20),
+                      color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -137,10 +137,11 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
                         style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 18,
-                            letterSpacing: -0.4)),
+                            letterSpacing: -0.4,
+                            color: Colors.black)),
                     Text('YouTube, SoundCloud, Bandcamp & more',
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
+                            color: Colors.black.withValues(alpha: 0.4),
                             fontSize: 12)),
                   ],
                 ),
@@ -151,9 +152,9 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
             // URL input
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
+                color: const Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF2A2A2A)),
+                border: Border.all(color: const Color(0xFFE8E8E8)),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
@@ -163,7 +164,7 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
                     padding: const EdgeInsets.only(top: 4),
                     child: Icon(Icons.link,
                         size: 16,
-                        color: Colors.white.withValues(alpha: 0.4)),
+                        color: Colors.black.withValues(alpha: 0.3)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -175,12 +176,12 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
                       style: const TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 13,
-                          color: Colors.white),
+                          color: Colors.black87),
                       decoration: InputDecoration(
                         hintText:
                             'Paste one or more URLs\n(one per line or comma separated)...',
                         hintStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.25),
+                            color: Colors.black.withValues(alpha: 0.25),
                             fontSize: 13),
                         border: InputBorder.none,
                         isDense: true,
@@ -194,7 +195,7 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: _accent.withValues(alpha: 0.15),
+                        color: _accent.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(platform,
@@ -215,23 +216,23 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
                   style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white.withValues(alpha: 0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       letterSpacing: 0.8)),
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A1A),
+                  color: const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF2A2A2A)),
+                  border: Border.all(color: const Color(0xFFE8E8E8)),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: _selectedPlaylistId ?? 'none',
-                    dropdownColor: const Color(0xFF1E1E1E),
+                    dropdownColor: Colors.white,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: Colors.black87,
                         fontSize: 13,
                         fontWeight: FontWeight.w600),
                     onChanged: (v) => setState(() => _selectedPlaylistId = v),
@@ -259,8 +260,8 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
                     style: TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 15)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: hasUrl ? _accent : const Color(0xFF282828),
-                  foregroundColor: hasUrl ? Colors.black : Colors.white38,
+                  backgroundColor: hasUrl ? _accent : const Color(0xFFEEEEEE),
+                  foregroundColor: hasUrl ? Colors.white : const Color(0xFFBBBBBB),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
@@ -273,7 +274,7 @@ class _DownloadBottomSheetState extends State<DownloadBottomSheet> {
               child: Text(
                 'Downloads automatically queue and run in order',
                 style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.25),
+                    color: Colors.black.withValues(alpha: 0.25),
                     fontSize: 11,
                     fontFamily: 'monospace'),
               ),
