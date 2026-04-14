@@ -47,6 +47,9 @@ class AudioService {
   // Crossfade state
   Timer? _fadeTimer;
 
+  // Sync state
+  bool _isHandlingSync = false;
+
   AudioService() {
     _player.currentIndexStream.listen((index) {
       if (index != null && index < _queue.length) {
@@ -97,8 +100,29 @@ class AudioService {
         pause(broadcast: false);
       } else if (action == 'seek' && ms != null) {
         seek(Duration(milliseconds: ms), broadcast: false);
+      } else if (action == 'change_track') {
+        final trackData = data['track'] as Map<String, dynamic>?;
+        if (trackData != null) {
+          final track = Track.fromMap(trackData);
+          if (currentTrack.value?.id != track.id) {
+             _handleSyncPlayTrack(track, ms);
+          }
+        }
       }
     };
+  }
+
+  Future<void> _handleSyncPlayTrack(Track track, int? ms) async {
+    _isHandlingSync = true;
+    try {
+      await playTrack(track);
+      if (ms != null) {
+        await _player.seek(Duration(milliseconds: ms));
+      }
+    } finally {
+      // Delay disabling sync lock to prevent race conditions echoing back
+      Future.delayed(const Duration(milliseconds: 500), () => _isHandlingSync = false);
+    }
   }
 
   void _handleTrackChange(Track? newTrack) {
@@ -122,6 +146,14 @@ class AudioService {
     currentTrack.value = newTrack;
     if (newTrack != null) {
       _fetchLyrics(newTrack);
+      if (!_isHandlingSync) {
+        SyncService().broadcastPlayback(
+          action: 'change_track',
+          trackId: newTrack.id,
+          positionMs: _player.position.inMilliseconds,
+          trackJson: newTrack.toMap(),
+        );
+      }
     } else {
       lyrics.value = null;
     }

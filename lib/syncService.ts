@@ -36,8 +36,8 @@ export function connectSyncService() {
       } else if (action === 'seek' || action === 'sync') {
         state.setCurrentTime(positionMs / 1000);
       } else if (action === 'change_track' || (action === 'play' && state.currentTrack?.id !== trackId)) {
-        // If track changed, we need to find it and play it. Let's just find from library.
-        const track = state.library.find((t) => t.id === trackId);
+        // If track changed, we need to find it and play it. Let's try passed track first.
+        const track = data.track || state.library.find((t) => t.id === trackId);
         if (track && state.currentTrack?.id !== track.id) {
            state.setCurrentTrack(track);
            state.setIsPlaying(true);
@@ -71,6 +71,7 @@ export function connectSyncService() {
           partyId: currentPartyId,
           action,
           trackId: state.currentTrack?.id || '',
+          track: state.currentTrack,
           positionMs: Math.floor(state.currentTime * 1000),
           timestamp: Date.now(),
        });
