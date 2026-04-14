@@ -343,7 +343,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   onChanged: (v) =>
                                       setState(() => _dragValue = v),
                                   onChangeEnd: (v) {
-                                    audio.player.seek(
+                                    audio.seek(
                                         Duration(milliseconds: v.toInt()));
                                     setState(() => _dragging = false);
                                   },
@@ -752,7 +752,7 @@ class _SyncedLyricsViewerState extends State<_SyncedLyricsViewer> {
 
   void _parseLrc() {
     final lines = widget.lrc.split('\n');
-    final regExp = RegExp(r'\[(\d+):(\d+\.\d+)\]');
+    final timeRegExp = RegExp(r'\[(\d{2,}):(\d{2})\.(\d{2,3})\]');
     final offsetRegExp = RegExp(r'\[offset:(-?\d+)\]');
     
     int offsetMs = 0;
@@ -765,22 +765,25 @@ class _SyncedLyricsViewerState extends State<_SyncedLyricsViewer> {
 
     _lines = [];
     for (var line in lines) {
-      final match = regExp.firstMatch(line);
-      if (match != null) {
-        final mm = int.parse(match.group(1)!);
-        final ss = double.parse(match.group(2)!);
-        final baseTime = Duration(
-            minutes: mm, seconds: ss.toInt(), milliseconds: ((ss - ss.toInt()) * 1000).toInt());
-        
-        // Apply offset
-        final finalTime = baseTime + Duration(milliseconds: offsetMs);
-        
-        final text = line.replaceAll(regExp, '').trim();
-        if (text.isNotEmpty) {
-          _lines.add(_LrcLine(finalTime, text));
-        }
+      final matches = timeRegExp.allMatches(line);
+      if (matches.isEmpty) continue;
+
+      final text = line.replaceAll(timeRegExp, '').trim();
+      if (text.isEmpty) continue;
+
+      for (final match in matches) {
+        final m = int.parse(match.group(1)!);
+        final s = int.parse(match.group(2)!);
+        final msStr = match.group(3)!;
+        final ms = msStr.length == 2 ? int.parse(msStr) * 10 : int.parse(msStr);
+
+        final duration = Duration(minutes: m, seconds: s, milliseconds: ms) + Duration(milliseconds: offsetMs);
+        _lines.add(_LrcLine(duration, text));
       }
     }
+    
+    // Sort by chronological time since multiple tags per line breaks natural ordering
+    _lines.sort((a, b) => a.time.compareTo(b.time));
     setState(() {});
   }
 

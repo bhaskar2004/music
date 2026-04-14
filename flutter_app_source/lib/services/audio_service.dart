@@ -10,6 +10,7 @@ import 'api_service.dart';
 import 'download_service.dart';
 import 'storage_service.dart';
 import 'server_config.dart';
+import 'sync_service.dart';
 
 /// Audio service that ONLY plays local downloaded files.
 /// No YouTube CDN streaming — avoids URL expiry / DNS failures.
@@ -83,6 +84,21 @@ class AudioService {
             e.toString().split('\n').first.split('Exception: ').last;
       },
     );
+
+    // Bind Listen Together synchronization
+    SyncService().onSyncReceived = (data) {
+      final action = data['action'] as String?;
+      final ms = data['positionMs'] as int?;
+      
+      if (action == 'play') {
+        if (ms != null) _player.seek(Duration(milliseconds: ms));
+        resume(broadcast: false);
+      } else if (action == 'pause') {
+        pause(broadcast: false);
+      } else if (action == 'seek' && ms != null) {
+        seek(Duration(milliseconds: ms), broadcast: false);
+      }
+    };
   }
 
   void _handleTrackChange(Track? newTrack) {
@@ -460,8 +476,38 @@ class AudioService {
     queueNotifier.value = List.from(_queue);
   }
 
-  void pause() => _player.pause();
-  void resume() => _player.play();
+  Future<void> seek(Duration position, {bool broadcast = true}) async {
+    if (broadcast) {
+      SyncService().broadcastPlayback(
+        action: 'seek',
+        trackId: currentTrack.value?.id ?? '',
+        positionMs: position.inMilliseconds,
+      );
+    }
+    await _player.seek(position);
+  }
+
+  void pause({bool broadcast = true}) {
+    if (broadcast) {
+      SyncService().broadcastPlayback(
+        action: 'pause',
+        trackId: currentTrack.value?.id ?? '',
+        positionMs: _player.position.inMilliseconds,
+      );
+    }
+    _player.pause();
+  }
+
+  void resume({bool broadcast = true}) {
+    if (broadcast) {
+      SyncService().broadcastPlayback(
+        action: 'play',
+        trackId: currentTrack.value?.id ?? '',
+        positionMs: _player.position.inMilliseconds,
+      );
+    }
+    _player.play();
+  }
 
   void dispose() => _player.dispose();
 }

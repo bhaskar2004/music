@@ -6,6 +6,7 @@ import '../../providers/app_state.dart';
 import '../../services/audio_service.dart';
 import '../widgets/track_tile.dart';
 import '../widgets/server_settings_dialog.dart';
+import '../widgets/party_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -131,6 +132,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     );
                                   },
+                                ),
+                                const SizedBox(width: 8),
+
+                                // Listen Together Party Button
+                                _IconBtn(
+                                  icon: Icons.groups_rounded,
+                                  onTap: () => PartyDialog.show(context),
                                 ),
                                 const SizedBox(width: 8),
 
