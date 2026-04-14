@@ -6,8 +6,10 @@ import 'storage_service.dart';
 class ServerConfig {
   static String _defaultUrl() {
     if (kIsWeb) return ''; // Not applicable
-    // Return the Cloudflare Tunnel URL for external access
-    return 'https://thermal-named-smilies-camp.trycloudflare.com';
+    // No hardcoded URL — trycloudflare.com subdomains are ephemeral (change every restart).
+    // The user must set the URL via Settings → Server Settings dialog,
+    // or let auto-discovery find the server on the local network.
+    return '';
   }
 
   static String _cachedUrl = '';

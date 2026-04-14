@@ -6,7 +6,8 @@
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tunnel": "bash ./start-tunnel.sh"
   },
   "dependencies": {
     "lucide-react": "^1.7.0",
