@@ -25,8 +25,8 @@ export default function MobileNav() {
         left: 0,
         right: 0,
         height: 80, /* Increased for touch target and safe area */
-        background: '#000000',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+        background: 'var(--bg)',
+        borderTop: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-evenly',

@@ -384,7 +384,7 @@ export default function LibraryView() {
               borderRadius: 20,
               padding: '10px 10px 10px 20px',
               display: 'flex', alignItems: 'center', gap: 8,
-              boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.1), 0 0 0 1px var(--border)',
               zIndex: 1000,
               backdropFilter: 'blur(28px)',
               WebkitBackdropFilter: 'blur(28px)',

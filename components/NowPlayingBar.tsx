@@ -12,8 +12,7 @@ import Image from 'next/image';
 import SleepTimerDropdown from './SleepTimerDropdown';
 
 const PLACEHOLDER_COLORS = [
-  '#1a1a2e', '#16213e', '#0f3460', '#1b1b2f',
-  '#2d1b69', '#11372a', '#1a0533', '#2c1810',
+  'var(--surface2)', 'var(--surface3)', 'color-mix(in srgb, var(--surface) 80%, var(--accent) 5%)'
 ];
 
 export default function NowPlayingBar() {

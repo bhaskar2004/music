@@ -133,7 +133,7 @@ export default function TrackCard({ track, index }: TrackCardProps) {
               style={{
                 width: 36,
                 height: 36,
-                background: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+                background: isSelected ? 'var(--accent)' : 'var(--surface3)',
                 borderRadius: '10px',
                 display: 'flex',
                 alignItems: 'center',
@@ -255,8 +255,8 @@ export default function TrackCard({ track, index }: TrackCardProps) {
           style={{
             width: 28,
             height: 28,
-            background: 'rgba(0,0,0,0.7)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             display: 'flex',
             alignItems: 'center',

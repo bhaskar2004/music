@@ -7,7 +7,7 @@ import { useState, useRef } from 'react';
 import Image from 'next/image';
 
 const PLACEHOLDER_COLORS = [
-  '#000000', '#0A0A0A', '#121212', '#1A1A1A'
+  'var(--surface2)', 'var(--surface3)', 'color-mix(in srgb, var(--surface) 80%, var(--accent) 5%)'
 ];
 
 export default function QueueView() {
@@ -219,7 +219,7 @@ function QueueRow({
         {track.coverUrl ? (
           <Image src={track.coverUrl} alt={track.title} fill style={{ objectFit: 'cover' }} unoptimized />
         ) : (
-          <span style={{ fontSize: 16, fontWeight: 800, color: 'rgba(255,255,255,0.15)' }}>
+          <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-faint)' }}>
             {track.title.charAt(0)}
           </span>
         )}
