@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # start-tunnel.sh
-# Starts cloudflared tunnel and auto-detects the assigned URL.
-# Writes TUNNEL_URL to .env.local for use by the app.
+# Starts cloudflared tunnel, auto-detects the URL, and publishes it
+# to GitHub so the Flutter app can auto-discover it.
 
 CLOUDFLARED="./cloudflared"
 if [ ! -f "$CLOUDFLARED" ]; then
@@ -57,11 +57,25 @@ else
   echo "NEXT_PUBLIC_TUNNEL_URL=$TUNNEL_URL" >> "$ENV_FILE"
   echo "NEXT_PUBLIC_TUNNEL_HOST=$TUNNEL_HOSTNAME" >> "$ENV_FILE"
 fi
-
 echo "📝 Wrote tunnel URL to $ENV_FILE"
+
+# ── Publish URL to GitHub so the Flutter app can auto-discover it ──────────
 echo ""
-echo "📱 Share this URL with your mobile device:"
-echo "   $TUNNEL_URL"
+echo "📤 Publishing tunnel URL to GitHub..."
+echo "$TUNNEL_URL" > tunnel-url.txt
+git add tunnel-url.txt
+git commit -m "tunnel: update URL to $TUNNEL_HOSTNAME" --quiet 2>/dev/null
+git push origin main --quiet 2>/dev/null
+
+if [ $? -eq 0 ]; then
+  echo "✅ Published to GitHub — Flutter app will auto-connect!"
+else
+  echo "⚠️  Could not push to GitHub. You can manually share the URL."
+fi
+
+echo ""
+echo "📱 Your mobile app will auto-discover the server on next launch."
+echo "   Or manually paste:  $TUNNEL_URL"
 echo ""
 echo "💡 Press Ctrl+C to stop the tunnel."
 echo ""
