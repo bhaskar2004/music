@@ -5,7 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/app_state.dart';
 import '../../services/audio_service.dart';
+import '../../services/download_manager.dart';
 import '../../models/track.dart';
+import '../../models/download_job.dart';
 
 class DiscoveryRadar extends StatelessWidget {
   const DiscoveryRadar({super.key});
@@ -109,6 +111,9 @@ class _DiscoveryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final audio = context.read<AudioService>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final appState = context.read<AppState>();
+    final isDownloaded = appState.library.any((t) => t.sourceUrl == track.sourceUrl);
+    final isDownloading = appState.downloads.any((d) => d.url == track.sourceUrl && d.status != DownloadStatus.done && d.status != DownloadStatus.error);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -157,8 +162,16 @@ class _DiscoveryTile extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.add_rounded, size: 24, color: isDark ? Colors.white70 : Colors.black54),
-                onPressed: () => audio.addToQueue(track),
+                icon: Icon(
+                  isDownloaded ? Icons.check_circle_rounded : (isDownloading ? Icons.hourglass_top_rounded : Icons.add_rounded),
+                  size: 24, 
+                  color: isDownloaded ? Colors.green : (isDark ? Colors.white70 : Colors.black54)
+                ),
+                onPressed: () {
+                  if (!isDownloaded && !isDownloading) {
+                    DownloadManager().processJob(track.sourceUrl, appState);
+                  }
+                },
               ),
             ],
           ),

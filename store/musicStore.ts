@@ -542,31 +542,50 @@ export const useMusicStore = create<MusicStore>()(
 
         set({ isLoadingRecommendations: true, recommendedTracks: [] });
         
+        const normalizeTitle = (t: string) => t
+          .replace(/\(.*?\)|\[.*?\]/gi, '')
+          .replace(/official\s*(music\s*)?video|lyric(al)?\s*video|audio|full\s*song|hd|4k|music\s*video|remix|live|cover/gi, '')
+          .trim();
+
+        const cleanTitle = normalizeTitle(track.title);
+        const currentWords = cleanTitle.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+
         // Short debounce (300ms) to avoid spamming while flipping through tracks
         await new Promise(r => setTimeout(r, 300));
         if (get().currentTrack?.id !== track.id) return;
+
         try {
-          const cleanTitle = track.title
-            .replace(/\(.*?\)|\[.*?\]/gi, '')
-            .replace(/official\s*(music\s*)?video|lyric(al)?\s*video|audio|full\s*song|hd|4k|music\s*video/gi, '')
-            .trim();
-          
-          // Broad query strategy for variety: Artist's top tracks + Alum/Soundtrack vibe
+          // Broad query strategy for variety: Artist's top tracks + Album/Soundtrack vibe
           const query = track.album && track.album !== 'Unknown' 
-            ? `${track.artist} ${track.album} soundtrack collection`
-            : `${track.artist} similar songs popular tracks mix`;
+            ? `${track.artist} ${track.album} music playlist`
+            : `${track.artist} ${cleanTitle} related tracks official`;
             
           const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
           if (res.ok) {
             const data = await res.json();
             const results = (data.results || [])
               .filter((t: any) => {
-                const tLower = t.title.toLowerCase();
-                const currentLower = track.title.toLowerCase();
-                // 1. Skip if the title is too similar to the current song
-                if (tLower.includes(cleanTitle.toLowerCase()) || currentLower.includes(t.title.toLowerCase())) return false;
-                // 2. Skip if it's the exact same artist AND title (redundant check)
-                if (t.artist.toLowerCase() === track.artist.toLowerCase() && tLower === currentLower) return false;
+                const rawTitle = t.title.toLowerCase();
+                const normTitle = normalizeTitle(t.title).toLowerCase();
+                const cleanLower = cleanTitle.toLowerCase();
+
+                // 1. Skip if IDs match
+                if (`search-${t.id}` === track.id || t.id === track.id) return false;
+
+                // 2. Skip if normalized titles are identical
+                if (normTitle === cleanLower) return false;
+
+                // 3. Word overlap check (Heuristic for "Song Name (Live)" vs "Song Name")
+                const videoWords = normTitle.split(/\s+/).filter(w => w.length > 2);
+                if (videoWords.length > 0 && currentWords.length > 0) {
+                  const common = videoWords.filter(w => currentWords.includes(w));
+                  const overlap = common.length / currentWords.length;
+                  if (overlap > 0.7) return false;
+                }
+
+                // 4. Content filter
+                if (rawTitle.includes('instrumental') || rawTitle.includes('karaoke')) return false;
+
                 return true;
               })
               .slice(0, 10).map((t: any) => ({

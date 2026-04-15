@@ -266,11 +266,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   onAddToCurrentPlaylist: () =>
                       appState.bulkAddTracksToPlaylist(appState.activePlaylistId!),
                   onMoveToPlaylist: (id) => appState.bulkAddTracksToPlaylist(id),
-                  onRemoveFromPlaylist: () async {
-                    for (final trackId in appState.selectedIds) {
-                      await appState.toggleTrackInPlaylist(trackId, appState.activePlaylistId!);
-                    }
-                    appState.setSelectionMode(false);
+                  onRemoveFromPlaylist: () {
+                    () async {
+                      for (final trackId in appState.selectedIds) {
+                        await appState.toggleTrackInPlaylist(trackId, appState.activePlaylistId!);
+                      }
+                      appState.setSelectionMode(false);
+                    }();
                   },
                   onAddToQueue: () {
                     final audio = context.read<AudioService>();

@@ -401,17 +401,21 @@ class AppState extends ChangeNotifier {
 
     // 2. Debounce to avoid spamming during rapid skips
     _radarDebounce?.cancel();
-    _radarDebounce = Timer(const Duration(milliseconds: 500), () async {
-      _isLoadingRecommendations = true;
-      notifyListeners();
-      try {
-        final results = await ApiService().searchRelatedTracks(track);
-        _recommendedTracks = results;
-        _recommendationCache[track.id] = results;
-      } finally {
-        _isLoadingRecommendations = false;
+    _radarDebounce = Timer(const Duration(milliseconds: 500), () {
+      () async {
+        _isLoadingRecommendations = true;
         notifyListeners();
-      }
+        try {
+          final results = await ApiService().searchRelatedTracks(track);
+          _recommendedTracks = results;
+          _recommendationCache[track.id] = results;
+        } catch (e) {
+          debugPrint('[AppState] radar error: $e');
+        } finally {
+          _isLoadingRecommendations = false;
+          notifyListeners();
+        }
+      }();
     });
   }
 }

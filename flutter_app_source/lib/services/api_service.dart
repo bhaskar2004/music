@@ -131,41 +131,49 @@ class ApiService {
   }
 
   /// Searches YouTube for tracks similar to [current].
-  /// Builds a query from artist + title keywords and filters out duplicates.
+  /// Refines queries and filters out duplicates of the same song.
   Future<List<Track>> searchRelatedTracks(Track current, {Set<String>? excludeIds}) async {
     try {
-      // Build a search query from artist + simplified title
-      // Strip common suffixes like "Official Video", "Lyric Video", etc.
-      final cleanTitle = current.title
-          .replaceAll(RegExp(r'\(.*?\)|\[.*?\]', caseSensitive: false), '')
-          .replaceAll(RegExp(
-            r'official\s*(music\s*)?video|lyric(al)?\s*video|audio|full\s*song|hd|4k|music\s*video',
-            caseSensitive: false,
-          ), '')
-          .trim();
+      final cleanTitle = _normalizeTitle(current.title);
+      final query = current.album != 'Unknown' && current.album.isNotEmpty 
+          ? '${current.artist} ${current.album} music mix'
+          : '${current.artist} ${cleanTitle} top related tracks official';
 
-      final isKnownAlbum = current.album != 'Unknown' && current.album.isNotEmpty;
-      final query = isKnownAlbum 
-          ? '${current.artist} ${current.album} soundtrack songs'
-          : '${current.artist} similar songs top tracks';
-          
       debugPrint('[ApiService] Discovery Radar query: "$query"');
 
       final searchResults = await _yt.search.search(query);
       final exclude = excludeIds ?? {};
+      final currentWords = cleanTitle.toLowerCase().split(RegExp(r'\s+')).where((w) => w.length > 2).toSet();
 
       return searchResults
           .where((video) {
             final rawId = video.id.value;
             final prefixedId = 'search-$rawId';
             final videoTitle = video.title.toLowerCase();
-            final currentTitle = current.title.toLowerCase();
+            final normalizedVideoTitle = _normalizeTitle(video.title).toLowerCase();
             
             // 1. Basic ID exclusion
             if (exclude.contains(rawId) || exclude.contains(prefixedId) || prefixedId == current.id) return false;
             
-            // 2. Filter out versions of the SAME song (duplicates)
-            if (videoTitle.contains(cleanTitle.toLowerCase()) || currentTitle.contains(videoTitle)) return false;
+            // 2. Strict Duplicate Check:
+            // Skip if the titles are identical after normalization
+            if (normalizedVideoTitle == cleanTitle.toLowerCase()) return false;
+            
+            // 3. Heuristic Overlap Check:
+            // Match keywords to catch "Song Name (Official Video)" vs "Song Name - Lyrics"
+            final videoWords = normalizedVideoTitle.split(RegExp(r'\s+')).where((w) => w.length > 2).toSet();
+            if (videoWords.isNotEmpty && currentWords.isNotEmpty) {
+              final common = videoWords.intersection(currentWords);
+              final overlap = common.length / currentWords.length;
+              // If over 70% of current words match video words, it's probably the same song
+              if (overlap > 0.7) {
+                debugPrint('[ApiService] Filtering duplicate: "$videoTitle" (Overlap: $overlap)');
+                return false;
+              }
+            }
+
+            // 4. Content filter: avoid karaoke/instrumental unless requested
+            if (videoTitle.contains('instrumental') || videoTitle.contains('karaoke')) return false;
             
             return true;
           })
@@ -186,6 +194,16 @@ class ApiService {
       debugPrint('[ApiService] searchRelatedTracks error: $e');
       return [];
     }
+  }
+
+  String _normalizeTitle(String title) {
+    return title
+        .replaceAll(RegExp(r'\(.*?\)|\[.*?\]', caseSensitive: false), '') // Remove (Official Video), [Lyrics]
+        .replaceAll(RegExp(
+          r'official\s*(music\s*)?video|lyric(al)?\s*video|audio|full\s*song|hd|4k|music\s*video|remix|live|cover',
+          caseSensitive: false,
+        ), '') // Remove common version keywords
+        .trim();
   }
 
   void dispose() {

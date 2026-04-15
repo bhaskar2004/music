@@ -137,16 +137,18 @@ class _TrackTileState extends State<TrackTile> {
         onTogglePlaylist: (pid) {
           appState.toggleTrackInPlaylist(track.id, pid);
         },
-        onDelete: () async {
-          Navigator.pop(context);
-          if (audio.currentTrack.value?.id == track.id) {
-            audio.pause();
-          }
-          final dir = await DownloadService.getSaveDirectory();
-          final file = File('${dir.path}/${track.filename}');
-          if (await file.exists()) await file.delete();
-          appState.removeTrack(track.id);
-          setState(() => _isDownloaded = false);
+        onDelete: () {
+          () async {
+            Navigator.pop(context);
+            if (audio.currentTrack.value?.id == track.id) {
+              audio.pause();
+            }
+            final dir = await DownloadService.getSaveDirectory();
+            final file = File('${dir.path}/${track.filename}');
+            if (await file.exists()) await file.delete();
+            appState.removeTrack(track.id);
+            setState(() => _isDownloaded = false);
+          }();
         },
       ),
     );

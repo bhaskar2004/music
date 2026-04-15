@@ -729,41 +729,46 @@ export default function FullScreenPlayer() {
                       </div>
                     ) : recommendedTracks.length > 0 ? (
                       <div className="flex flex-col gap-3">
-                        {recommendedTracks.map(track => (
-                          <div 
-                            key={track.id}
-                            className="flex items-center gap-4 p-3 rounded-xl hover:bg-black/5 transition-all cursor-pointer group"
-                            onClick={() => setCurrentTrack(track)}
-                          >
-                            <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
-                              {track.coverUrl ? (
-                                <Image src={track.coverUrl} alt={track.title} fill className="object-cover" unoptimized />
-                              ) : (
-                                <div className="w-full h-full bg-black/10 flex items-center justify-center"><Music size={16} /></div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-semibold truncate leading-tight">{track.title}</h4>
-                                <p className="text-[11px] text-black/40 font-medium truncate mt-0.5 uppercase tracking-wider">{track.artist}</p>
-                            </div>
-                            <button 
-                              className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
-                                queue.some(t => t.id === track.id) 
-                                ? 'bg-green-50 text-green-600' 
-                                : 'hover:bg-black/10 text-black/40 hover:text-black'
-                              }`}
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                if (!queue.some(t => t.id === track.id)) {
-                                  playNextTrack(track); 
-                                }
-                              }}
-                              title={queue.some(t => t.id === track.id) ? 'Added to Queue' : 'Play Next'}
-                            >
-                              {queue.some(t => t.id === track.id) ? <Check size={16} /> : <Plus size={16} />}
-                            </button>
-                          </div>
-                        ))}
+                          {recommendedTracks.map(track => {
+                            const isDownloaded = library.some(t => t.sourceUrl === track.sourceUrl);
+                            const isDownloading = downloads.some(d => d.url === track.sourceUrl && d.status !== 'completed' && d.status !== 'failed');
+                            
+                            return (
+                              <div 
+                                key={track.id}
+                                className="flex items-center gap-4 p-3 rounded-xl hover:bg-black/5 transition-all cursor-pointer group"
+                                onClick={() => setCurrentTrack(track)}
+                              >
+                                <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
+                                  {track.coverUrl ? (
+                                    <Image src={track.coverUrl} alt={track.title} fill className="object-cover" unoptimized />
+                                  ) : (
+                                    <div className="w-full h-full bg-black/10 flex items-center justify-center"><Music size={16} /></div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-semibold truncate leading-tight">{track.title}</h4>
+                                    <p className="text-[11px] text-black/40 font-medium truncate mt-0.5 uppercase tracking-wider">{track.artist}</p>
+                                </div>
+                                <button 
+                                  className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+                                    isDownloaded 
+                                    ? 'bg-green-50 text-green-600' 
+                                    : (isDownloading ? 'bg-orange-50 text-orange-600 animate-pulse' : 'hover:bg-black/10 text-black/40 hover:text-black')
+                                  }`}
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    if (!isDownloaded && !isDownloading) {
+                                      processDownload(track.sourceUrl);
+                                    }
+                                  }}
+                                  title={isDownloaded ? 'In Library' : (isDownloading ? 'Downloading...' : 'Add to Library')}
+                                >
+                                  {isDownloaded ? <Check size={16} /> : (isDownloading ? <Download size={14} /> : <Plus size={16} />)}
+                                </button>
+                              </div>
+                            );
+                          })}
                       </div>
                     ) : (
                       <LyricsEmpty label="No recommendations found yet" />

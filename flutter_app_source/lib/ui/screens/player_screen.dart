@@ -337,17 +337,16 @@ class _PlayerScreenState extends State<PlayerScreen>
                     icon: inLibrary ? Icons.check_circle_rounded : Icons.download_for_offline_rounded,
                     active: inLibrary,
                     isDark: isDark,
-                    onTap: inLibrary ? null : () async {
-                      try {
-                        await DownloadManager().processJob(track.sourceUrl, appState);
+                    onTap: inLibrary ? null : () {
+                      DownloadManager().processJob(track.sourceUrl, appState).then((_) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Download started...')),
                         );
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      }).catchError((e) {
+                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Error: ${e.toString().split(':').last}')),
                         );
-                      }
+                      });
                     },
                   );
                 },
