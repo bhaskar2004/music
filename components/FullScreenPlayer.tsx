@@ -22,7 +22,7 @@ export default function FullScreenPlayer() {
     toggleFavorite, setShowFullScreenPlayer, setActiveView, setCurrentTime,
     library, currentAccentColor, setAccentColor, recommendedTracks,
     isLoadingRecommendations, fetchRecommendations, addToQueue, playNextTrack,
-    queue, setCurrentTrack,
+    queue, setCurrentTrack, downloads,
   } = useMusicStore();
 
   const { processDownload } = useDownloadProcessor();
@@ -731,7 +731,7 @@ export default function FullScreenPlayer() {
                       <div className="flex flex-col gap-3">
                           {recommendedTracks.map(track => {
                             const isDownloaded = library.some(t => t.sourceUrl === track.sourceUrl);
-                            const isDownloading = downloads.some(d => d.url === track.sourceUrl && d.status !== 'completed' && d.status !== 'failed');
+                            const isDownloading = downloads.some(d => d.url === track.sourceUrl && d.status !== 'done' && d.status !== 'error');
                             
                             return (
                               <div 
