@@ -8,6 +8,10 @@ interface AudioVisualizerProps {
   size?: number;
 }
 
+/**
+ * Premium Audio Visualizer component
+ * Uses a multi-layered pulse effect synchronized with the audio frequency.
+ */
 export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<AudioContext | null>(null);
@@ -22,7 +26,6 @@ export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualiz
     if (!ctx) return;
 
     let animationFrame: number;
-    let fallbackProgress = 0;
 
     const initAudio = () => {
       if (typeof window === 'undefined') return;
@@ -35,7 +38,6 @@ export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualiz
           analyserRef.current = contextRef.current.createAnalyser();
           analyserRef.current.fftSize = 128;
           
-          // Note: createMediaElementSource can only be called once per element
           sourceRef.current = contextRef.current.createMediaElementSource(audio);
           sourceRef.current.connect(analyserRef.current);
           analyserRef.current.connect(contextRef.current.destination);
@@ -46,17 +48,16 @@ export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualiz
     };
 
     const draw = () => {
-      let intensity = 0;
       const { width, height } = canvas;
       const centerX = width / 2;
       const centerY = height / 2;
       const baseRadius = size / 3;
+      let intensity = 0;
 
-      // 1. Efficiency: Stop loop if not playing and we've finished a 'fade'
       if (!isPlaying) {
-        // Draw one final static state and stop
         ctx.clearRect(0, 0, width, height);
-        drawLayer(ctx, 1.1, 0.15, 10, 0.1); // Subtle static core
+        // Draw a tiny static core when paused
+        drawVisualLayer(ctx, centerX, centerY, baseRadius, 1.1, 0.1, 10, 0.1, currentAccentColor);
         return;
       }
 
@@ -68,31 +69,12 @@ export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualiz
         intensity = sum / dataArray.length / 255;
       }
 
-      function drawLayer(ctx: CanvasRenderingContext2D, radiusMult: number, opacityMult: number, blur: number, customIntensity?: number) {
-        const activeIntensity = customIntensity ?? intensity;
-        ctx.save();
-        ctx.beginPath();
-        const r = baseRadius * (radiusMult + activeIntensity * 0.8);
-        ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
-        
-        ctx.shadowBlur = blur + activeIntensity * 40;
-        ctx.shadowColor = currentAccentColor;
-        
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, r);
-        gradient.addColorStop(0, hexToRgba(currentAccentColor, 0.4 * opacityMult));
-        gradient.addColorStop(1, 'transparent');
-        
-        ctx.fillStyle = gradient;
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Layer 1: Outer glow
-      drawLayer(ctx, 2.2, 0.2, 60);
+      // Layer 1: Outer glow (larges, most transparent)
+      drawVisualLayer(ctx, centerX, centerY, baseRadius, 2.2, 0.2, 60, intensity, currentAccentColor);
       // Layer 2: Middle pulse
-      drawLayer(ctx, 1.6, 0.4, 30);
-      // Layer 3: Inner core
-      drawLayer(ctx, 1.1, 0.6, 15);
+      drawVisualLayer(ctx, centerX, centerY, baseRadius, 1.6, 0.4, 30, intensity, currentAccentColor);
+      // Layer 3: Inner core (tightest, most opaque)
+      drawVisualLayer(ctx, centerX, centerY, baseRadius, 1.1, 0.6, 15, intensity, currentAccentColor);
 
       animationFrame = requestAnimationFrame(draw);
     };
@@ -117,11 +99,47 @@ export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualiz
         transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',
         zIndex: 0,
+        opacity: 0.8,
       }}
     />
   );
 }
 
+/**
+ * Helper to draw a single glow layer
+ */
+function drawVisualLayer(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  baseRadius: number,
+  radiusMult: number,
+  opacityMult: number,
+  blur: number,
+  intensity: number,
+  accentColor: string
+) {
+  const r = baseRadius * (radiusMult + intensity * 0.8);
+  
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+  
+  ctx.shadowBlur = blur + intensity * 40;
+  ctx.shadowColor = accentColor;
+  
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, r);
+  gradient.addColorStop(0, hexToRgba(accentColor, 0.4 * opacityMult));
+  gradient.addColorStop(1, 'transparent');
+  
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Converts hex to RGBA with alpha
+ */
 function hexToRgba(hex: string, alpha: number) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);

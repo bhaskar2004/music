@@ -338,15 +338,22 @@ class _PlayerScreenState extends State<PlayerScreen>
                     active: inLibrary,
                     isDark: isDark,
                     onTap: inLibrary ? null : () {
-                      DownloadManager().processJob(track.sourceUrl, appState).then((_) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Download started...')),
-                        );
-                      }).catchError((e) {
-                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: ${e.toString().split(':').last}')),
-                        );
-                      });
+                      () async {
+                        try {
+                          await DownloadManager().processJob(track.sourceUrl, appState);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Download started...')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: ${e.toString().split(':').last}')),
+                            );
+                          }
+                        }
+                      }();
                     },
                   );
                 },
@@ -546,17 +553,22 @@ class _PlayerScreenState extends State<PlayerScreen>
 
 class _AppBarBtn extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final void Function()? onTap;
   final bool active;
   final bool isDark;
 
-  const _AppBarBtn({required this.icon, required this.onTap, this.active = false, required this.isDark});
+  const _AppBarBtn({required this.icon, this.onTap, this.active = false, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     final premiumAccent = context.read<AppState>().currentAccentColor;
     final bgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04);
-    final iconColor = active ? premiumAccent : (isDark ? Colors.white70 : Colors.black54);
+    final isEnabled = onTap != null;
+    final iconColor = active 
+        ? premiumAccent 
+        : (isEnabled 
+            ? (isDark ? Colors.white70 : Colors.black54)
+            : (isDark ? Colors.white12 : Colors.black12));
 
     return GestureDetector(
       onTap: onTap,
@@ -566,10 +578,15 @@ class _AppBarBtn extends StatelessWidget {
           color: bgColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: active ? premiumAccent.withOpacity(0.2) : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+            color: active 
+                ? premiumAccent.withOpacity(0.2) 
+                : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
           ),
         ),
-        child: Icon(icon, color: iconColor, size: 20),
+        child: Opacity(
+          opacity: isEnabled ? 1.0 : 0.5,
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
       ),
     );
   }

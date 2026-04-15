@@ -154,7 +154,7 @@ export async function GET(req: NextRequest) {
       headers.set(key, val);
     }
 
-    return new NextResponse(Readable.toWeb(upstream as any) as any, {
+    return new NextResponse(response.body, {
       status: response.status,
       headers,
     });
