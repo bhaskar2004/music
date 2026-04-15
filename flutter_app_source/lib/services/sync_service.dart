@@ -12,33 +12,50 @@ class SyncService {
   io.Socket? _socket;
   final ValueNotifier<String?> currentPartyId = ValueNotifier<String?>(null);
 
-  // Listeners for incoming sync events
   Function(Map<String, dynamic>)? onSyncReceived;
-
-  // Called when initial room state is received on join
   Function(Map<String, dynamic>)? onPartyStateReceived;
 
-  ValueNotifier<bool> isConnected = ValueNotifier(false);
-  ValueNotifier<int> memberCount = ValueNotifier(0);
+  final ValueNotifier<bool> isConnected = ValueNotifier(false);
+  final ValueNotifier<int> memberCount = ValueNotifier(0);
+
+  // ── Connection lifecycle ──────────────────────────────────────────────────
 
   void connect() {
-    if (_socket != null && _socket!.connected) return;
-
     final url = ServerConfig.baseUrl;
-    if (url.isEmpty) return;
+    if (url.isEmpty) {
+      debugPrint('[SyncService] No server URL — skipping connect');
+      return;
+    }
 
-    debugPrint('[SyncService] Connecting to WebSocket at $url');
-    _socket = io.io(url, io.OptionBuilder()
-      .setTransports(['websocket'])
-      .disableAutoConnect()
-      .build()
+    // Already connected to the right server — nothing to do
+    if (_socket != null && _socket!.connected) {
+      debugPrint('[SyncService] Already connected, skipping');
+      return;
+    }
+
+    // Tear down any stale socket before creating a new one
+    _destroySocket();
+
+    debugPrint('[SyncService] Connecting to $url');
+    _socket = io.io(
+      url,
+      io.OptionBuilder()
+          .setTransports(['websocket'])
+          .enableReconnection()
+          .setReconnectionAttempts(5)
+          .setReconnectionDelay(2000)
+          .disableAutoConnect()
+          .build(),
     );
 
     _socket!.onConnect((_) {
-      debugPrint('[SyncService] ✓ Connected to server');
+      debugPrint('[SyncService] ✓ Connected (${_socket?.id})');
       isConnected.value = true;
-      if (currentPartyId.value != null) {
-        _socket!.emit('join_party', currentPartyId.value);
+      // Re-join party after reconnection
+      final pid = currentPartyId.value;
+      if (pid != null) {
+        debugPrint('[SyncService] Re-joining party $pid after connect');
+        _socket!.emit('join_party', pid);
       }
     });
 
@@ -47,26 +64,30 @@ class SyncService {
       isConnected.value = false;
     });
 
-    // ─── Playback updates from other users ─────────────────────────────
+    _socket!.onConnectError((err) {
+      debugPrint('[SyncService] Connect error: $err');
+      isConnected.value = false;
+    });
+
+    // Playback updates from other room members
     _socket!.on('playback_update', (data) {
-      debugPrint('[SyncService] Received sync event: $data');
-      if (onSyncReceived != null) {
-        onSyncReceived!(data as Map<String, dynamic>);
-      }
+      if (data == null) return;
+      final map = _toStringMap(data);
+      if (map != null) onSyncReceived?.call(map);
     });
 
-    // ─── Initial state sync on join ────────────────────────────────────
+    // Initial state snapshot sent when joining a room
     _socket!.on('party_state', (data) {
-      debugPrint('[SyncService] Received party state on join: $data');
-      if (onPartyStateReceived != null) {
-        onPartyStateReceived!(data as Map<String, dynamic>);
-      }
+      if (data == null) return;
+      final map = _toStringMap(data);
+      if (map != null) onPartyStateReceived?.call(map);
     });
 
-    // ─── Member count updates ──────────────────────────────────────────
+    // Member count updates
     _socket!.on('party_members', (data) {
-      if (data is Map<String, dynamic>) {
-        final count = data['count'] as int? ?? 0;
+      final map = _toStringMap(data);
+      if (map != null) {
+        final count = (map['count'] as num?)?.toInt() ?? 0;
         debugPrint('[SyncService] Party members: $count');
         memberCount.value = count;
       }
@@ -75,39 +96,74 @@ class SyncService {
     _socket!.connect();
   }
 
+  // ── Party management ──────────────────────────────────────────────────────
+
   void joinParty(String partyId) {
-    if (_socket == null || !_socket!.connected) connect();
     currentPartyId.value = partyId;
-    memberCount.value = 0; // Reset until we get the real count
-    if (_socket != null && _socket!.connected) {
-      _socket!.emit('join_party', partyId);
+    memberCount.value = 0;
+
+    // Ensure socket is alive before emitting
+    if (_socket == null || !_socket!.connected) {
+      connect(); // onConnect handler will emit join_party once connected
+      return;
     }
+    _socket!.emit('join_party', partyId);
   }
 
   void leaveParty() {
-    if (currentPartyId.value != null && _socket != null && _socket!.connected) {
-      _socket!.emit('leave_party', currentPartyId.value);
+    final pid = currentPartyId.value;
+    if (pid != null && _socket != null && _socket!.connected) {
+      _socket!.emit('leave_party', pid);
     }
     currentPartyId.value = null;
     memberCount.value = 0;
   }
 
+  // ── Broadcast ─────────────────────────────────────────────────────────────
+
   void broadcastPlayback({
-    required String action, // 'play', 'pause', 'seek', 'change_track'
+    required String action,
     required String trackId,
     required int positionMs,
     Map<String, dynamic>? trackJson,
   }) {
-    if (_socket == null || !_socket!.connected || currentPartyId.value == null) return;
+    final pid = currentPartyId.value;
+    if (_socket == null || !_socket!.connected || pid == null) return;
 
     _socket!.emit('sync_playback', {
-      'partyId': currentPartyId.value,
+      'partyId': pid,
       'action': action,
       'trackId': trackId,
       'positionMs': positionMs,
       if (trackJson != null) 'track': trackJson,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  /// Safely converts dynamic socket data to Map<String, dynamic>.
+  static Map<String, dynamic>? _toStringMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      try {
+        return Map<String, dynamic>.from(data);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  void _destroySocket() {
+    if (_socket == null) return;
+    try {
+      _socket!.clearListeners();
+      _socket!.disconnect();
+      _socket!.dispose();
+    } catch (e) {
+      debugPrint('[SyncService] Error destroying socket: $e');
+    }
+    _socket = null;
+    isConnected.value = false;
   }
 
   /// Generate a clean 6-char uppercase alphanumeric room code.
@@ -118,7 +174,6 @@ class SyncService {
     return List.generate(6, (_) => chars[rng.nextInt(chars.length)]).join();
   }
 
-  /// Copy the current party ID to clipboard.
   Future<void> copyPartyId() async {
     final id = currentPartyId.value;
     if (id != null) {
@@ -127,8 +182,6 @@ class SyncService {
   }
 
   void dispose() {
-    _socket?.disconnect();
-    _socket?.dispose();
-    _socket = null;
+    _destroySocket();
   }
 }

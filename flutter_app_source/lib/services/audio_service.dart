@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -12,14 +11,14 @@ import 'storage_service.dart';
 import 'server_config.dart';
 import 'sync_service.dart';
 
-/// Audio service that ONLY plays local downloaded files.
-/// No YouTube CDN streaming — avoids URL expiry / DNS failures.
+/// Audio service that plays local files, server-streamed tracks, or
+/// direct YouTube streams (fallback). All sync events are handled here.
 class AudioService {
   final AudioPlayer _player = AudioPlayer();
 
   final List<Track> _queue = [];
-  final ConcatenatingAudioSource _playlist = // ignore: deprecated_member_use
-      ConcatenatingAudioSource(children: []); // ignore: deprecated_member_use
+  final ConcatenatingAudioSource _playlist =
+      ConcatenatingAudioSource(children: []);
 
   final ValueNotifier<Track?> currentTrack = ValueNotifier<Track?>(null);
   final ValueNotifier<List<Track>> queueNotifier =
@@ -34,20 +33,20 @@ class AudioService {
   final ValueNotifier<Map<String, dynamic>?> lyrics =
       ValueNotifier<Map<String, dynamic>?>(null);
   final ValueNotifier<bool> isLoadingLyrics = ValueNotifier<bool>(false);
-  
-  // Tracking for history
+
+  // History tracking
   Stopwatch? _listenStopwatch;
   String? _lastTrackId;
   static const _historyThresholdSeconds = 30;
 
-  // Sleep Timer
+  // Sleep timer
   Timer? _sleepTimer;
   final ValueNotifier<DateTime?> sleepTimerEnd = ValueNotifier<DateTime?>(null);
 
-  // Crossfade state
+  // Crossfade
   Timer? _fadeTimer;
 
-  // Sync state
+  // Prevents echoing sync events back to the room
   bool _isHandlingSync = false;
 
   AudioService() {
@@ -71,84 +70,104 @@ class AudioService {
     });
 
     _player.processingStateStream.listen((state) {
-      if (state == ProcessingState.ready) {
-        _fadeIn();
-      }
-      // Autoplay: when queue is fully exhausted, fetch more similar tracks
+      if (state == ProcessingState.ready) _fadeIn();
       if (state == ProcessingState.completed && isAutoplayEnabled.value) {
         _autoplayNext();
       }
     });
 
-    _player.playbackEventStream.listen((_) {});
-    _player.playerStateStream.listen((state) {}, onError: (Object e, StackTrace st) {
-        debugPrint('[AudioService] error: $e');
+    _player.playerStateStream.listen(
+      (_) {},
+      onError: (Object e, StackTrace st) {
+        debugPrint('[AudioService] Error: $e');
         playbackError.value =
             e.toString().split('\n').first.split('Exception: ').last;
       },
     );
 
-    // Bind Listen Together synchronization
+    // ── Sync: incoming playback events ────────────────────────────────────
     SyncService().onSyncReceived = (data) {
       final action = data['action'] as String?;
-      final ms = data['positionMs'] as int?;
-      
-      if (action == 'play') {
-        if (ms != null) _player.seek(Duration(milliseconds: ms));
-        resume(broadcast: false);
-      } else if (action == 'pause') {
-        pause(broadcast: false);
-      } else if (action == 'seek' && ms != null) {
-        seek(Duration(milliseconds: ms), broadcast: false);
-      } else if (action == 'change_track') {
-        final trackData = data['track'] as Map<String, dynamic>?;
-        if (trackData != null) {
-          final track = Track.fromMap(trackData);
-          if (currentTrack.value?.id != track.id) {
-             _handleSyncPlayTrack(track, ms);
+      // Safe int extraction — socket.io may deliver numbers as double
+      final ms = (data['positionMs'] as num?)?.toInt();
+
+      switch (action) {
+        case 'play':
+          if (ms != null) _player.seek(Duration(milliseconds: ms));
+          resume(broadcast: false);
+          break;
+        case 'pause':
+          pause(broadcast: false);
+          break;
+        case 'seek':
+          if (ms != null) seek(Duration(milliseconds: ms), broadcast: false);
+          break;
+        case 'change_track':
+          final trackData = _safeMap(data['track']);
+          if (trackData != null) {
+            final track = _resolveTrack(trackData);
+            if (currentTrack.value?.id != track.id) {
+              _handleSyncPlayTrack(track, ms);
+            }
           }
-        }
+          break;
       }
     };
 
-    // Handle initial state sync when joining a party room
+    // ── Sync: initial state when joining a room ────────────────────────────
     SyncService().onPartyStateReceived = (data) {
       debugPrint('[AudioService] Received party state on join: $data');
-      final trackData = data['track'] as Map<String, dynamic>?;
-      final ms = data['positionMs'] as int?;
+      final trackData = _safeMap(data['track']);
+      final ms = (data['positionMs'] as num?)?.toInt();
       final isPlaying = data['isPlaying'] as bool? ?? false;
 
       if (trackData != null) {
-        final track = Track.fromMap(trackData);
+        final track = _resolveTrack(trackData);
         _isHandlingSync = true;
         playTrack(track).then((_) {
-          if (ms != null) {
-            _player.seek(Duration(milliseconds: ms));
-          }
-          if (!isPlaying) {
-            _player.pause();
-          }
-          Future.delayed(const Duration(milliseconds: 500), () => _isHandlingSync = false);
+          if (ms != null) _player.seek(Duration(milliseconds: ms));
+          if (!isPlaying) _player.pause();
+          Future.delayed(
+            const Duration(milliseconds: 500),
+            () => _isHandlingSync = false,
+          );
         });
       }
     };
   }
 
-  Future<void> _handleSyncPlayTrack(Track track, int? ms) async {
-    _isHandlingSync = true;
-    try {
-      await playTrack(track);
-      if (ms != null) {
-        await _player.seek(Duration(milliseconds: ms));
-      }
-    } finally {
-      // Delay disabling sync lock to prevent race conditions echoing back
-      Future.delayed(const Duration(milliseconds: 500), () => _isHandlingSync = false);
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  /// Safely converts dynamic socket data to Map<String, dynamic>.
+  static Map<String, dynamic>? _safeMap(dynamic data) {
+    if (data == null) return null;
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      try {
+        return Map<String, dynamic>.from(data);
+      } catch (_) {}
     }
+    return null;
   }
 
+  /// Builds a Track from received data, resolving relative coverUrls.
+  static Track _resolveTrack(Map<String, dynamic> data) {
+    Track track = Track.fromMap(data);
+    // Prepend server base URL for relative cover URLs (e.g. /audio/uuid_cover.jpg)
+    final cover = track.coverUrl;
+    if (cover != null && cover.startsWith('/')) {
+      final base = ServerConfig.baseUrl;
+      if (base.isNotEmpty) {
+        track = track.copyWith(coverUrl: '$base$cover');
+      }
+    }
+    return track;
+  }
+
+  // ── Track change ──────────────────────────────────────────────────────────
+
   void _handleTrackChange(Track? newTrack) {
-    // Save history for previous track if threshold met
+    // Save history for previous track
     if (_lastTrackId != null && _listenStopwatch != null) {
       final elapsed = _listenStopwatch!.elapsed.inSeconds;
       if (elapsed >= _historyThresholdSeconds) {
@@ -160,7 +179,6 @@ class AudioService {
       }
     }
 
-    // Reset for new track
     _lastTrackId = newTrack?.id;
     _listenStopwatch = Stopwatch();
     if (_player.playing) _listenStopwatch!.start();
@@ -181,13 +199,28 @@ class AudioService {
     }
   }
 
+  Future<void> _handleSyncPlayTrack(Track track, int? ms) async {
+    _isHandlingSync = true;
+    try {
+      await playTrack(track);
+      if (ms != null) await _player.seek(Duration(milliseconds: ms));
+    } finally {
+      // Small delay so the currentIndexStream listener sees _isHandlingSync=true
+      Future.delayed(
+        const Duration(milliseconds: 500),
+        () => _isHandlingSync = false,
+      );
+    }
+  }
+
+  // ── Sleep timer ───────────────────────────────────────────────────────────
+
   void setSleepTimer(Duration? duration) {
     _sleepTimer?.cancel();
     if (duration == null || duration.inSeconds == 0) {
       sleepTimerEnd.value = null;
       return;
     }
-
     sleepTimerEnd.value = DateTime.now().add(duration);
     _sleepTimer = Timer(duration, () {
       pause();
@@ -213,9 +246,8 @@ class AudioService {
   AudioPlayer get player => _player;
   List<Track> get queue => List.unmodifiable(_queue);
 
-  // ─── Playback ──────────────────────────────────────────────────────────────
+  // ── Playback ──────────────────────────────────────────────────────────────
 
-  /// Play a single track (clears queue). Shows error if file not downloaded.
   Future<void> playTrack(Track track) async {
     playbackError.value = null;
     final source = await _buildAudioSource(track);
@@ -226,16 +258,13 @@ class AudioService {
     await _player.stop();
     _queue.clear();
     await _playlist.clear();
-
     _queue.add(track);
     await _playlist.add(source);
     queueNotifier.value = List.from(_queue);
-
     await _player.setAudioSource(_playlist);
     await _player.play();
   }
 
-  /// Play a list starting at [startIndex].
   Future<void> playAll(List<Track> tracks, {int startIndex = 0}) async {
     if (tracks.isEmpty) return;
     playbackError.value = null;
@@ -243,28 +272,21 @@ class AudioService {
     _queue.clear();
     await _playlist.clear();
 
-    // Map original startIndex to tracks
-    final mainTrack = startIndex >= 0 && startIndex < tracks.length ? tracks[startIndex] : tracks.first;
+    final mainTrack =
+        (startIndex >= 0 && startIndex < tracks.length) ? tracks[startIndex] : tracks.first;
 
-    // Building sources one by one can be slow. 
-    // We prioritize the tapped track to start playback quickly.
     final firstSource = await _buildAudioSource(mainTrack);
     if (firstSource != null) {
       _queue.add(mainTrack);
       await _playlist.add(firstSource);
     }
 
-    // Add others. We don't wait for all of them to start playing the first one.
-    // However, to keep code simple and avoid race conditions with just_audio's playlist,
-    // we'll still build them in sequence but start playback as soon as the first is ready.
-    
     if (_queue.isNotEmpty) {
       await _player.setAudioSource(_playlist);
       currentTrack.value = _queue[0];
       unawaited(_player.play());
     }
 
-    // Fill the rest of the queue in background
     for (final t in tracks) {
       if (t.id == mainTrack.id) continue;
       final src = await _buildAudioSource(t);
@@ -282,11 +304,9 @@ class AudioService {
     queueNotifier.value = List.from(_queue);
   }
 
-  /// Insert a track to play immediately after the current one.
   Future<void> playNextTrack(Track track) async {
     final src = await _buildAudioSource(track);
     if (src == null) return;
-
     final insertAt = (_player.currentIndex ?? 0) + 1;
     if (insertAt >= _queue.length) {
       _queue.add(track);
@@ -298,7 +318,6 @@ class AudioService {
     queueNotifier.value = List.from(_queue);
   }
 
-  /// Append a track to the end of the queue.
   Future<void> addToQueue(Track track) async {
     final src = await _buildAudioSource(track);
     if (src == null) return;
@@ -314,7 +333,7 @@ class AudioService {
       final data = await ApiService().fetchLyrics(track.artist, track.title);
       lyrics.value = data;
     } catch (e) {
-      debugPrint('[AudioService] Error fetching lyrics: $e');
+      debugPrint('[AudioService] Lyrics error: $e');
     } finally {
       isLoadingLyrics.value = false;
     }
@@ -322,10 +341,9 @@ class AudioService {
 
   void toggleAutoplay() {
     isAutoplayEnabled.value = !isAutoplayEnabled.value;
-    debugPrint('[AudioService] Autoplay: ${isAutoplayEnabled.value}');
   }
 
-  // ─── Autoplay / Radio ─────────────────────────────────────────────────────
+  // ── Autoplay ──────────────────────────────────────────────────────────────
 
   Future<void> _autoplayNext() async {
     if (_isAutoplayLoading) return;
@@ -333,19 +351,11 @@ class AudioService {
     if (last == null) return;
 
     _isAutoplayLoading = true;
-    debugPrint('[AudioService] Autoplay: fetching similar tracks for "${last.title}"');
-
     try {
-      // Collect IDs already in queue to avoid duplicates
       final existingIds = _queue.map((t) => t.id).toSet();
-      final related = await ApiService().searchRelatedTracks(last, excludeIds: existingIds);
-
-      if (related.isEmpty) {
-        debugPrint('[AudioService] Autoplay: no related tracks found');
-        return;
-      }
-
-      debugPrint('[AudioService] Autoplay: adding ${related.length} tracks to queue');
+      final related =
+          await ApiService().searchRelatedTracks(last, excludeIds: existingIds);
+      if (related.isEmpty) return;
 
       for (final track in related) {
         final src = await _buildAudioSource(track);
@@ -354,10 +364,8 @@ class AudioService {
           await _playlist.add(src);
         }
       }
-
       queueNotifier.value = List.from(_queue);
 
-      // Start playing the next track
       if (_player.hasNext) {
         await _player.seekToNext();
         await _player.play();
@@ -369,34 +377,22 @@ class AudioService {
     }
   }
 
-  // ─── Internal ──────────────────────────────────────────────────────────────
+  // ── Audio source builder ──────────────────────────────────────────────────
 
-  /// Extracts a YouTube video ID from a URL like:
-  /// - https://www.youtube.com/watch?v=dQw4w9WgXcQ
-  /// - https://youtu.be/dQw4w9WgXcQ
-  /// - https://youtube.com/watch?v=dQw4w9WgXcQ&feature=share
-  /// Returns null if not a valid YouTube URL.
   static String? _extractYouTubeVideoId(String url) {
-    // Try standard watch URLs
     final watchMatch = RegExp(r'[?&]v=([a-zA-Z0-9_-]{11})').firstMatch(url);
     if (watchMatch != null) return watchMatch.group(1);
-
-    // Try youtu.be short URLs
     final shortMatch = RegExp(r'youtu\.be/([a-zA-Z0-9_-]{11})').firstMatch(url);
     if (shortMatch != null) return shortMatch.group(1);
-
     return null;
   }
 
-  /// Builds a MediaItem tag for notification / lock-screen metadata.
   MediaItem _buildMediaItem(Track track) {
     Uri? artUri;
     if (track.coverUrl != null) {
-      if (track.coverUrl!.startsWith('http')) {
-        artUri = Uri.parse(track.coverUrl!);
-      } else {
-        artUri = Uri.file(track.coverUrl!);
-      }
+      artUri = track.coverUrl!.startsWith('http')
+          ? Uri.parse(track.coverUrl!)
+          : Uri.file(track.coverUrl!);
     }
     return MediaItem(
       id: track.id,
@@ -407,96 +403,67 @@ class AudioService {
     );
   }
 
-  /// Returns an AudioSource backed by the local file, or null + sets error.
-  ///
-  /// Priority chain:
-  ///   1. Local downloaded file
-  ///   2. Server file stream (`/api/stream/{uuid}`) — for synced library tracks
-  ///   3. Server YouTube proxy (`/api/stream/youtube?v={videoId}`) — for YouTube search results
-  ///   4. Direct YouTube stream via youtube_explode_dart — fallback when no server
   Future<AudioSource?> _buildAudioSource(Track track) async {
+    // 1. Local file — fastest
     final localPath = await DownloadService.getLocalFilePath(track);
-
-    // ── 1. Local file ───────────────────────────────────────────────────────
     if (localPath != null) {
-      debugPrint('[AudioService] Playing local: $localPath');
-      return AudioSource.uri(
-        Uri.file(localPath),
-        tag: _buildMediaItem(track),
-      );
+      debugPrint('[AudioService] ▶ Local: $localPath');
+      return AudioSource.uri(Uri.file(localPath), tag: _buildMediaItem(track));
     }
 
     final serverBase = ServerConfig.baseUrl;
-    final isYouTube = track.sourceUrl.contains('youtube.com') || track.sourceUrl.contains('youtu.be');
+    final isYouTube =
+        track.sourceUrl.contains('youtube.com') || track.sourceUrl.contains('youtu.be');
+    final isServerLibraryTrack = RegExp(
+      r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$',
+    ).hasMatch(track.id);
 
-    // Detect whether this is a server library track (UUID id) or a YouTube
-    // search result (11-char YouTube video ID as id).
-    final isServerLibraryTrack = RegExp(r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$').hasMatch(track.id);
-
-    // ── 2. Server file stream (for synced library tracks) ───────────────────
-    // These tracks already have an mp3 on the server at /api/stream/{uuid}.
+    // 2. Server-stored MP3 (UUID track)
     if (isServerLibraryTrack && serverBase.isNotEmpty) {
-      final streamUrl = '$serverBase/api/stream/${track.id}';
-      debugPrint('[AudioService] Streaming server library track: $streamUrl');
-      return AudioSource.uri(
-        Uri.parse(streamUrl),
-        tag: _buildMediaItem(track),
-      );
+      final url = '$serverBase/api/stream/${track.id}';
+      debugPrint('[AudioService] ▶ Server stream: $url');
+      return AudioSource.uri(Uri.parse(url), tag: _buildMediaItem(track));
     }
 
-    // ── 3. YouTube streaming (for search results) ───────────────────────────
-    if (isYouTube) {
-      // Extract the real video ID from the source URL (don't trust track.id
-      // for synced tracks — it's a UUID, not a video ID).
+    // 3a. YouTube via server proxy
+    if (isYouTube && serverBase.isNotEmpty) {
       final videoId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
+      final url = '$serverBase/api/stream/youtube?v=$videoId';
+      debugPrint('[AudioService] ▶ Server YT proxy: $url');
+      return AudioSource.uri(Uri.parse(url), tag: _buildMediaItem(track));
+    }
 
-      // 3a. Server-side YouTube proxy
-      if (serverBase.isNotEmpty) {
-        final streamUrl = '$serverBase/api/stream/youtube?v=$videoId';
-        debugPrint('[AudioService] Streaming via server YouTube proxy: $streamUrl');
-        return AudioSource.uri(
-          Uri.parse(streamUrl),
-          tag: _buildMediaItem(track),
-        );
-      }
-
-      // 3b. Direct YouTube stream (no server available)
+    // 3b. YouTube direct (no server)
+    if (isYouTube) {
       try {
-        debugPrint('[AudioService] Fetching direct YouTube URL for "${track.title}" (videoId=$videoId)');
-        final yt.StreamManifest manifest = await ApiService().getAudioManifest(videoId);
+        final videoId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
+        debugPrint('[AudioService] ▶ YouTube direct: $videoId');
+        final manifest = await ApiService().getAudioManifest(videoId);
         final streamInfo = manifest.audioOnly.sortByBitrate().last;
-        final directUrl = streamInfo.url.toString();
-
         return AudioSource.uri(
-          Uri.parse(directUrl),
+          Uri.parse(streamInfo.url.toString()),
           tag: _buildMediaItem(track),
         );
       } catch (e) {
-        debugPrint('[AudioService] YouTube direct stream failed: $e');
-        playbackError.value =
-            'Could not stream "${track.title}". Connect to server or download first.';
+        debugPrint('[AudioService] YouTube direct failed: $e');
+        playbackError.value = 'Could not stream "${track.title}". Download it first.';
         return null;
       }
     }
 
-    // ── 4. Non-YouTube, non-local, server stream ────────────────────────────
+    // 4. Generic server stream fallback
     if (serverBase.isNotEmpty) {
-      final streamUrl = '$serverBase/api/stream/${track.id}';
-      debugPrint('[AudioService] Streaming from server: $streamUrl');
-      return AudioSource.uri(
-        Uri.parse(streamUrl),
-        tag: _buildMediaItem(track),
-      );
+      final url = '$serverBase/api/stream/${track.id}';
+      debugPrint('[AudioService] ▶ Fallback server stream: $url');
+      return AudioSource.uri(Uri.parse(url), tag: _buildMediaItem(track));
     }
 
-    // Nothing worked
     playbackError.value =
-        '"${track.title}" is not downloaded yet. Tap the download icon or set server URL in settings.';
-    debugPrint('[AudioService] No playback source available for ${track.title}');
+        '"${track.title}" is not downloaded. Download it or configure a server URL.';
     return null;
   }
 
-  // ─── Controls ──────────────────────────────────────────────────────────────
+  // ── Transport controls ────────────────────────────────────────────────────
 
   Future<void> playNext() async {
     if (_player.hasNext) await _player.seekToNext();
@@ -563,5 +530,9 @@ class AudioService {
     _player.play();
   }
 
-  void dispose() => _player.dispose();
+  void dispose() {
+    _sleepTimer?.cancel();
+    _fadeTimer?.cancel();
+    _player.dispose();
+  }
 }

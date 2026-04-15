@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useMusicStore } from '@/store/musicStore';
 import Sidebar from '@/components/Sidebar';
 import MobileHeader from '@/components/MobileHeader';
@@ -18,43 +18,90 @@ import StatsView from '@/components/StatsView';
 import SettingsView from '@/components/SettingsView';
 import FullScreenPlayer from '@/components/FullScreenPlayer';
 import PartyModal from '@/components/PartyModal';
-import { connectSyncService } from '@/lib/syncService';
+import {
+  connectSyncService,
+  startSyncBroadcasting,
+  broadcastPlayback,
+} from '@/lib/syncService';
 
 export default function Home() {
   const { fetchLibrary, activeView, showFullScreenPlayer, theme } = useMusicStore();
   const [loading, setLoading] = useState(true);
+  const unsubBroadcastRef = useRef<(() => void) | null>(null);
 
+  // Fetch library + connect sync
   useEffect(() => {
     fetchLibrary().finally(() => setLoading(false));
-    connectSyncService(); // connect to socket
+
+    // Connect socket and start listening for party events
+    connectSyncService();
+
+    // Subscribe store → broadcast (returns cleanup fn)
+    unsubBroadcastRef.current = startSyncBroadcasting();
+
+    return () => {
+      unsubBroadcastRef.current?.();
+    };
   }, [fetchLibrary]);
 
   // Apply theme
   useEffect(() => {
     const root = document.documentElement;
     root.removeAttribute('data-theme');
-    if (theme !== 'system') {
-      root.setAttribute('data-theme', theme);
-    }
+    if (theme !== 'system') root.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      const { isPlaying, setIsPlaying, playNext, playPrev, volume, setVolume } =
+      const { isPlaying, setIsPlaying, playNext, playPrev, volume, setVolume, partyId, currentTime } =
         useMusicStore.getState();
       switch (e.code) {
-        case 'Space': e.preventDefault(); setIsPlaying(!isPlaying); break;
-        case 'ArrowRight': if (e.metaKey || e.ctrlKey) { e.preventDefault(); playNext(); } break;
-        case 'ArrowLeft': if (e.metaKey || e.ctrlKey) { e.preventDefault(); playPrev(); } break;
-        case 'ArrowUp': if (e.metaKey || e.ctrlKey) { e.preventDefault(); setVolume(Math.min(1, volume + 0.1)); } break;
-        case 'ArrowDown': if (e.metaKey || e.ctrlKey) { e.preventDefault(); setVolume(Math.max(0, volume - 0.1)); } break;
+        case 'Space':
+          e.preventDefault();
+          setIsPlaying(!isPlaying);
+          // Broadcast play/pause if in a party
+          if (partyId) {
+            const audio = document.querySelector('audio') as HTMLAudioElement | null;
+            broadcastPlayback(
+              !isPlaying ? 'play' : 'pause',
+              (audio?.currentTime ?? currentTime) * 1000,
+            );
+          }
+          break;
+        case 'ArrowRight':
+          if (e.metaKey || e.ctrlKey) { e.preventDefault(); playNext(); }
+          break;
+        case 'ArrowLeft':
+          if (e.metaKey || e.ctrlKey) { e.preventDefault(); playPrev(); }
+          break;
+        case 'ArrowUp':
+          if (e.metaKey || e.ctrlKey) { e.preventDefault(); setVolume(Math.min(1, volume + 0.1)); }
+          break;
+        case 'ArrowDown':
+          if (e.metaKey || e.ctrlKey) { e.preventDefault(); setVolume(Math.max(0, volume - 0.1)); }
+          break;
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // Broadcast seek events from the audio element to the party room
+  useEffect(() => {
+    const audio = document.querySelector('audio') as HTMLAudioElement | null;
+    if (!audio) return;
+
+    const onSeeked = () => {
+      const { partyId } = useMusicStore.getState();
+      if (partyId) broadcastPlayback('seek', audio.currentTime * 1000);
+    };
+
+    audio.addEventListener('seeked', onSeeked);
+    return () => audio.removeEventListener('seeked', onSeeked);
+  });
 
   return (
     <ErrorBoundary>
@@ -92,7 +139,6 @@ export default function Home() {
 function LoadingSkeleton() {
   return (
     <div className="responsive-padding" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Header skeleton */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div className="skeleton" style={{ width: 140, height: 32, marginBottom: 8, borderRadius: 6 }} />
@@ -100,15 +146,7 @@ function LoadingSkeleton() {
         </div>
         <div className="skeleton" style={{ width: 260, height: 44, borderRadius: '12px' }} />
       </div>
-      {/* Grid skeleton */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-          gap: 16,
-          marginTop: 8,
-        }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16, marginTop: 8 }}>
         {Array.from({ length: 12 }).map((_, i) => (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: 'var(--surface)', borderRadius: '12px' }}>
             <div className="skeleton" style={{ width: '100%', aspectRatio: '1', borderRadius: 8 }} />

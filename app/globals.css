@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: var(--font-display), "Outfit", sans-serif;
-  --font-sans: var(--font-sans), "Inter", sans-serif;
+  --font-display: var(--font-display), "Space Grotesk", sans-serif;
+  --font-sans: var(--font-sans), "Plus Jakarta Sans", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 }
 
