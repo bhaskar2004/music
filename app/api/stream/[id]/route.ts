@@ -56,7 +56,7 @@ export async function GET(
   }
 
   const library = await getLibrary();
-  const track = library.find((t) => t.id === id);
+  const track = (library || []).find((t: any) => t.id === id);
 
   if (!track) {
     return NextResponse.json({ error: 'Track not found' }, { status: 404 });

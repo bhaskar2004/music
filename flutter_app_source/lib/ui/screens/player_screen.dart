@@ -103,22 +103,39 @@ class _PlayerScreenState extends State<PlayerScreen>
           return Stack(
             fit: StackFit.expand,
             children: [
-              // Subtle background wash
-              Positioned(
-                top: -100,
-                left: -100,
-                child: Container(
-                  width: 400,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        premiumAccent.withOpacity(isDark ? 0.08 : 0.05),
-                        Colors.transparent,
+              // Subtle background wash & Radar Pulse
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([appState]),
+                  builder: (context, _) {
+                    return Stack(
+                      children: [
+                        // Static wash
+                        Positioned(
+                          top: -100,
+                          left: -100,
+                          child: Container(
+                            width: 500, height: 500,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  premiumAccent.withValues(alpha: isDark ? 0.12 : 0.08),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Radar Scanning Pulse (Layered)
+                        if (appState.isLoadingRecommendations) ...[
+                          _BackgroundRadarPulse(color: premiumAccent, delay: 0.0),
+                          _BackgroundRadarPulse(color: premiumAccent, delay: 0.33),
+                          _BackgroundRadarPulse(color: premiumAccent, delay: 0.66),
+                        ],
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
 
@@ -151,6 +168,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                             NeonVisualizer(
                                               color: premiumAccent,
                                               isPlaying: isPlaying,
+                                              isScanning: appState.isLoadingRecommendations,
                                               size: MediaQuery.of(context).size.width * 0.72,
                                             ),
                                             VinylRecord(
@@ -206,12 +224,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                             // ── Controls Card ──────────────────────────
                             GlassCard(
                               borderRadius: 32,
-                              padding: const EdgeInsets.all(24),
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   _buildSeekBar(audio, premiumAccent),
-                                  const SizedBox(height: 24),
+                                  const SizedBox(height: 28),
                                   _buildControls(audio, premiumAccent, isDark),
                                 ],
                               ),
@@ -771,6 +789,52 @@ class _ArtPlaceholder extends StatelessWidget {
           style: const TextStyle(fontSize: 80, fontWeight: FontWeight.w900, color: Colors.white12),
         ),
       ),
+    );
+  }
+}
+
+class _BackgroundRadarPulse extends StatefulWidget {
+  final Color color;
+  final double delay;
+  const _BackgroundRadarPulse({required this.color, this.delay = 0.0});
+
+  @override
+  State<_BackgroundRadarPulse> createState() => _BackgroundRadarPulseState();
+}
+
+class _BackgroundRadarPulseState extends State<_BackgroundRadarPulse> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 4));
+    Future.delayed(Duration(milliseconds: (widget.delay * 4000).toInt()), () {
+      if (mounted) _controller.repeat();
+    });
+  }
+  @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final p = _controller.value;
+        if (p == 0) return const SizedBox.shrink();
+        return Positioned.fill(
+          child: Center(
+            child: Container(
+              width: 100 + (p * 900),
+              height: 100 + (p * 900),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: widget.color.withValues(alpha: (1 - p) * 0.12), width: 1.5),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

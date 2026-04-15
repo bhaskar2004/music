@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import YouTube from 'youtube-sr';
+import YouTube, { Video, Channel, Playlist } from 'youtube-sr';
 import path from 'path';
 import { spawn } from 'child_process';
 
@@ -8,12 +8,16 @@ const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
 const YT_DLP_PATH = path.join(binDir, binName);
 
 // Simple in-memory cache for search results
-const searchCache = new Map<string, { results: any[], expires: number }>();
+interface CachedSearch {
+  results: any[];
+  expires: number;
+}
+const searchCache = new Map<string, CachedSearch>();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 // Helper to manually filter and map youtube-sr results
-function mapYoutubeSR(results: any[], query: string) {
-  return results.map((video) => {
+function mapYoutubeSR(results: (Video | Channel | Playlist)[], query: string) {
+  return results.map((video: any) => {
     try {
       if (!video || !video.id || !video.title) return null;
       return {
@@ -34,7 +38,7 @@ function mapYoutubeSR(results: any[], query: string) {
 
 // Fallback search using yt-dlp binary
 async function searchWithYtDlp(query: string, limit: number): Promise<any[]> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     console.log(`[SEARCH] Fallback: Fetching from yt-dlp for "${query}"...`);
     // ytsearchN:query returns N results in JSON format
     const args = [
@@ -61,19 +65,24 @@ async function searchWithYtDlp(query: string, limit: number): Promise<any[]> {
       try {
         const lines = output.trim().split('\n').filter(l => l.trim().length > 0);
         const results = lines.map(line => {
-          const data = JSON.parse(line);
-          return {
-            id: data.id,
-            title: data.title,
-            artist: data.uploader || data.channel || 'Unknown',
-            duration: (data.duration || 0) * 1000, // convert to ms
-            durationFormatted: data.duration_string || '0:00',
-            thumbnail: data.thumbnail || (data.thumbnails && data.thumbnails[0]?.url) || '',
-            url: `https://www.youtube.com/watch?v=${data.id}`,
-          };
-        });
+          try {
+            const data = JSON.parse(line);
+            if (!data.id) return null;
+            return {
+              id: data.id,
+              title: data.title,
+              artist: data.uploader || data.channel || 'Unknown',
+              duration: (data.duration || 0) * 1000, // convert to ms
+              durationFormatted: data.duration_string || '0:00',
+              thumbnail: data.thumbnail || (data.thumbnails && data.thumbnails[0]?.url) || '',
+              url: `https://www.youtube.com/watch?v=${data.id}`,
+            };
+          } catch {
+            return null;
+          }
+        }).filter((v): v is any => v !== null);
         resolve(results);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[SEARCH] Error parsing yt-dlp output:`, err);
         resolve([]);
       }
@@ -114,8 +123,10 @@ export async function GET(req: NextRequest) {
       // Strategy 2: youtube-sr with type 'all' (Bypasses some internal parsing crashes)
       try {
         method = 'youtube-sr:all';
-        const rawResults = await YouTube.search(query, { limit: 20 });
-        results = mapYoutubeSR(rawResults, query);
+        const rawResults = await YouTube.search(query, { limit: 20, type: 'all' });
+        // Filter for only videos from the mixed result set
+        const videoOnlyResults = rawResults.filter((r): r is Video => r instanceof Video || (r as any).type === 'video');
+        results = mapYoutubeSR(videoOnlyResults, query);
       } catch (err2: any) {
         console.warn(`[SEARCH] youtube-sr (all) failed for "${query}":`, err2.message);
         
@@ -131,6 +142,14 @@ export async function GET(req: NextRequest) {
       method = 'yt-dlp:retry';
       results = await searchWithYtDlp(query, 20);
     }
+
+    // Ensure unique IDs to prevent React key collision errors
+    const seen = new Set<string>();
+    results = results.filter(v => {
+      if (seen.has(v.id)) return false;
+      seen.add(v.id);
+      return true;
+    });
 
     // Store in cache
     searchCache.set(query, {
