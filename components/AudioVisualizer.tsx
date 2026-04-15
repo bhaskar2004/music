@@ -46,28 +46,27 @@ export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualiz
     };
 
     const draw = () => {
+      let intensity = 0;
+      const { width, height } = canvas;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const baseRadius = size / 3;
+
       // 1. Efficiency: Stop loop if not playing and we've finished a 'fade'
       if (!isPlaying) {
         // Draw one final static state and stop
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawLayer(1.1, 0.15, 10, 0.1); // Subtle static core
+        ctx.clearRect(0, 0, width, height);
+        drawLayer(ctx, 1.1, 0.15, 10, 0.1); // Subtle static core
         return;
       }
 
-      const { width, height } = canvas;
       ctx.clearRect(0, 0, width, height);
-
-      let intensity = 0;
       if (analyserRef.current) {
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(dataArray);
         const sum = dataArray.reduce((acc, val) => acc + val, 0);
         intensity = sum / dataArray.length / 255;
       }
-
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const baseRadius = size / 3;
 
       function drawLayer(ctx: CanvasRenderingContext2D, radiusMult: number, opacityMult: number, blur: number, customIntensity?: number) {
         const activeIntensity = customIntensity ?? intensity;
