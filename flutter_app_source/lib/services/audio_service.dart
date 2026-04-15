@@ -435,8 +435,12 @@ class AudioService {
     // 2. Server-stored MP3 (UUID track)
     if (isServerLibraryTrack && serverBase.isNotEmpty) {
       final url = '$serverBase/api/stream/${track.id}';
-      debugPrint('[AudioService] ▶ Server stream: $url');
-      return AudioSource.uri(Uri.parse(url), tag: _buildMediaItem(track));
+      debugPrint('[AudioService] ☁ Streaming from Server: $url');
+      return AudioSource.uri(
+        Uri.parse(url),
+        headers: {'User-Agent': 'WavelengthApp/1.0 (Android; Mobile)'},
+        tag: _buildMediaItem(track),
+      );
     }
 
     // 3a. YouTube via server proxy
@@ -445,7 +449,11 @@ class AudioService {
       final videoId = extractedId.replaceAll('search-', '');
       final url = '$serverBase/api/stream/youtube?v=$videoId';
       debugPrint('[AudioService] ☁ Streaming from Server proxy: $url (Source: YT)');
-      return AudioSource.uri(Uri.parse(url), tag: _buildMediaItem(track));
+      return AudioSource.uri(
+        Uri.parse(url),
+        headers: {'User-Agent': 'WavelengthApp/1.0 (Android; Mobile)'},
+        tag: _buildMediaItem(track),
+      );
     }
 
     // 3b. YouTube direct (no server - fallback)
