@@ -7,9 +7,12 @@ class ThemeService {
   factory ThemeService() => _instance;
   ThemeService._internal();
 
+  static final Map<String, Color> _accentCache = {};
+
   /// Extracts the dominant vibrant color from an image URL or local path.
   Future<Color?> extractAccentColor(String? imageUrl) async {
     if (imageUrl == null || imageUrl.isEmpty) return null;
+    if (_accentCache.containsKey(imageUrl)) return _accentCache[imageUrl];
 
     try {
       ImageProvider? provider;
@@ -23,12 +26,15 @@ class ThemeService {
 
       final palette = await PaletteGenerator.fromImageProvider(
         provider,
-        maximumColorCount: 20,
+        maximumColorCount: 16,
       );
 
-      return palette.vibrantColor?.color ?? 
-             palette.dominantColor?.color ?? 
-             palette.lightVibrantColor?.color;
+      final color = palette.vibrantColor?.color ?? 
+                   palette.dominantColor?.color ?? 
+                   palette.lightVibrantColor?.color;
+
+      if (color != null) _accentCache[imageUrl] = color;
+      return color;
     } catch (e) {
       debugPrint('[ThemeService] Color extraction error: $e');
       return null;

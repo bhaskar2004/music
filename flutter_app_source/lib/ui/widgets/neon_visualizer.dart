@@ -57,11 +57,13 @@ class _NeonVisualizerState extends State<NeonVisualizer>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return CustomPaint(
-          size: Size(widget.size * 1.5, widget.size * 1.5),
-          painter: _NebulaPainter(
-            color: widget.color,
-            progress: _controller.value,
+        return RepaintBoundary(
+          child: CustomPaint(
+            size: Size(widget.size * 1.5, widget.size * 1.5),
+            painter: _NebulaPainter(
+              color: widget.color,
+              progress: _controller.value,
+            ),
           ),
         );
       },

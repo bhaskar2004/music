@@ -8,6 +8,7 @@ import '../services/storage_service.dart';
 import '../services/api_service.dart';
 import '../services/server_config.dart';
 import '../services/download_service.dart';
+import 'dart:async';
 
 enum SortOption { recent, title, artist, duration }
 
@@ -32,6 +33,8 @@ class AppState extends ChangeNotifier {
   Color _currentAccentColor = const Color(0xFFC1344A);
   List<Track> _recommendedTracks = [];
   bool _isLoadingRecommendations = false;
+  final Map<String, List<Track>> _recommendationCache = {};
+  Timer? _radarDebounce;
 
   // ─── Getters ──────────────────────────────────────────────────────────────
 
@@ -389,14 +392,26 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> findRecommendations(Track track) async {
-    _isLoadingRecommendations = true;
-    notifyListeners();
-    try {
-      final results = await ApiService().searchRelatedTracks(track);
-      _recommendedTracks = results;
-    } finally {
-      _isLoadingRecommendations = false;
+    // 1. Instant Cache Hit
+    if (_recommendationCache.containsKey(track.id)) {
+      _recommendedTracks = _recommendationCache[track.id]!;
       notifyListeners();
+      return;
     }
+
+    // 2. Debounce to avoid spamming during rapid skips
+    _radarDebounce?.cancel();
+    _radarDebounce = Timer(const Duration(milliseconds: 500), () async {
+      _isLoadingRecommendations = true;
+      notifyListeners();
+      try {
+        final results = await ApiService().searchRelatedTracks(track);
+        _recommendedTracks = results;
+        _recommendationCache[track.id] = results;
+      } finally {
+        _isLoadingRecommendations = false;
+        notifyListeners();
+      }
+    });
   }
 }

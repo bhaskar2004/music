@@ -442,18 +442,18 @@ class AudioService {
     // 3a. YouTube via server proxy
     if (isYouTube && serverBase.isNotEmpty) {
       final extractedId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
-      final videoId = extractedId.replaceFirst('search-', '');
+      final videoId = extractedId.replaceAll('search-', '');
       final url = '$serverBase/api/stream/youtube?v=$videoId';
-      debugPrint('[AudioService] ▶ Server YT proxy: $url');
+      debugPrint('[AudioService] ☁ Streaming from Server proxy: $url (Source: YT)');
       return AudioSource.uri(Uri.parse(url), tag: _buildMediaItem(track));
     }
 
-    // 3b. YouTube direct (no server)
+    // 3b. YouTube direct (no server - fallback)
     if (isYouTube) {
       try {
         final extractedId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
-        final videoId = extractedId.replaceFirst('search-', '');
-        debugPrint('[AudioService] ▶ YouTube direct: $videoId');
+        final videoId = extractedId.replaceAll('search-', '');
+        debugPrint('[AudioService] 🌐 Streaming Direct from YouTube: $videoId');
         final manifest = await ApiService().getAudioManifest(videoId);
         final streamInfo = manifest.audioOnly.sortByBitrate().last;
         return AudioSource.uri(
@@ -461,8 +461,8 @@ class AudioService {
           tag: _buildMediaItem(track),
         );
       } catch (e) {
-        debugPrint('[AudioService] YouTube direct failed: $e');
-        playbackError.value = 'Could not stream "${track.title}". Download it first.';
+        debugPrint('[AudioService] ❌ YouTube direct failed: $e');
+        playbackError.value = 'Could not stream "${track.title}". Server proxy also failed.';
         return null;
       }
     }

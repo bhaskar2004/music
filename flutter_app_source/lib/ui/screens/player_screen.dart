@@ -277,7 +277,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.groups_rounded, size: 10, color: premiumAccent),
+                            Icon(Icons.groups_rounded, size: 10, color: premiumAccent),
                             const SizedBox(width: 4),
                             Text(
                               'PARTY: $partyId',
@@ -311,6 +311,46 @@ class _PlayerScreenState extends State<PlayerScreen>
                 isDark: isDark,
                 active: audio.sleepTimerEnd.value != null,
                 onTap: () => _showSleepTimerDialog(context, audio),
+              ),
+              const SizedBox(width: 8),
+              _AppBarBtn(
+                icon: Icons.radar_rounded,
+                isDark: isDark,
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (ctx) => const DiscoveryRadar(),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              ValueListenableBuilder<Track?>(
+                valueListenable: audio.currentTrack,
+                builder: (ctx, track, _) {
+                  if (track == null) return const SizedBox.shrink();
+                  final appState = context.read<AppState>();
+                  final inLibrary = appState.library.any((t) => t.sourceUrl == track.sourceUrl);
+                  
+                  return _AppBarBtn(
+                    icon: inLibrary ? Icons.check_circle_rounded : Icons.download_for_offline_rounded,
+                    active: inLibrary,
+                    isDark: isDark,
+                    onTap: inLibrary ? null : () async {
+                      try {
+                        await DownloadManager().processJob(track.sourceUrl, appState);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Download started...')),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: ${e.toString().split(':').last}')),
+                        );
+                      }
+                    },
+                  );
+                },
               ),
               const SizedBox(width: 8),
               _AppBarBtn(

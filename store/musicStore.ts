@@ -123,10 +123,12 @@ interface MusicStore {
   currentAccentColor: string;
   setAccentColor: (color: string) => void;
 
-  // Recommendations
+  // Recommendations & Cache
   recommendedTracks: Track[];
   isLoadingRecommendations: boolean;
   fetchRecommendations: (track: Track) => Promise<void>;
+  recommendationCache: Record<string, Track[]>;
+  accentColorCache: Record<string, string>;
 }
 
 export const useMusicStore = create<MusicStore>()(
@@ -519,13 +521,30 @@ export const useMusicStore = create<MusicStore>()(
       theme: 'system',
       setTheme: (v) => set({ theme: v }),
       currentAccentColor: '#C1344A',
-      setAccentColor: (color) => set({ currentAccentColor: color }),
+      accentColorCache: {},
+      setAccentColor: (color) => set((s) => ({ 
+        currentAccentColor: color,
+        accentColorCache: { ...s.accentColorCache, [get().currentTrack?.id || '']: color }
+      })),
 
       // Recommendations
       recommendedTracks: [],
       isLoadingRecommendations: false,
+      recommendationCache: {},
       fetchRecommendations: async (track) => {
+        const { recommendationCache } = get();
+        
+        // 1. Instant Cache Hit
+        if (recommendationCache[track.id]) {
+          set({ recommendedTracks: recommendationCache[track.id] });
+          return;
+        }
+
         set({ isLoadingRecommendations: true, recommendedTracks: [] });
+        
+        // Short debounce (300ms) to avoid spamming while flipping through tracks
+        await new Promise(r => setTimeout(r, 300));
+        if (get().currentTrack?.id !== track.id) return;
         try {
           const cleanTitle = track.title
             .replace(/\(.*?\)|\[.*?\]/gi, '')
@@ -564,7 +583,11 @@ export const useMusicStore = create<MusicStore>()(
               fileSize: 0,
               playlistIds: [],
             }));
-            set({ recommendedTracks: results });
+            
+            set((s) => ({ 
+              recommendedTracks: results,
+              recommendationCache: { ...s.recommendationCache, [track.id]: results }
+            }));
           }
         } catch (err) {
           console.error("[Recommendations] Error:", err);

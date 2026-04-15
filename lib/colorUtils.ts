@@ -14,26 +14,27 @@ export async function extractAccentColor(imageUrl: string): Promise<string | nul
       const ctx = canvas.getContext('2d');
       if (!ctx) return resolve(null);
       
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
+      // OPTIMIZATION: Downscale to a tiny grid for nearly instant sampling
+      const sampleSize = 64;
+      canvas.width = sampleSize;
+      canvas.height = sampleSize;
+      ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
       
-      const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const { data } = ctx.getImageData(0, 0, sampleSize, sampleSize);
       const colorCounts: Record<string, number> = {};
       
-      // Sample pixels (every 100th pixel for speed)
-      for (let i = 0; i < data.length; i += 400) {
+      // Sample every pixel in the tiny grid
+      for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
         const a = data[i + 3];
         
-        if (a < 128) continue; // Skip transparent
+        if (a < 128) continue;
         
-        // Skip grey/black/white
         const brightness = (r + g + b) / 3;
         const diff = Math.max(Math.abs(r-g), Math.abs(g-b), Math.abs(b-r));
-        if (diff < 30 || brightness < 50 || brightness > 220) continue;
+        if (diff < 30 || brightness < 40 || brightness > 230) continue;
         
         const hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
         colorCounts[hex] = (colorCounts[hex] || 0) + 1;

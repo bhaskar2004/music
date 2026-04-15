@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:wavelength_app/providers/app_state.dart';
 
 class VinylRecord extends StatefulWidget {
   final String? coverUrl;
@@ -72,7 +74,7 @@ class _VinylRecordState extends State<VinylRecord>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: 40,
                 spreadRadius: 2,
                 offset: const Offset(0, 20),
@@ -83,11 +85,11 @@ class _VinylRecordState extends State<VinylRecord>
               center: Alignment.center,
               colors: [
                 const Color(0xFF111111),
-                context.watch<AppState>().currentAccentColor.withOpacity(0.05),
+                context.watch<AppState>().currentAccentColor.withValues(alpha: 0.05),
                 const Color(0xFF111111),
                 const Color(0xFF222222),
                 const Color(0xFF111111),
-                context.watch<AppState>().currentAccentColor.withOpacity(0.03),
+                context.watch<AppState>().currentAccentColor.withValues(alpha: 0.03),
                 const Color(0xFF111111),
               ],
               stops: const [0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 1.0],
@@ -104,7 +106,7 @@ class _VinylRecordState extends State<VinylRecord>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.03),
+                      color: Colors.white.withValues(alpha: 0.03),
                       width: 0.5,
                     ),
                   ),
