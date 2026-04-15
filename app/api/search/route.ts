@@ -1,10 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
+import path from 'path';
+import { spawn } from 'child_process';
+
+const binDir = path.join(process.cwd(), 'bin');
+const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+const YT_DLP_PATH = path.join(binDir, binName);
 
 // Simple in-memory cache for search results
-// Map<query, { results: any[], expires: number }>
 const searchCache = new Map<string, { results: any[], expires: number }>();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+// Helper to manually filter and map youtube-sr results
+function mapYoutubeSR(results: any[], query: string) {
+  return results.map((video) => {
+    try {
+      if (!video || !video.id || !video.title) return null;
+      return {
+        id: video.id,
+        title: video.title,
+        artist: video.channel?.name || 'Unknown',
+        duration: video.duration || 0,
+        durationFormatted: video.durationFormatted || '0:00',
+        thumbnail: video.thumbnail?.url || '',
+        url: video.url || `https://www.youtube.com/watch?v=${video.id}`,
+      };
+    } catch (err: any) {
+      console.warn(`[SEARCH] Skipping malformed result for query "${query}":`, err.message);
+      return null;
+    }
+  }).filter((v): v is any => v !== null);
+}
+
+// Fallback search using yt-dlp binary
+async function searchWithYtDlp(query: string, limit: number): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    console.log(`[SEARCH] Fallback: Fetching from yt-dlp for "${query}"...`);
+    // ytsearchN:query returns N results in JSON format
+    const args = [
+      `ytsearch${limit}:${query}`,
+      '--dump-json',
+      '--no-playlist',
+      '--flat-playlist',
+      '--no-warnings',
+    ];
+
+    const child = spawn(YT_DLP_PATH, args);
+    let output = '';
+    let error = '';
+
+    child.stdout.on('data', (d) => output += d.toString());
+    child.stderr.on('data', (d) => error += d.toString());
+
+    child.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`[SEARCH] yt-dlp failed with code ${code}:`, error);
+        return resolve([]); // Resolve with empty on failure to allow other logic
+      }
+
+      try {
+        const lines = output.trim().split('\n').filter(l => l.trim().length > 0);
+        const results = lines.map(line => {
+          const data = JSON.parse(line);
+          return {
+            id: data.id,
+            title: data.title,
+            artist: data.uploader || data.channel || 'Unknown',
+            duration: (data.duration || 0) * 1000, // convert to ms
+            durationFormatted: data.duration_string || '0:00',
+            thumbnail: data.thumbnail || (data.thumbnails && data.thumbnails[0]?.url) || '',
+            url: `https://www.youtube.com/watch?v=${data.id}`,
+          };
+        });
+        resolve(results);
+      } catch (err) {
+        console.error(`[SEARCH] Error parsing yt-dlp output:`, err);
+        resolve([]);
+      }
+    });
+  });
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -26,24 +101,40 @@ export async function GET(req: NextRequest) {
   console.log(`[SEARCH] Cache MISS for: "${query}", fetching from YouTube...`);
 
   try {
-    const results = await YouTube.search(query, {
-      limit: 20,
-      type: 'video',
-    });
+    let results: any[] = [];
+    let method = 'youtube-sr:video';
 
-    const parsedResults = results.map((video) => ({
-      id: video.id,
-      title: video.title,
-      artist: video.channel?.name || 'Unknown',
-      duration: video.duration,
-      durationFormatted: video.durationFormatted,
-      thumbnail: video.thumbnail?.url || '',
-      url: video.url,
-    }));
+    try {
+      // Strategy 1: youtube-sr with type 'video' (Fastest, usually best metadata)
+      const rawResults = await YouTube.search(query, { limit: 20, type: 'video' });
+      results = mapYoutubeSR(rawResults, query);
+    } catch (err: any) {
+      console.warn(`[SEARCH] youtube-sr (video) failed for "${query}":`, err.message);
+      
+      // Strategy 2: youtube-sr with type 'all' (Bypasses some internal parsing crashes)
+      try {
+        method = 'youtube-sr:all';
+        const rawResults = await YouTube.search(query, { limit: 20 });
+        results = mapYoutubeSR(rawResults, query);
+      } catch (err2: any) {
+        console.warn(`[SEARCH] youtube-sr (all) failed for "${query}":`, err2.message);
+        
+        // Strategy 3: yt-dlp (Most reliable fallback)
+        method = 'yt-dlp';
+        results = await searchWithYtDlp(query, 20);
+      }
+    }
+
+    if (results.length === 0 && query.length > 5) {
+      // Last ditch effort: if results were empty (but query was substantial), try yt-dlp search anyway
+      // This handles cases where youtube-sr returns empty results incorrectly
+      method = 'yt-dlp:retry';
+      results = await searchWithYtDlp(query, 20);
+    }
 
     // Store in cache
     searchCache.set(query, {
-      results: parsedResults,
+      results,
       expires: Date.now() + CACHE_TTL
     });
 
@@ -53,11 +144,14 @@ export async function GET(req: NextRequest) {
       if (firstKey) searchCache.delete(firstKey);
     }
 
-    return NextResponse.json({ results: parsedResults }, {
-      headers: { 'X-Cache': 'MISS' }
+    return NextResponse.json({ results }, {
+      headers: { 
+        'X-Cache': 'MISS',
+        'X-Search-Method': method 
+      }
     });
   } catch (error: any) {
-    console.error(`[SEARCH] YouTube API error:`, error.message);
+    console.error(`[SEARCH] Fatal search error:`, error.message);
     return NextResponse.json(
       { error: error.message || 'Error fetching search results' },
       { status: 500 }
