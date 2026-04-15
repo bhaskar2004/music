@@ -59,7 +59,7 @@ class ApiService {
       final searchResults = await _yt.search.search(query);
       return searchResults.map((video) {
         return Track(
-          id: video.id.value,
+          id: 'search-${video.id.value}',
           title: video.title,
           artist: video.author,
           album: 'Unknown',
@@ -84,7 +84,7 @@ class ApiService {
           .get(videoId)
           .timeout(const Duration(seconds: 60));
       return Track(
-        id: video.id.value,
+        id: 'search-${video.id.value}',
         title: video.title,
         artist: video.author,
         album: 'Unknown',
@@ -152,12 +152,16 @@ class ApiService {
       final exclude = excludeIds ?? {};
 
       return searchResults
-          .where((video) =>
-              !exclude.contains(video.id.value) &&
-              video.id.value != current.id)
+          .where((video) {
+            final rawId = video.id.value;
+            final prefixedId = 'search-$rawId';
+            return !exclude.contains(rawId) && 
+                   !exclude.contains(prefixedId) &&
+                   prefixedId != current.id;
+          })
           .take(5)
           .map((video) => Track(
-                id: video.id.value,
+                id: 'search-${video.id.value}',
                 title: video.title,
                 artist: video.author,
                 album: 'Unknown',

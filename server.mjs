@@ -15,6 +15,8 @@ const handle = app.getRequestHandler();
 // Each room tracks its current playback state so new joiners can sync immediately.
 const rooms = new Map();
 // rooms: Map<partyId, { track, trackId, positionMs, isPlaying, lastUpdateTs }>
+const cleanupTimers = new Map();
+const ROOM_CLEANUP_DELAY = 60 * 1000; // 60 seconds grace period
 
 function getRoomState(partyId) {
   return rooms.get(partyId) || null;
@@ -40,9 +42,25 @@ function getRoomMemberCount(io, partyId) {
 function broadcastMemberCount(io, partyId) {
   const count = getRoomMemberCount(io, partyId);
   io.to(partyId).emit('party_members', { partyId, count });
-  // Clean up empty rooms
+
+  // Clean up empty rooms after a grace period
   if (count === 0) {
-    rooms.delete(partyId);
+    if (!cleanupTimers.has(partyId)) {
+      console.log(`[Room] Starting cleanup timer for empty room: ${partyId}`);
+      const timer = setTimeout(() => {
+        console.log(`[Room] Grace period expired. Deleting room: ${partyId}`);
+        rooms.delete(partyId);
+        cleanupTimers.delete(partyId);
+      }, ROOM_CLEANUP_DELAY);
+      cleanupTimers.set(partyId, timer);
+    }
+  } else {
+    // If members rejoined, cancel the cleanup
+    if (cleanupTimers.has(partyId)) {
+      console.log(`[Room] Members rejoined. Cancelling cleanup for: ${partyId}`);
+      clearTimeout(cleanupTimers.get(partyId));
+      cleanupTimers.delete(partyId);
+    }
   }
 }
 
@@ -89,7 +107,15 @@ app.prepare().then(() => {
       joinedParties.add(partyId);
       console.log(`[Socket] ${socket.id} joined party: ${partyId}`);
 
+      // Cancel cleanup if someone joins
+      if (cleanupTimers.has(partyId)) {
+        console.log(`[Room] Member joined. Cancelling cleanup for: ${partyId}`);
+        clearTimeout(cleanupTimers.get(partyId));
+        cleanupTimers.delete(partyId);
+      }
+
       // Send current room state to the joining user
+      const state = getRoomState(partyId);
       if (state) {
         socket.emit('party_state', {
           partyId,
