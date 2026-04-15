@@ -259,7 +259,6 @@ export function startSyncBroadcasting(): () => void {
       if (state.currentTrack) {
         broadcastPlayback('change_track', (state.currentTime ?? 0) * 1000);
       }
-      return;
     }
 
     // Play/pause toggled

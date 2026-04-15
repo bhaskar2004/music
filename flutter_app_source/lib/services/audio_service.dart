@@ -253,8 +253,6 @@ class AudioService {
     final source = await _buildAudioSource(track);
     if (source == null) return;
 
-    currentTrack.value = track;
-    _fetchLyrics(track);
     await _player.stop();
     _queue.clear();
     await _playlist.clear();
@@ -283,7 +281,6 @@ class AudioService {
 
     if (_queue.isNotEmpty) {
       await _player.setAudioSource(_playlist);
-      currentTrack.value = _queue[0];
       unawaited(_player.play());
     }
 

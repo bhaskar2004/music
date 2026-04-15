@@ -59,7 +59,7 @@ export default function Sidebar() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Epilogue:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
 
         @keyframes sidebarItemIn {
           from { opacity: 0; transform: translateX(-10px); }
@@ -107,7 +107,7 @@ export default function Sidebar() {
           height: '100%',
           overflow: 'hidden',
           borderRight: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
-          fontFamily: 'Epilogue, sans-serif',
+          fontFamily: 'var(--font-sans)',
         }}
       >
         {/* ── Logo ─────────────────────────────────────── */}
@@ -122,7 +122,7 @@ export default function Sidebar() {
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: 'Syne, sans-serif',
+              fontFamily: 'var(--font-display)',
               fontWeight: 800, fontSize: 15,
               letterSpacing: '-0.3px',
               color: 'var(--text)',
@@ -171,7 +171,7 @@ export default function Sidebar() {
         {/* ── Nav ──────────────────────────────────────── */}
         <nav style={{ padding: '12px 10px', flex: 1, overflowY: 'auto' }} role="navigation">
           <p style={{
-            fontFamily: 'Syne, sans-serif',
+            fontFamily: 'var(--font-display)',
             fontSize: 9.5, fontWeight: 700,
             color: 'var(--text-faint)', textTransform: 'uppercase',
             letterSpacing: '0.14em', padding: '4px 10px 10px',
@@ -203,7 +203,7 @@ export default function Sidebar() {
                   /* Active left accent bar via box-shadow trick */
                   boxShadow: active ? 'inset 3px 0 0 var(--accent)' : 'none',
                   color: active ? 'var(--text)' : 'var(--text-muted)',
-                  fontFamily: 'Epilogue, sans-serif',
+                  fontFamily: 'var(--font-sans)',
                   fontWeight: active ? 600 : 400,
                   fontSize: 13.5,
                   cursor: 'pointer',
@@ -267,7 +267,7 @@ export default function Sidebar() {
             padding: '0 10px 8px',
           }}>
             <p style={{
-              fontFamily: 'Syne, sans-serif',
+              fontFamily: 'var(--font-display)',
               fontSize: 9.5, fontWeight: 700,
               color: 'var(--text-faint)', textTransform: 'uppercase',
               letterSpacing: '0.14em', margin: 0,
@@ -314,7 +314,7 @@ export default function Sidebar() {
                   border: '1px solid var(--accent)',
                   borderRadius: 8, padding: '7px 10px',
                   color: 'var(--text)', fontSize: 12.5,
-                  outline: 'none', fontFamily: 'Epilogue, sans-serif',
+                  outline: 'none', fontFamily: 'var(--font-sans)',
                   boxSizing: 'border-box',
                   boxShadow: '0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent)',
                 }}
@@ -325,7 +325,7 @@ export default function Sidebar() {
           <div style={{ overflowY: 'auto', maxHeight: '18vh' }}>
             {playlists.length === 0 && !isCreatingPlaylist && (
               <p style={{
-                fontFamily: 'Epilogue, sans-serif',
+                fontFamily: 'var(--font-sans)',
                 fontSize: 12, color: 'var(--text-faint)',
                 padding: '4px 10px', margin: 0, fontStyle: 'italic',
               }}>
@@ -375,7 +375,7 @@ export default function Sidebar() {
                       style={{ flexShrink: 0, color: isPlaylistActive ? 'var(--accent)' : 'inherit' }}
                     />
                     <span style={{
-                      fontFamily: 'Epilogue, sans-serif',
+                      fontFamily: 'var(--font-sans)',
                       fontSize: 13, fontWeight: isPlaylistActive ? 600 : 400,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>
@@ -418,7 +418,7 @@ export default function Sidebar() {
               width: '100%', padding: '10px 16px',
               background: 'var(--brand-gradient)',
               color: '#fff', border: 'none', borderRadius: 10,
-              fontFamily: 'Syne, sans-serif',
+              fontFamily: 'var(--font-display)',
               fontWeight: 700, fontSize: 13,
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -453,7 +453,7 @@ export default function Sidebar() {
                 ? '1px solid color-mix(in srgb, var(--accent) 40%, transparent)'
                 : '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
               borderRadius: 10,
-              fontFamily: 'Syne, sans-serif',
+              fontFamily: 'var(--font-display)',
               fontWeight: 700, fontSize: 13,
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,

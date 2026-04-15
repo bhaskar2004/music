@@ -78,7 +78,7 @@ export default function PartyModal() {
           color: var(--text);
           padding: 12px 16px;
           border-radius: 12px;
-          font-family: 'JetBrains Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 16px;
           text-align: center;
           letter-spacing: 0.1em;
@@ -103,7 +103,7 @@ export default function PartyModal() {
             borderBottom: '1px solid color-mix(in srgb, var(--border) 40%, transparent)',
           }}>
             <h2 style={{
-              margin: 0, fontFamily: 'Syne, sans-serif',
+              margin: 0, fontFamily: 'var(--font-display)',
               fontWeight: 800, fontSize: 22, color: 'var(--text)',
               display: 'flex', alignItems: 'center', gap: 10
             }}>
@@ -126,7 +126,7 @@ export default function PartyModal() {
           <div style={{ padding: 24 }}>
             {partyId ? (
               <div style={{ textAlign: 'center' }}>
-                <p style={{ color: 'var(--text-muted)', fontFamily: 'Epilogue, sans-serif', marginBottom: 20 }}>
+                <p style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', marginBottom: 20 }}>
                   You are in a listening party! Share this code with friends to sync playback.
                 </p>
 
@@ -151,7 +151,7 @@ export default function PartyModal() {
                       background: 'var(--surface)', border: '1px solid var(--border)',
                       padding: '8px 16px', borderRadius: 99,
                       color: copied ? 'var(--accent)' : 'var(--text)',
-                      fontFamily: 'Epilogue, sans-serif', fontSize: 13, fontWeight: 600,
+                      fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600,
                       cursor: 'pointer', transition: 'all 0.2s',
                     }}
                   >
@@ -176,7 +176,7 @@ export default function PartyModal() {
                       boxShadow: partyMembers > 0 ? '0 0 8px rgba(34, 197, 94, 0.4)' : 'none',
                     }} />
                     <span style={{
-                      fontFamily: 'Epilogue, sans-serif', fontSize: 14,
+                      fontFamily: 'var(--font-sans)', fontSize: 14,
                       fontWeight: 600, color: 'var(--text)',
                     }}>
                       {partyMembers > 0 ? (
@@ -196,7 +196,7 @@ export default function PartyModal() {
                     width: '100%', padding: '14px', borderRadius: 12,
                     background: 'color-mix(in srgb, var(--danger) 15%, transparent)',
                     color: 'var(--danger)', border: 'none',
-                    fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15,
+                    fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   }}
                 >
@@ -205,7 +205,7 @@ export default function PartyModal() {
               </div>
             ) : (
               <div>
-                <p style={{ color: 'var(--text-muted)', fontFamily: 'Epilogue, sans-serif', marginBottom: 24, lineHeight: 1.5 }}>
+                <p style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', marginBottom: 24, lineHeight: 1.5 }}>
                   Host a party or join an existing one to sync your music playback with friends in real-time.
                 </p>
 
@@ -214,7 +214,7 @@ export default function PartyModal() {
                   style={{
                     width: '100%', padding: '16px', borderRadius: 12,
                     background: 'var(--accent)', color: '#000', border: 'none',
-                    fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 16,
+                    fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16,
                     cursor: 'pointer', transition: 'all 0.2s',
                     boxShadow: '0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent)',
                     marginBottom: 24,
@@ -225,7 +225,7 @@ export default function PartyModal() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
                   <div style={{ height: 1, flex: 1, background: 'var(--border)' }} />
-                  <span style={{ color: 'var(--text-faint)', fontSize: 12, fontFamily: 'Epilogue, sans-serif', textTransform: 'uppercase', letterSpacing: '0.1em' }}>OR JOIN</span>
+                  <span style={{ color: 'var(--text-faint)', fontSize: 12, fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>OR JOIN</span>
                   <div style={{ height: 1, flex: 1, background: 'var(--border)' }} />
                 </div>
 
@@ -246,7 +246,7 @@ export default function PartyModal() {
                       padding: '0 24px', borderRadius: 12,
                       background: 'var(--surface2)', color: 'var(--text)',
                       border: '1px solid var(--border)',
-                      fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15,
+                      fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15,
                       cursor: joinCode.length < 3 ? 'not-allowed' : 'pointer',
                       opacity: joinCode.length < 3 ? 0.5 : 1,
                       transition: 'all 0.2s',

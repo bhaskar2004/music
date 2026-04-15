@@ -65,7 +65,7 @@ export default function LibraryView() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Epilogue:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
 
         @keyframes libHeaderIn {
           from { opacity: 0; transform: translateY(-12px); }
@@ -103,7 +103,7 @@ export default function LibraryView() {
           width: 100%; padding: 9px 12px;
           background: transparent; border: none; border-radius: 8px;
           cursor: pointer; display: flex; align-items: center; justify-content: space-between;
-          font-family: Epilogue, sans-serif; font-size: 13px; font-weight: 400;
+          font-family: var(--font-sans); font-size: 13px; font-weight: 400;
           color: var(--text-muted); text-align: left;
           transition: background 0.15s, color 0.15s;
         }
@@ -113,7 +113,7 @@ export default function LibraryView() {
         .lib-action-btn {
           display: flex; align-items: center; gap: 8px;
           border: none; border-radius: 99px; cursor: pointer;
-          font-family: Syne, sans-serif; font-size: 13px; font-weight: 700;
+          font-family: var(--font-display); font-size: 13px; font-weight: 700;
           padding: 10px 22px; transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
           letter-spacing: 0.01em;
         }
@@ -135,7 +135,7 @@ export default function LibraryView() {
         }
       `}</style>
 
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Epilogue, sans-serif' }}>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-sans)' }}>
 
         {/* ── Header ─────────────────────────────────────────── */}
         <div
@@ -160,7 +160,7 @@ export default function LibraryView() {
                   boxShadow: '0 0 6px var(--accent)',
                 }} />
                 <span style={{
-                  fontFamily: 'Syne, sans-serif',
+                  fontFamily: 'var(--font-display)',
                   fontSize: 10, fontWeight: 700,
                   color: 'var(--accent)',
                   textTransform: 'uppercase', letterSpacing: '0.14em',
@@ -170,7 +170,7 @@ export default function LibraryView() {
               </div>
 
               <h1 style={{
-                fontFamily: 'Syne, sans-serif',
+                fontFamily: 'var(--font-display)',
                 fontWeight: 800, fontSize: 42,
                 letterSpacing: '-1.5px', lineHeight: 1,
                 color: 'var(--text)', margin: 0,
@@ -271,7 +271,7 @@ export default function LibraryView() {
                   style={{
                     background: 'transparent', border: 'none', outline: 'none',
                     color: 'var(--text)', fontSize: 13,
-                    fontFamily: 'Epilogue, sans-serif', flex: 1,
+                    fontFamily: 'var(--font-sans)', flex: 1,
                     fontWeight: 400,
                   }}
                 />
@@ -303,7 +303,7 @@ export default function LibraryView() {
                     border: '1px solid color-mix(in srgb, var(--border) 50%, transparent)',
                     borderRadius: 8, padding: '7px 12px',
                     color: 'var(--text-muted)', fontSize: 12,
-                    fontFamily: 'Epilogue, sans-serif', fontWeight: 400,
+                    fontFamily: 'var(--font-sans)', fontWeight: 400,
                     cursor: 'pointer', transition: 'all 0.15s',
                     letterSpacing: '0.02em',
                   }}
@@ -479,7 +479,7 @@ function BulkBtn({ onClick, variant, icon, label }: {
         display: 'flex', alignItems: 'center', gap: 6,
         padding: '8px 16px', borderRadius: 10, border: 'none',
         background: c.bg, color: c.color,
-        fontFamily: 'Epilogue, sans-serif', fontSize: 12, fontWeight: 600,
+        fontFamily: 'var(--font-sans)', fontSize: 12, fontWeight: 600,
         cursor: 'pointer', transition: 'all 0.15s', letterSpacing: '0.02em',
       }}
       onMouseEnter={e => e.currentTarget.style.background = c.hoverBg}
@@ -500,13 +500,13 @@ function NoResults({ query, onClear }: { query: string; onClear: () => void }) {
       <Search size={32} style={{ color: 'var(--text-faint)', opacity: 0.3 }} />
       <div>
         <p style={{
-          fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 18,
+          fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18,
           color: 'var(--text)', margin: '0 0 6px',
         }}>
           No results
         </p>
         <p style={{
-          fontFamily: 'Epilogue, sans-serif', fontSize: 13,
+          fontFamily: 'var(--font-sans)', fontSize: 13,
           color: 'var(--text-faint)', margin: 0,
         }}>
           Nothing matched &ldquo;{query}&rdquo;
@@ -516,7 +516,7 @@ function NoResults({ query, onClear }: { query: string; onClear: () => void }) {
         onClick={onClear}
         style={{
           background: 'transparent', border: 'none', cursor: 'pointer',
-          fontFamily: 'Epilogue, sans-serif', fontSize: 13, fontWeight: 600,
+          fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600,
           color: 'var(--accent)', padding: '4px 12px', borderRadius: 99,
           transition: 'background 0.15s',
         }}
@@ -562,7 +562,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 
       <div style={{ maxWidth: 340 }}>
         <h2 style={{
-          fontFamily: 'Syne, sans-serif',
+          fontFamily: 'var(--font-display)',
           fontWeight: 800, fontSize: 28,
           letterSpacing: '-0.8px', color: 'var(--text)',
           marginBottom: 10, lineHeight: 1.1,
@@ -570,7 +570,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
           Your library is empty
         </h2>
         <p style={{
-          fontFamily: 'Epilogue, sans-serif',
+          fontFamily: 'var(--font-sans)',
           color: 'var(--text-faint)', fontSize: 14,
           lineHeight: 1.65, fontWeight: 400, margin: 0,
         }}>
@@ -585,7 +585,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
           padding: '13px 32px',
           background: 'var(--brand-gradient)', color: '#000',
           border: 'none', borderRadius: 99,
-          fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 14,
+          fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 14,
           cursor: 'pointer', letterSpacing: '0.01em',
           boxShadow: '0 8px 28px var(--accent-glow)',
           transition: 'all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',

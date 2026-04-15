@@ -120,7 +120,7 @@ export default function FullScreenPlayer() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
 
         @keyframes vinylSpin {
           from { transform: rotate(0deg); }

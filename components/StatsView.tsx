@@ -61,7 +61,7 @@ export default function StatsView() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Epilogue:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 
         @keyframes statsIn {
           from { opacity: 0; transform: translateY(14px); }
@@ -103,7 +103,7 @@ export default function StatsView() {
 
       <div
         className="stats-root responsive-padding"
-        style={{ height: '100%', overflow: 'auto', paddingTop: 44, paddingBottom: 60, fontFamily: 'Epilogue, sans-serif' }}
+        style={{ height: '100%', overflow: 'auto', paddingTop: 44, paddingBottom: 60, fontFamily: 'var(--font-sans)' }}
       >
 
         {/* ── Page header ─────────────────────────────────────────── */}
@@ -114,20 +114,20 @@ export default function StatsView() {
               background: 'var(--accent)', boxShadow: '0 0 6px var(--accent)',
             }} />
             <span style={{
-              fontFamily: 'Syne, sans-serif', fontSize: 10, fontWeight: 700,
+              fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700,
               color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.14em',
             }}>
               Listening Report
             </span>
           </div>
           <h1 style={{
-            fontFamily: 'Syne, sans-serif', fontWeight: 800,
+            fontFamily: 'var(--font-display)', fontWeight: 800,
             fontSize: 40, letterSpacing: '-1.5px', lineHeight: 1,
             color: 'var(--text)', margin: 0,
           }}>
             Your Stats
           </h1>
-          <p style={{ fontFamily: 'Epilogue, sans-serif', color: 'var(--text-faint)', fontSize: 13, marginTop: 10, fontWeight: 400 }}>
+          <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-faint)', fontSize: 13, marginTop: 10, fontWeight: 400 }}>
             Everything you've listened to, in one place.
           </p>
         </div>
@@ -247,7 +247,7 @@ export default function StatsView() {
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
                       <p style={{
-                        margin: 0, fontFamily: 'Epilogue, sans-serif',
+                        margin: 0, fontFamily: 'var(--font-sans)',
                         fontWeight: 600, fontSize: 13.5,
                         color: 'var(--text)',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -255,7 +255,7 @@ export default function StatsView() {
                         {item.track.title}
                       </p>
                       <p style={{
-                        margin: 0, fontFamily: 'Epilogue, sans-serif',
+                        margin: 0, fontFamily: 'var(--font-sans)',
                         fontSize: 12, color: 'var(--text-faint)', fontWeight: 400, marginTop: 2,
                       }}>
                         {item.track.artist}
@@ -327,7 +327,7 @@ function SectionLabel({ icon, title }: { icon: React.ReactNode; title: string })
     }}>
       <span style={{ color: 'var(--text-faint)', display: 'flex' }}>{icon}</span>
       <span style={{
-        fontFamily: 'Syne, sans-serif', fontWeight: 700,
+        fontFamily: 'var(--font-display)', fontWeight: 700,
         fontSize: 9.5, textTransform: 'uppercase',
         letterSpacing: '0.14em', color: 'var(--text-faint)',
       }}>
@@ -363,7 +363,7 @@ function StatCard({
       {/* Value */}
       <div>
         <div style={{
-          fontFamily: 'Syne, sans-serif', fontWeight: 800,
+          fontFamily: 'var(--font-display)', fontWeight: 800,
           fontSize: 30, letterSpacing: '-1px', lineHeight: 1,
           color: 'var(--text)',
         }}>
@@ -382,7 +382,7 @@ function StatCard({
 
       {/* Label */}
       <div style={{
-        fontFamily: 'Epilogue, sans-serif',
+        fontFamily: 'var(--font-sans)',
         fontSize: 12, color: 'var(--text-faint)',
         fontWeight: 400, marginTop: 'auto',
       }}>
@@ -396,7 +396,7 @@ function MiniStat({ label, value, mono = true }: { label: string; value: string;
   return (
     <div className="mini-stat">
       <p style={{
-        fontFamily: 'Syne, sans-serif', fontSize: 9, fontWeight: 700,
+        fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 700,
         color: 'var(--text-faint)', textTransform: 'uppercase',
         letterSpacing: '0.12em', margin: '0 0 6px',
       }}>
@@ -427,7 +427,7 @@ function EmptyChart() {
     }}>
       <Play size={28} style={{ color: 'var(--text-faint)', opacity: 0.25 }} />
       <p style={{
-        fontFamily: 'Epilogue, sans-serif', fontSize: 13,
+        fontFamily: 'var(--font-sans)', fontSize: 13,
         color: 'var(--text-faint)', margin: 0, opacity: 0.6,
       }}>
         Play some tracks to see your chart
