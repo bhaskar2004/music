@@ -10,8 +10,11 @@ import '../../services/audio_service.dart';
 import '../../services/download_manager.dart';
 import '../../models/track.dart';
 import '../../services/sync_service.dart';
+import '../../services/theme_service.dart';
 import '../widgets/vinyl_record.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/neon_visualizer.dart';
+import '../widgets/discovery_radar.dart';
 import 'queue_view.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -34,13 +37,46 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Use a post-frame callback to ensure context is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final audio = context.read<AudioService>();
+      final appState = context.read<AppState>();
+      
+      // Initial trigger for current track
+      if (audio.currentTrack.value != null) {
+        _handleTrackChange(audio.currentTrack.value!, appState);
+      }
+
+      // Listen for future track changes
+      audio.currentTrack.addListener(() {
+        if (audio.currentTrack.value != null) {
+          _handleTrackChange(audio.currentTrack.value!, appState);
+        }
+      });
+    });
+  }
+
+  Future<void> _handleTrackChange(Track track, AppState appState) async {
+    // 1. Dynamic Theming
+    final color = await ThemeService().extractAccentColor(track.coverUrl);
+    if (color != null) {
+      appState.updateAccentColor(color);
+    }
+    
+    // 2. Discovery Radar
+    appState.findRecommendations(track);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final audio = context.read<AudioService>();
     final appState = context.watch<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Premium Branding
-    const premiumAccent = Color(0xFFC1344A);
+    // Premium Branding (Dynamic)
+    final premiumAccent = appState.currentAccentColor;
     final premiumBg = isDark ? const Color(0xFF0D0D0D) : const Color(0xFFFAFAF9);
 
     return Scaffold(
@@ -108,11 +144,22 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   ? StreamBuilder<bool>(
                                       stream: audio.player.playingStream,
                                       builder: (context, snapshot) {
-                                        return VinylRecord(
-                                          key: const ValueKey('vinyl'),
-                                          coverUrl: track.coverUrl,
-                                          isPlaying: snapshot.data ?? audio.isPlaying,
-                                          size: MediaQuery.of(context).size.width * 0.72,
+                                        final isPlaying = snapshot.data ?? audio.isPlaying;
+                                        return Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            NeonVisualizer(
+                                              color: premiumAccent,
+                                              isPlaying: isPlaying,
+                                              size: MediaQuery.of(context).size.width * 0.72,
+                                            ),
+                                            VinylRecord(
+                                              key: const ValueKey('vinyl'),
+                                              coverUrl: track.coverUrl,
+                                              isPlaying: isPlaying,
+                                              size: MediaQuery.of(context).size.width * 0.72,
+                                            ),
+                                          ],
                                         );
                                       },
                                     )
@@ -178,6 +225,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                   ],
                 ),
               ),
+              
+              const DiscoveryRadar(),
             ],
           );
         },
@@ -186,7 +235,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Widget _buildAppBar(BuildContext context, AudioService audio, bool isDark) {
-    const premiumAccent = Color(0xFFC1344A);
+    final premiumAccent = context.read<AppState>().currentAccentColor;
     final mutedColor = isDark ? Colors.white38 : Colors.black38;
 
     return Padding(
@@ -389,11 +438,12 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Widget _buildLyricsView(AudioService audio) {
+    final premiumAccent = context.read<AppState>().currentAccentColor;
     return ValueListenableBuilder<bool>(
       valueListenable: audio.isLoadingLyrics,
       builder: (ctx, loading, _) {
         if (loading) {
-          return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC1344A)));
+          return Center(child: CircularProgressIndicator(strokeWidth: 2, color: premiumAccent));
         }
         return ValueListenableBuilder<Map<String, dynamic>?>(
           valueListenable: audio.lyrics,
@@ -465,7 +515,7 @@ class _AppBarBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const premiumAccent = Color(0xFFC1344A);
+    final premiumAccent = context.read<AppState>().currentAccentColor;
     final bgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04);
     final iconColor = active ? premiumAccent : (isDark ? Colors.white70 : Colors.black54);
 
@@ -643,7 +693,7 @@ class _CtrlBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const premiumAccent = Color(0xFFC1344A);
+    final premiumAccent = context.read<AppState>().currentAccentColor;
     return GestureDetector(
       onTap: onTap,
       child: Icon(icon, size: size, color: active ? premiumAccent : (isDark ? Colors.white24 : Colors.black26)),

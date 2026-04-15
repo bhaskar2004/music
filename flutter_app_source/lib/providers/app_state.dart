@@ -28,6 +28,11 @@ class AppState extends ChangeNotifier {
   final Set<String> _selectedIds = {};
   bool _isAddingSongs = false;
 
+  // ─── Dynamic Features ─────────────────────────────────────────────────────
+  Color _currentAccentColor = const Color(0xFFC1344A);
+  List<Track> _recommendedTracks = [];
+  bool _isLoadingRecommendations = false;
+
   // ─── Getters ──────────────────────────────────────────────────────────────
 
   List<Track> get library => List.unmodifiable(_library);
@@ -44,6 +49,9 @@ class AppState extends ChangeNotifier {
   int get pendingDownloadsCount =>
       _downloads.where((d) => d.isActive).length;
   AppConfig get config => _config;
+  Color get currentAccentColor => _currentAccentColor;
+  List<Track> get recommendedTracks => List.unmodifiable(_recommendedTracks);
+  bool get isLoadingRecommendations => _isLoadingRecommendations;
 
   List<String> get favorites =>
       _library.where((t) => t.isFavorite).map((t) => t.id).toList();
@@ -370,5 +378,25 @@ class AppState extends ChangeNotifier {
     await StorageService().saveConfig(_config);
     await ServerConfig.setBaseUrl(url); // Ensure ServerConfig is synced
     notifyListeners();
+  }
+
+  // ─── Dynamic Features Methods ─────────────────────────────────────────────
+  
+  void updateAccentColor(Color color) {
+    if (_currentAccentColor == color) return;
+    _currentAccentColor = color;
+    notifyListeners();
+  }
+
+  Future<void> findRecommendations(Track track) async {
+    _isLoadingRecommendations = true;
+    notifyListeners();
+    try {
+      final results = await ApiService().searchRelatedTracks(track);
+      _recommendedTracks = results;
+    } finally {
+      _isLoadingRecommendations = false;
+      notifyListeners();
+    }
   }
 }

@@ -79,18 +79,18 @@ class _VinylRecordState extends State<VinylRecord>
               ),
             ],
             // Vinyl texture with sweep gradient to simulate reflections
-            gradient: const SweepGradient(
+            gradient: SweepGradient(
               center: Alignment.center,
               colors: [
-                Color(0xFF111111),
-                Color(0xFF222222),
-                Color(0xFF111111),
-                Color(0xFF222222),
-                Color(0xFF111111),
-                Color(0xFF212121),
-                Color(0xFF111111),
+                const Color(0xFF111111),
+                context.watch<AppState>().currentAccentColor.withOpacity(0.05),
+                const Color(0xFF111111),
+                const Color(0xFF222222),
+                const Color(0xFF111111),
+                context.watch<AppState>().currentAccentColor.withOpacity(0.03),
+                const Color(0xFF111111),
               ],
-              stops: [0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 1.0],
+              stops: const [0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 1.0],
             ),
           ),
           child: Stack(

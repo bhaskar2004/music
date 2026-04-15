@@ -7,9 +7,12 @@ import {
   X, Play, Pause, SkipBack, SkipForward,
   Shuffle, Repeat, Repeat1, Heart, ListMusic,
   Volume2, VolumeX, ChevronDown, AlignLeft, Music, Download, Library,
+  Radar, Plus, Check,
 } from 'lucide-react';
 import { useDownloadProcessor } from '@/hooks/useDownloadProcessor';
 import Image from 'next/image';
+import AudioVisualizer from './AudioVisualizer';
+import { extractAccentColor } from '@/lib/colorUtils';
 
 export default function FullScreenPlayer() {
   const {
@@ -17,7 +20,9 @@ export default function FullScreenPlayer() {
     currentTime, duration, volume, lyrics, isLoadingLyrics,
     setIsPlaying, playNext, playPrev, toggleShuffle, toggleRepeat,
     toggleFavorite, setShowFullScreenPlayer, setActiveView, setCurrentTime,
-    library,
+    library, currentAccentColor, setAccentColor, recommendedTracks,
+    isLoadingRecommendations, fetchRecommendations, addToQueue, playNextTrack,
+    queue, setCurrentTrack,
   } = useMusicStore();
 
   const { processDownload } = useDownloadProcessor();
@@ -29,6 +34,22 @@ export default function FullScreenPlayer() {
   const progressRef = useRef<HTMLDivElement>(null);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
+  const [showRadar, setShowRadar] = useState(false);
+
+  /* ── Dynamic Theming & Recommendations ────────────────────────── */
+  useEffect(() => {
+    if (!currentTrack) return;
+    
+    // 1. Color Extraction
+    if (currentTrack.coverUrl) {
+      extractAccentColor(currentTrack.coverUrl).then(color => {
+        if (color) setAccentColor(color);
+      });
+    }
+
+    // 2. Recommendations
+    fetchRecommendations(currentTrack);
+  }, [currentTrack, setAccentColor, fetchRecommendations]);
 
   /* ── LRC parser ─────────────────────────────────────────────────── */
   const parsedLyrics = (() => {
@@ -101,10 +122,10 @@ export default function FullScreenPlayer() {
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const displayProgress = hoverProgress !== null ? hoverProgress : progressPct;
 
-  /* ── Derive a subtle accent color heuristic (warm rose) ─────────── */
-  const ACCENT = '#C1344A';
-  const ACCENT_BG = '#FDF0F2';
-  const ACCENT_SOFT = 'rgba(193,52,74,0.12)';
+  /* ── Dynamic Accent Colors ─────────────────────────────────────── */
+  const ACCENT = currentAccentColor;
+  const ACCENT_BG = `rgba(${parseInt(ACCENT.slice(1,3),16)}, ${parseInt(ACCENT.slice(3,5),16)}, ${parseInt(ACCENT.slice(5,7),16)}, 0.08)`;
+  const ACCENT_SOFT = `rgba(${parseInt(ACCENT.slice(1,3),16)}, ${parseInt(ACCENT.slice(3,5),16)}, ${parseInt(ACCENT.slice(5,7),16)}, 0.12)`;
 
   return (
     <>
@@ -129,8 +150,8 @@ export default function FullScreenPlayer() {
           50%      { transform:translateY(-6px); }
         }
         @keyframes pulseGlow {
-          0%,100% { box-shadow: 0 20px 80px rgba(193,52,74,0.12), 0 4px 24px rgba(0,0,0,0.08); }
-          50%      { box-shadow: 0 28px 100px rgba(193,52,74,0.2),  0 4px 32px rgba(0,0,0,0.10); }
+          0%,100% { box-shadow: 0 20px 80px ${ACCENT_SOFT}, 0 4px 24px rgba(0,0,0,0.08); }
+          50%      { box-shadow: 0 28px 100px ${ACCENT_SOFT.replace('0.12', '0.2')},  0 4px 32px rgba(0,0,0,0.10); }
         }
         @keyframes spinnerFade {
           0%   { opacity: 0.15; }
@@ -154,7 +175,7 @@ export default function FullScreenPlayer() {
           position:absolute;
           top:-30%; left:-20%;
           width:70%; height:80%;
-          background: radial-gradient(ellipse, rgba(193,52,74,0.06) 0%, transparent 70%);
+          background: radial-gradient(ellipse, ${ACCENT}10 0%, transparent 70%);
           pointer-events:none;
         }
         .fsp-root::after {
@@ -529,7 +550,10 @@ export default function FullScreenPlayer() {
 
             {/* Vinyl art */}
             <div className={`fsp-art-wrap${isPlaying ? ' playing' : ''}`}>
-              <div className={`fsp-vinyl${isPlaying ? ' playing' : ''}`}>
+              {/* Reactive Visualizer */}
+              <AudioVisualizer isPlaying={isPlaying} />
+
+              <div className={`fsp-vinyl${isPlaying ? ' playing' : ''}`} style={{ position: 'relative', zIndex: 1 }}>
                 {/* Grooves */}
                 {[38, 52, 66, 80, 96].map(inset => (
                   <div key={inset} className="fsp-groove" style={{ inset }} />
@@ -667,28 +691,84 @@ export default function FullScreenPlayer() {
                   </button>
                 </div>
 
-                {/* Lyrics toggle */}
-                <button
-                  className={`fsp-lyrics-toggle${showLyrics ? ' on' : ''}`}
-                  onClick={() => setShowLyrics(v => !v)}
-                  title={showLyrics ? 'Hide lyrics' : 'Show lyrics'}
-                >
-                  {showLyrics ? <Music size={11} /> : <AlignLeft size={11} />}
-                  {showLyrics ? 'Art view' : 'Lyrics'}
-                </button>
+                  {/* Discovery Radar toggle */}
+                  <button
+                    className={`fsp-lyrics-toggle${showRadar ? ' on' : ''}`}
+                    onClick={() => { setShowRadar(v => !v); if (!showRadar) setShowLyrics(true); }}
+                    title={showRadar ? 'Hide Discovery Radar' : 'Show Discovery Radar'}
+                    style={{ marginLeft: 8 }}
+                  >
+                    <Radar size={11} />
+                    {showRadar ? 'Close Radar' : 'Radar'}
+                  </button>
+
+                  <button
+                    className={`fsp-lyrics-toggle${showLyrics && !showRadar ? ' on' : ''}`}
+                    onClick={() => { setShowLyrics(v => !v); setShowRadar(false); }}
+                    title={showLyrics ? 'Hide lyrics' : 'Show lyrics'}
+                  >
+                    {showLyrics ? <Music size={11} /> : <AlignLeft size={11} />}
+                    {showLyrics ? 'Art view' : 'Lyrics'}
+                  </button>
               </div>
             </div>
           </div>
 
-          {/* ════ RIGHT: Lyrics panel ════ */}
+          {/* ════ RIGHT: Panel (Lyrics or Radar) ════ */}
           {showLyrics && (
             <div className="fsp-lyrics-panel">
-              <p className="fsp-lyrics-header">Lyrics</p>
+              <p className="fsp-lyrics-header">{showRadar ? 'Discovery Radar' : 'Lyrics'}</p>
               <div className="fsp-divider" />
 
               <div className="fsp-lyrics-scroll-wrap">
                 <div ref={lyricsContainerRef} className="fsp-lyrics-scroll">
-                  {isLoadingLyrics ? (
+                  {showRadar ? (
+                    isLoadingRecommendations ? (
+                      <div className="fsp-lyrics-loading">
+                        <div className="fsp-loading-text">Scanning for similar vibes…</div>
+                      </div>
+                    ) : recommendedTracks.length > 0 ? (
+                      <div className="flex flex-col gap-3">
+                        {recommendedTracks.map(track => (
+                          <div 
+                            key={track.id}
+                            className="flex items-center gap-4 p-3 rounded-xl hover:bg-black/5 transition-all cursor-pointer group"
+                            onClick={() => setCurrentTrack(track)}
+                          >
+                            <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
+                              {track.coverUrl ? (
+                                <Image src={track.coverUrl} alt={track.title} fill className="object-cover" unoptimized />
+                              ) : (
+                                <div className="w-full h-full bg-black/10 flex items-center justify-center"><Music size={16} /></div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-semibold truncate leading-tight">{track.title}</h4>
+                                <p className="text-[11px] text-black/40 font-medium truncate mt-0.5 uppercase tracking-wider">{track.artist}</p>
+                            </div>
+                            <button 
+                              className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
+                                queue.some(t => t.id === track.id) 
+                                ? 'bg-green-50 text-green-600' 
+                                : 'hover:bg-black/10 text-black/40 hover:text-black'
+                              }`}
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (!queue.some(t => t.id === track.id)) {
+                                  playNextTrack(track); 
+                                }
+                              }}
+                              title={queue.some(t => t.id === track.id) ? 'Added to Queue' : 'Play Next'}
+                            >
+                              {queue.some(t => t.id === track.id) ? <Check size={16} /> : <Plus size={16} />}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <LyricsEmpty label="No recommendations found yet" />
+                    )
+                  ) : isLoadingLyrics ? (
                     <div className="fsp-lyrics-loading">
                       <div className="fsp-loading-text">Finding lyrics…</div>
                     </div>

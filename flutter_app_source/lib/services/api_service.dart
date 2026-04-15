@@ -144,9 +144,12 @@ class ApiService {
           ), '')
           .trim();
 
-      // Use artist + cleaned title keywords for a "vibe" search
-      final query = '${current.artist} $cleanTitle music';
-      debugPrint('[ApiService] Autoplay query: "$query"');
+      final isKnownAlbum = current.album != 'Unknown' && current.album.isNotEmpty;
+      final query = isKnownAlbum 
+          ? '${current.artist} ${current.album} soundtrack songs'
+          : '${current.artist} similar songs top tracks';
+          
+      debugPrint('[ApiService] Discovery Radar query: "$query"');
 
       final searchResults = await _yt.search.search(query);
       final exclude = excludeIds ?? {};
@@ -155,11 +158,18 @@ class ApiService {
           .where((video) {
             final rawId = video.id.value;
             final prefixedId = 'search-$rawId';
-            return !exclude.contains(rawId) && 
-                   !exclude.contains(prefixedId) &&
-                   prefixedId != current.id;
+            final videoTitle = video.title.toLowerCase();
+            final currentTitle = current.title.toLowerCase();
+            
+            // 1. Basic ID exclusion
+            if (exclude.contains(rawId) || exclude.contains(prefixedId) || prefixedId == current.id) return false;
+            
+            // 2. Filter out versions of the SAME song (duplicates)
+            if (videoTitle.contains(cleanTitle.toLowerCase()) || currentTitle.contains(videoTitle)) return false;
+            
+            return true;
           })
-          .take(5)
+          .take(10)
           .map((video) => Track(
                 id: 'search-${video.id.value}',
                 title: video.title,

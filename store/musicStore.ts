@@ -120,6 +120,13 @@ interface MusicStore {
   // Theme
   theme: 'system' | 'dark' | 'light';
   setTheme: (v: 'system' | 'dark' | 'light') => void;
+  currentAccentColor: string;
+  setAccentColor: (color: string) => void;
+
+  // Recommendations
+  recommendedTracks: Track[];
+  isLoadingRecommendations: boolean;
+  fetchRecommendations: (track: Track) => Promise<void>;
 }
 
 export const useMusicStore = create<MusicStore>()(
@@ -511,6 +518,60 @@ export const useMusicStore = create<MusicStore>()(
       // Theme
       theme: 'system',
       setTheme: (v) => set({ theme: v }),
+      currentAccentColor: '#C1344A',
+      setAccentColor: (color) => set({ currentAccentColor: color }),
+
+      // Recommendations
+      recommendedTracks: [],
+      isLoadingRecommendations: false,
+      fetchRecommendations: async (track) => {
+        set({ isLoadingRecommendations: true, recommendedTracks: [] });
+        try {
+          const cleanTitle = track.title
+            .replace(/\(.*?\)|\[.*?\]/gi, '')
+            .replace(/official\s*(music\s*)?video|lyric(al)?\s*video|audio|full\s*song|hd|4k|music\s*video/gi, '')
+            .trim();
+          
+          // Broad query strategy for variety: Artist's top tracks + Alum/Soundtrack vibe
+          const query = track.album && track.album !== 'Unknown' 
+            ? `${track.artist} ${track.album} soundtrack collection`
+            : `${track.artist} similar songs popular tracks mix`;
+            
+          const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+          if (res.ok) {
+            const data = await res.json();
+            const results = (data.results || [])
+              .filter((t: any) => {
+                const tLower = t.title.toLowerCase();
+                const currentLower = track.title.toLowerCase();
+                // 1. Skip if the title is too similar to the current song
+                if (tLower.includes(cleanTitle.toLowerCase()) || currentLower.includes(t.title.toLowerCase())) return false;
+                // 2. Skip if it's the exact same artist AND title (redundant check)
+                if (t.artist.toLowerCase() === track.artist.toLowerCase() && tLower === currentLower) return false;
+                return true;
+              })
+              .slice(0, 10).map((t: any) => ({
+              id: `search-${t.id}`,
+              title: t.title,
+              artist: t.artist,
+              album: 'Unknown',
+              duration: Math.round(t.duration / 1000) || 0,
+              filename: `${t.id}.mp3`,
+              coverUrl: t.thumbnail,
+              sourceUrl: t.url,
+              format: 'mp3',
+              addedAt: new Date().toISOString(),
+              fileSize: 0,
+              playlistIds: [],
+            }));
+            set({ recommendedTracks: results });
+          }
+        } catch (err) {
+          console.error("[Recommendations] Error:", err);
+        } finally {
+          set({ isLoadingRecommendations: false });
+        }
+      },
     }),
     {
       name: 'wavelength-settings',
