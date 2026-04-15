@@ -261,6 +261,7 @@ class AudioService {
 
   AudioPlayer get player => _player;
   List<Track> get queue => List.unmodifiable(_queue);
+  bool get isPlaying => _player.playing;
 
   // ── Playback ──────────────────────────────────────────────────────────────
 

@@ -105,11 +105,16 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 duration: const Duration(milliseconds: 600),
                                 transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
                                 child: !_showLyrics 
-                                  ? VinylRecord(
-                                      key: const ValueKey('vinyl'),
-                                      coverUrl: track.coverUrl,
-                                      isPlaying: audio.isPlaying,
-                                      size: MediaQuery.of(context).size.width * 0.72,
+                                  ? StreamBuilder<bool>(
+                                      stream: audio.player.playingStream,
+                                      builder: (context, snapshot) {
+                                        return VinylRecord(
+                                          key: const ValueKey('vinyl'),
+                                          coverUrl: track.coverUrl,
+                                          isPlaying: snapshot.data ?? audio.isPlaying,
+                                          size: MediaQuery.of(context).size.width * 0.72,
+                                        );
+                                      },
                                     )
                                   : Container(
                                       key: const ValueKey('lyrics'),
@@ -345,22 +350,28 @@ class _PlayerScreenState extends State<PlayerScreen>
           onTap: audio.playPrevious,
           size: 32,
         ),
-        GestureDetector(
-          onTap: () => audio.isPlaying ? audio.pause() : audio.resume(),
-          child: Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
-              shape: BoxShape.circle,
-              border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-            ),
-            child: Icon(
-              audio.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              size: 32,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-          ),
+        StreamBuilder<bool>(
+          stream: audio.player.playingStream,
+          builder: (context, snapshot) {
+            final isPlaying = snapshot.data ?? audio.isPlaying;
+            return GestureDetector(
+              onTap: () => isPlaying ? audio.pause() : audio.resume(),
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                ),
+                child: Icon(
+                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  size: 32,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
+            );
+          },
         ),
         _CtrlBtn(
           icon: Icons.skip_next_rounded,

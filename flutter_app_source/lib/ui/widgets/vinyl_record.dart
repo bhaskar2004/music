@@ -78,8 +78,8 @@ class _VinylRecordState extends State<VinylRecord>
                 offset: const Offset(0, 20),
               ),
             ],
-            // Vinyl texture with conic gradient to simulate reflections
-            gradient: const ConicGradient(
+            // Vinyl texture with sweep gradient to simulate reflections
+            gradient: const SweepGradient(
               center: Alignment.center,
               colors: [
                 Color(0xFF111111),
