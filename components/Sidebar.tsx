@@ -26,6 +26,8 @@ export default function Sidebar() {
     setShowDownloadModal, playlists, addPlaylist, removePlaylist,
     activePlaylistId, setActivePlaylistId, recentlyPlayed,
     setShowPartyModal,
+    partyId,
+    partyMembers,
   } = useMusicStore();
 
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -443,8 +445,13 @@ export default function Sidebar() {
             aria-label="Listen Together"
             style={{
               width: '100%', padding: '10px 16px',
-              background: 'var(--surface2)',
-              color: 'var(--text)', border: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
+              background: partyId
+                ? 'color-mix(in srgb, var(--accent) 12%, transparent)'
+                : 'var(--surface2)',
+              color: partyId ? 'var(--accent)' : 'var(--text)',
+              border: partyId
+                ? '1px solid color-mix(in srgb, var(--accent) 40%, transparent)'
+                : '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
               borderRadius: 10,
               fontFamily: 'Syne, sans-serif',
               fontWeight: 700, fontSize: 13,
@@ -452,16 +459,41 @@ export default function Sidebar() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
               letterSpacing: '0.02em',
+              boxShadow: partyId ? '0 0 16px color-mix(in srgb, var(--accent) 15%, transparent)' : 'none',
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = 'var(--surface3)';
+              e.currentTarget.style.background = partyId
+                ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
+                : 'var(--surface3)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = 'var(--surface2)';
+              e.currentTarget.style.background = partyId
+                ? 'color-mix(in srgb, var(--accent) 12%, transparent)'
+                : 'var(--surface2)';
             }}
           >
             <Users size={15} strokeWidth={2.4} color="var(--accent)" />
-            Listen Together
+            {partyId ? (
+              <>
+                Party Active
+                {partyMembers > 0 && (
+                  <span style={{
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    borderRadius: 99,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: '1px 7px',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    marginLeft: 2,
+                  }}>
+                    {partyMembers}
+                  </span>
+                )}
+              </>
+            ) : (
+              'Listen Together'
+            )}
           </button>
 
           <div style={{

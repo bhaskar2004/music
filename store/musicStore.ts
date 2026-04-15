@@ -81,6 +81,10 @@ interface MusicStore {
   setShowPartyModal: (v: boolean) => void;
   partyId: string | null;
   setPartyId: (id: string | null) => void;
+  partyMembers: number;
+  setPartyMembers: (n: number) => void;
+  pendingSeek: number | null;
+  setPendingSeek: (v: number | null) => void;
   selectedTrack: Track | null;
   setSelectedTrack: (t: Track | null) => void;
   showFullScreenPlayer: boolean;
@@ -427,6 +431,10 @@ export const useMusicStore = create<MusicStore>()(
       setShowPartyModal: (v) => set({ showPartyModal: v }),
       partyId: null,
       setPartyId: (id) => set({ partyId: id }),
+      partyMembers: 0,
+      setPartyMembers: (n) => set({ partyMembers: n }),
+      pendingSeek: null,
+      setPendingSeek: (v) => set({ pendingSeek: v }),
       selectedTrack: null,
       setSelectedTrack: (t) => set({ selectedTrack: t }),
       showFullScreenPlayer: false,

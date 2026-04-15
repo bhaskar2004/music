@@ -43,6 +43,9 @@ export default function NowPlayingBar() {
     queue,
     toggleAutoplay,
     isAutoplayEnabled,
+    pendingSeek,
+    setPendingSeek,
+    partyId,
   } = useMusicStore();
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -113,6 +116,15 @@ export default function NowPlayingBar() {
     if (!audio) return;
     audio.volume = muted ? 0 : volume;
   }, [volume, muted]);
+
+  // ─── Remote seek: consume pendingSeek from sync service ─────────────────
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (pendingSeek == null || !audio) return;
+    audio.currentTime = pendingSeek;
+    setLocalTime(pendingSeek);
+    setPendingSeek(null);
+  }, [pendingSeek]);
 
   // Crossfade logic
   const handleCrossfade = useCallback(() => {

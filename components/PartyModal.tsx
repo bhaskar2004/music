@@ -2,11 +2,11 @@
 
 import { useMusicStore } from '@/store/musicStore';
 import { joinSyncParty, leaveSyncParty, generatePartyCode } from '@/lib/syncService';
-import { X, Users, Copy, CheckCircle2, LogOut } from 'lucide-react';
+import { X, Users, Copy, CheckCircle2, LogOut, Wifi, WifiOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function PartyModal() {
-  const { showPartyModal, setShowPartyModal, partyId } = useMusicStore();
+  const { showPartyModal, setShowPartyModal, partyId, partyMembers } = useMusicStore();
   const [joinCode, setJoinCode] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -66,6 +66,10 @@ export default function PartyModal() {
         }
         @keyframes partyFadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes partyScaleIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes partyPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
         
         .party-input {
           width: 100%;
@@ -85,6 +89,9 @@ export default function PartyModal() {
         .party-input:focus {
           border-color: var(--accent);
           box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 15%, transparent);
+        }
+        .party-input::placeholder {
+          text-transform: uppercase;
         }
       `}</style>
 
@@ -119,14 +126,16 @@ export default function PartyModal() {
           <div style={{ padding: 24 }}>
             {partyId ? (
               <div style={{ textAlign: 'center' }}>
-                <p style={{ color: 'var(--text-muted)', fontFamily: 'Epilogue, sans-serif', marginBottom: 24 }}>
-                  You are currently in a listening party! Share this code with friends to sync playback.
+                <p style={{ color: 'var(--text-muted)', fontFamily: 'Epilogue, sans-serif', marginBottom: 20 }}>
+                  You are in a listening party! Share this code with friends to sync playback.
                 </p>
+
+                {/* Party Code Display */}
                 <div style={{
                   background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
                   border: '1px dashed var(--accent)',
                   borderRadius: 16, padding: '24px',
-                  marginBottom: 24,
+                  marginBottom: 20,
                 }}>
                   <div style={{
                     fontFamily: 'JetBrains Mono, monospace',
@@ -149,6 +158,36 @@ export default function PartyModal() {
                     {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                     {copied ? 'Copied!' : 'Copy Code'}
                   </button>
+                </div>
+
+                {/* Member Count & Status */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                  marginBottom: 24, padding: '12px 18px',
+                  background: 'var(--surface2)', borderRadius: 12,
+                }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <div style={{
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: partyMembers > 0 ? '#22c55e' : 'var(--text-faint)',
+                      animation: partyMembers > 0 ? 'partyPulse 2s ease-in-out infinite' : 'none',
+                      boxShadow: partyMembers > 0 ? '0 0 8px rgba(34, 197, 94, 0.4)' : 'none',
+                    }} />
+                    <span style={{
+                      fontFamily: 'Epilogue, sans-serif', fontSize: 14,
+                      fontWeight: 600, color: 'var(--text)',
+                    }}>
+                      {partyMembers > 0 ? (
+                        <>
+                          {partyMembers} {partyMembers === 1 ? 'listener' : 'listeners'} connected
+                        </>
+                      ) : (
+                        'Connecting...'
+                      )}
+                    </span>
+                  </div>
                 </div>
 
                 <button

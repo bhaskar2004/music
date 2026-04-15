@@ -110,6 +110,28 @@ class AudioService {
         }
       }
     };
+
+    // Handle initial state sync when joining a party room
+    SyncService().onPartyStateReceived = (data) {
+      debugPrint('[AudioService] Received party state on join: $data');
+      final trackData = data['track'] as Map<String, dynamic>?;
+      final ms = data['positionMs'] as int?;
+      final isPlaying = data['isPlaying'] as bool? ?? false;
+
+      if (trackData != null) {
+        final track = Track.fromMap(trackData);
+        _isHandlingSync = true;
+        playTrack(track).then((_) {
+          if (ms != null) {
+            _player.seek(Duration(milliseconds: ms));
+          }
+          if (!isPlaying) {
+            _player.pause();
+          }
+          Future.delayed(const Duration(milliseconds: 500), () => _isHandlingSync = false);
+        });
+      }
+    };
   }
 
   Future<void> _handleSyncPlayTrack(Track track, int? ms) async {
