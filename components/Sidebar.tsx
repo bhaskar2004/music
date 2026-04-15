@@ -154,9 +154,10 @@ export default function Sidebar() {
           <button
             onClick={() => useMusicStore.getState().fetchLibrary()}
             title="Refresh"
+            className="bouncy-hover"
             style={{
               background: 'transparent', border: 'none',
-              cursor: 'pointer', padding: 6, borderRadius: 6,
+              cursor: 'pointer', padding: 10, borderRadius: 10,
               color: 'var(--text-faint)',
               transition: 'color 0.15s, background 0.15s',
               flexShrink: 0,
@@ -164,7 +165,7 @@ export default function Sidebar() {
             onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'var(--surface2)'; }}
             onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = 'transparent'; }}
           >
-            <RefreshCcw size={12} />
+            <RefreshCcw size={14} />
           </button>
         </div>
 
@@ -195,20 +196,18 @@ export default function Sidebar() {
                 aria-current={active ? 'page' : undefined}
                 style={{
                   width: '100%',
-                  padding: '9px 10px 9px 12px',
-                  marginBottom: 1,
-                  background: active ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
+                  padding: '10px 10px 10px 14px',
+                  marginBottom: 2,
+                  background: active ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
                   border: 'none',
-                  borderRadius: 9,
-                  /* Active left accent bar via box-shadow trick */
-                  boxShadow: active ? 'inset 3px 0 0 var(--accent)' : 'none',
+                  borderRadius: 12,
                   color: active ? 'var(--text)' : 'var(--text-muted)',
                   fontFamily: 'var(--font-sans)',
                   fontWeight: active ? 600 : 400,
-                  fontSize: 13.5,
+                  fontSize: 14,
                   cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 11,
-                  transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                   textAlign: 'left',
                   letterSpacing: '0.01em',
                 }}
@@ -277,16 +276,17 @@ export default function Sidebar() {
             <button
               onClick={() => setIsCreatingPlaylist(true)}
               title="New playlist"
+              className="bouncy-hover"
               style={{
                 background: 'transparent', border: 'none',
-                cursor: 'pointer', padding: '4px 5px', borderRadius: 6,
+                cursor: 'pointer', padding: '6px', borderRadius: 8,
                 color: 'var(--text-faint)',
                 transition: 'color 0.15s, background 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'; }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 12%, transparent)'; }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.background = 'transparent'; }}
             >
-              <Plus size={13} />
+              <Plus size={14} />
             </button>
           </div>
 

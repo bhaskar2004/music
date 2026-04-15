@@ -131,12 +131,12 @@ class _WavelengthAppState extends State<WavelengthApp> {
         surface: isDark ? const Color(0xFF0D0D0D) : Colors.white,
         onSurface: isDark ? Colors.white : Colors.black87,
       ),
-      textTheme: GoogleFonts.epilogueTextTheme(baseTheme.textTheme).copyWith(
-        displayLarge: GoogleFonts.syne(textStyle: baseTheme.textTheme.displayLarge),
-        displayMedium: GoogleFonts.syne(textStyle: baseTheme.textTheme.displayMedium),
-        displaySmall: GoogleFonts.syne(textStyle: baseTheme.textTheme.displaySmall),
-        headlineLarge: GoogleFonts.syne(textStyle: baseTheme.textTheme.headlineLarge),
-        titleLarge: GoogleFonts.syne(textStyle: baseTheme.textTheme.titleLarge, fontWeight: FontWeight.bold),
+      textTheme: GoogleFonts.interTextTheme(baseTheme.textTheme).copyWith(
+        displayLarge: GoogleFonts.outfit(textStyle: baseTheme.textTheme.displayLarge),
+        displayMedium: GoogleFonts.outfit(textStyle: baseTheme.textTheme.displayMedium),
+        displaySmall: GoogleFonts.outfit(textStyle: baseTheme.textTheme.displaySmall),
+        headlineLarge: GoogleFonts.outfit(textStyle: baseTheme.textTheme.headlineLarge),
+        titleLarge: GoogleFonts.outfit(textStyle: baseTheme.textTheme.titleLarge, fontWeight: FontWeight.bold),
       ).apply(
         bodyColor: isDark ? Colors.white : Colors.black87,
         displayColor: isDark ? Colors.white : Colors.black,
@@ -146,7 +146,7 @@ class _WavelengthAppState extends State<WavelengthApp> {
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: GoogleFonts.syne(
+        titleTextStyle: GoogleFonts.outfit(
           color: isDark ? Colors.white : Colors.black,
           fontSize: 20,
           fontWeight: FontWeight.bold,

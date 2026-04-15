@@ -66,12 +66,11 @@ export default function TrackCard({ track, index }: TrackCardProps) {
         cursor: 'pointer',
         position: 'relative',
         zIndex: hovered || menuOpen ? 50 : 1,
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
         background: hovered || isActive ? 'var(--surface2)' : 'transparent',
-        boxShadow: hovered ? '0 12px 24px rgba(0,0,0,0.1)' : 'none',
-        transform: hovered ? 'translateY(-4px)' : 'none',
+        boxShadow: hovered ? '0 20px 48px rgba(0,0,0,0.18)' : 'none',
       }}
-      className={`animate-fade-in ${isActive ? 'neon-border' : ''}`}
+      className={`animate-fade-in bouncy-hover ${isActive ? 'neon-border' : ''}`}
       onClick={handlePlay}
     >
       {/* Cover Art */}

@@ -24,6 +24,7 @@ interface PartyStatePayload {
   trackId?: string;
   positionMs?: number;
   isPlaying?: boolean;
+  timestamp?: number;
 }
 
 interface PartyMembersPayload {
@@ -105,13 +106,20 @@ function _applyRemoteSync(data: SyncPayload): void {
   const store = useMusicStore.getState();
   const audio = _getAudio();
 
+  // Calculate latency compensation (transit time)
+  const now = Date.now();
+  const latency = data.timestamp ? now - data.timestamp : 0;
+  // Clamp latency to 0-5s
+  const safeLatency = Math.min(Math.max(0, latency), 5000);
+
   isHandlingSync = true;
 
   try {
     switch (data.action) {
       case 'play':
         if (audio && data.positionMs != null) {
-          audio.currentTime = data.positionMs / 1000;
+          // Add latency only if it was playing, but usually messages are sent for active events
+          audio.currentTime = (data.positionMs + safeLatency) / 1000;
         }
         store.setIsPlaying(true);
         break;
@@ -122,8 +130,9 @@ function _applyRemoteSync(data: SyncPayload): void {
 
       case 'seek':
         if (audio && data.positionMs != null) {
-          audio.currentTime = data.positionMs / 1000;
-          store.setCurrentTime(data.positionMs / 1000);
+          const seekPos = (data.positionMs + safeLatency) / 1000;
+          audio.currentTime = seekPos;
+          store.setCurrentTime(seekPos);
         }
         break;
 
@@ -134,10 +143,10 @@ function _applyRemoteSync(data: SyncPayload): void {
             store.setCurrentTrack(track);
             store.setIsPlaying(true);
             // Seek after the track loads
-            if (data.positionMs) {
+            if (data.positionMs != null) {
               const onLoaded = () => {
                 const a = _getAudio();
-                if (a) a.currentTime = data.positionMs / 1000;
+                if (a) a.currentTime = (data.positionMs + safeLatency) / 1000;
                 a?.removeEventListener('loadedmetadata', onLoaded);
               };
               _getAudio()?.addEventListener('loadedmetadata', onLoaded);
@@ -164,9 +173,16 @@ function _applyPartyState(data: PartyStatePayload): void {
 
   const seekAfterLoad = () => {
     const audio = _getAudio();
+    
+    // Calculate latency (transit time from server)
+    const now = Date.now();
+    const latency = data.timestamp ? now - data.timestamp : 0;
+    const safeLatency = Math.min(Math.max(0, latency), 5000);
+
     if (audio && data.positionMs != null) {
-      audio.currentTime = data.positionMs / 1000;
-      store.setCurrentTime(data.positionMs / 1000);
+      const adjustedPos = (data.positionMs + (data.isPlaying ? safeLatency : 0)) / 1000;
+      audio.currentTime = adjustedPos;
+      store.setCurrentTime(adjustedPos);
     }
     if (data.isPlaying) {
       store.setIsPlaying(true);

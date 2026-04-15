@@ -88,26 +88,34 @@ class AudioService {
     // ── Sync: incoming playback events ────────────────────────────────────
     SyncService().onSyncReceived = (data) {
       final action = data['action'] as String?;
+      
+      // Calculate latency compensation (transit time)
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final timestampMs = (data['timestamp'] as num?)?.toInt();
+      final latency = timestampMs != null ? now - timestampMs : 0;
+      final safeLatency = latency.clamp(0, 5000); // 5s cap
+      
       // Safe int extraction — socket.io may deliver numbers as double
       final ms = (data['positionMs'] as num?)?.toInt();
+      final adjustedMs = ms != null ? ms + safeLatency : null;
 
       switch (action) {
         case 'play':
-          if (ms != null) _player.seek(Duration(milliseconds: ms));
+          if (adjustedMs != null) _player.seek(Duration(milliseconds: adjustedMs));
           resume(broadcast: false);
           break;
         case 'pause':
           pause(broadcast: false);
           break;
         case 'seek':
-          if (ms != null) seek(Duration(milliseconds: ms), broadcast: false);
+          if (adjustedMs != null) seek(Duration(milliseconds: adjustedMs), broadcast: false);
           break;
         case 'change_track':
           final trackData = _safeMap(data['track']);
           if (trackData != null) {
             final track = _resolveTrack(trackData);
             if (currentTrack.value?.id != track.id) {
-              _handleSyncPlayTrack(track, ms);
+              _handleSyncPlayTrack(track, adjustedMs);
             }
           }
           break;
@@ -118,14 +126,22 @@ class AudioService {
     SyncService().onPartyStateReceived = (data) {
       debugPrint('[AudioService] Received party state on join: $data');
       final trackData = _safeMap(data['track']);
+      
+      // Calculate latency compensation for the initial state
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final timestampMs = (data['timestamp'] as num?)?.toInt();
+      final latency = timestampMs != null ? now - timestampMs : 0;
+      final safeLatency = latency.clamp(0, 5000);
+
       final ms = (data['positionMs'] as num?)?.toInt();
+      final adjustedMs = (ms != null && data['isPlaying'] == true) ? ms + safeLatency : ms;
       final isPlaying = data['isPlaying'] as bool? ?? false;
 
       if (trackData != null) {
         final track = _resolveTrack(trackData);
         _isHandlingSync = true;
         playTrack(track).then((_) {
-          if (ms != null) _player.seek(Duration(milliseconds: ms));
+          if (adjustedMs != null) _player.seek(Duration(milliseconds: adjustedMs));
           if (!isPlaying) _player.pause();
           Future.delayed(
             const Duration(milliseconds: 500),
@@ -424,7 +440,8 @@ class AudioService {
 
     // 3a. YouTube via server proxy
     if (isYouTube && serverBase.isNotEmpty) {
-      final videoId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
+      final extractedId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
+      final videoId = extractedId.replaceFirst('search-', '');
       final url = '$serverBase/api/stream/youtube?v=$videoId';
       debugPrint('[AudioService] ▶ Server YT proxy: $url');
       return AudioSource.uri(Uri.parse(url), tag: _buildMediaItem(track));
@@ -433,7 +450,8 @@ class AudioService {
     // 3b. YouTube direct (no server)
     if (isYouTube) {
       try {
-        final videoId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
+        final extractedId = _extractYouTubeVideoId(track.sourceUrl) ?? track.id;
+        final videoId = extractedId.replaceFirst('search-', '');
         debugPrint('[AudioService] ▶ YouTube direct: $videoId');
         final manifest = await ApiService().getAudioManifest(videoId);
         final streamInfo = manifest.audioOnly.sortByBitrate().last;

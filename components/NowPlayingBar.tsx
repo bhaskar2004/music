@@ -87,9 +87,21 @@ export default function NowPlayingBar() {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
     
-    if (currentTrack.id.startsWith('search-')) {
-      // Use the fast --get-url pipeline (cached, no transcoding)
-      const videoId = currentTrack.id.replace('search-', '');
+    const isSearchTrack = currentTrack.id.startsWith('search-');
+    const isYouTubeUrl = currentTrack.sourceUrl?.includes('youtube.com') || currentTrack.sourceUrl?.includes('youtu.be');
+    const isUUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(currentTrack.id);
+
+    if (isSearchTrack || (!isUUID && isYouTubeUrl)) {
+      // Use the fast YouTube stream pipeline
+      let videoId = currentTrack.id.replace('search-', '');
+      if (videoId.length !== 11 && currentTrack.sourceUrl) {
+        const match = currentTrack.sourceUrl.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+        if (match) videoId = match[1];
+        else {
+          const shortMatch = currentTrack.sourceUrl.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+          if (shortMatch) videoId = shortMatch[1];
+        }
+      }
       audio.src = `/api/stream/youtube?v=${encodeURIComponent(videoId)}`;
     } else {
       audio.src = `/api/stream/${currentTrack.id}`;
@@ -270,19 +282,21 @@ export default function NowPlayingBar() {
       <div
         className="now-playing-container"
         style={{
-          height: 96,
-          background: 'color-mix(in srgb, var(--bg) 75%, transparent)',
-          backdropFilter: 'blur(32px) saturate(1.8)',
-          WebkitBackdropFilter: 'blur(32px) saturate(1.8)',
-          borderTop: '1px solid color-mix(in srgb, var(--border) 50%, transparent)',
+          height: 88,
+          margin: '0 20px 20px 20px',
+          borderRadius: 24,
+          background: 'color-mix(in srgb, var(--bg) 65%, transparent)',
+          backdropFilter: 'blur(40px) saturate(2)',
+          WebkitBackdropFilter: 'blur(40px) saturate(2)',
+          border: '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
           display: 'grid',
           alignItems: 'center',
-          padding: '0 32px',
+          padding: '0 24px',
           gap: 24,
           flexShrink: 0,
           position: 'relative',
           zIndex: 100,
-          boxShadow: '0 -10px 40px rgba(0,0,0,0.08)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
         }}
       >
         {/* Left — Track info */}
@@ -290,19 +304,11 @@ export default function NowPlayingBar() {
           {/* Album art — clickable for full-screen */}
           <div
             onClick={() => setShowFullScreenPlayer(true)}
+            className="bouncy-hover"
             style={{
-              width: 56, height: 56, borderRadius: 12, background: bgColor,
+              width: 52, height: 52, borderRadius: 12, background: bgColor,
               flexShrink: 0, position: 'relative', overflow: 'hidden',
               boxShadow: '0 4px 16px rgba(0,0,0,0.15)', cursor: 'pointer',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'scale(1.08) translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.25)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'scale(1) translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
             }}
             title="Open full-screen player"
           >
@@ -515,17 +521,20 @@ function ControlBtn({ children, onClick, active, title, ariaLabel, className }: 
 function EmptyBar() {
   return (
     <div style={{
-      height: 96,
-      background: 'color-mix(in srgb, var(--bg) 85%, transparent)',
-      backdropFilter: 'blur(32px)',
-      WebkitBackdropFilter: 'blur(32px)',
-      borderTop: '1px solid var(--border)',
+      height: 88,
+      margin: '0 20px 20px 20px',
+      borderRadius: 24,
+      background: 'color-mix(in srgb, var(--surface) 60%, transparent)',
+      backdropFilter: 'blur(40px)',
+      WebkitBackdropFilter: 'blur(40px)',
+      border: '1px solid var(--border)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
       gap: 32,
-      padding: '0 32px'
+      padding: '0 24px',
+      boxShadow: '0 12px 40px rgba(0,0,0,0.06)'
     }}>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

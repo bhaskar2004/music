@@ -129,9 +129,9 @@ export default function LibraryView() {
           flex: 0 1 260px;
         }
         .lib-search-wrap.focused {
-          border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+          border-color: var(--accent);
           background: var(--surface2);
-          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+          box-shadow: 0 0 0 1px var(--accent), 0 0 16px var(--accent-glow);
         }
       `}</style>
 
@@ -213,13 +213,11 @@ export default function LibraryView() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', paddingBottom: 4 }}>
                 <button
                   onClick={() => playAll(filtered)}
-                  className="lib-action-btn tap-active"
+                  className="lib-action-btn bouncy-hover"
                   style={{
                     background: 'var(--accent)', color: '#000',
                     boxShadow: '0 4px 20px var(--accent-glow)',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 8px 28px var(--accent-glow)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = '0 4px 20px var(--accent-glow)'}
                 >
                   <Play size={14} fill="currentColor" />
                   Play all
@@ -227,7 +225,7 @@ export default function LibraryView() {
 
                 <button
                   onClick={() => shufflePlay(filtered)}
-                  className="lib-action-btn tap-active"
+                  className="lib-action-btn bouncy-hover"
                   style={{
                     background: 'var(--surface2)',
                     color: 'var(--text)',

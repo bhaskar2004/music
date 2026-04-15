@@ -6,7 +6,7 @@ import { formatDuration } from '@/lib/utils';
 import {
   X, Play, Pause, SkipBack, SkipForward,
   Shuffle, Repeat, Repeat1, Heart, ListMusic,
-  Volume2, VolumeX, ChevronDown, AlignLeft, Music, Download,
+  Volume2, VolumeX, ChevronDown, AlignLeft, Music, Download, Library,
 } from 'lucide-react';
 import { useDownloadProcessor } from '@/hooks/useDownloadProcessor';
 import Image from 'next/image';
@@ -30,26 +30,22 @@ export default function FullScreenPlayer() {
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
 
-  // Parse LRC lyrics with offset support
+  /* ── LRC parser ─────────────────────────────────────────────────── */
   const parsedLyrics = (() => {
     if (!lyrics?.syncedLyrics) return null;
     const lines = lyrics.syncedLyrics.split('\n');
     const result: { time: number; text: string }[] = [];
     const timeRegex = /\[(\d+):(\d+\.\d+)\]/;
     const offsetRegex = /\[offset:(-?\d+)\]/;
-    
     let offsetMs = 0;
     lines.forEach(line => {
-      const offsetMatch = offsetRegex.exec(line);
-      if (offsetMatch) offsetMs = parseInt(offsetMatch[1]);
+      const m = offsetRegex.exec(line);
+      if (m) offsetMs = parseInt(m[1]);
     });
-
     lines.forEach(line => {
       const match = timeRegex.exec(line);
       if (match) {
-        const minutes = parseInt(match[1]);
-        const seconds = parseFloat(match[2]);
-        const time = (minutes * 60 + seconds) + (offsetMs / 1000.0);
+        const time = (parseInt(match[1]) * 60 + parseFloat(match[2])) + offsetMs / 1000;
         const text = line.replace(timeRegex, '').trim();
         if (text) result.push({ time, text });
       }
@@ -57,39 +53,30 @@ export default function FullScreenPlayer() {
     return result;
   })();
 
-  // High-precision time sync for smooth highlighting
+  /* ── High-precision rAF time sync ───────────────────────────────── */
   const [smoothTime, setSmoothTime] = useState(currentTime);
   const rAFRef = useRef<number | null>(null);
-
   useEffect(() => {
     const audio = document.querySelector('audio');
-    if (!audio || !isPlaying) {
-      setSmoothTime(currentTime);
-      if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
-      return;
-    }
-    const updateSmoothTime = () => {
-      if (audio) setSmoothTime(audio.currentTime);
-      rAFRef.current = requestAnimationFrame(updateSmoothTime);
-    };
-    rAFRef.current = requestAnimationFrame(updateSmoothTime);
+    if (!audio || !isPlaying) { setSmoothTime(currentTime); if (rAFRef.current) cancelAnimationFrame(rAFRef.current); return; }
+    const tick = () => { if (audio) setSmoothTime(audio.currentTime); rAFRef.current = requestAnimationFrame(tick); };
+    rAFRef.current = requestAnimationFrame(tick);
     return () => { if (rAFRef.current) cancelAnimationFrame(rAFRef.current); };
   }, [isPlaying, currentTime]);
 
   const currentLineIndex = parsedLyrics
     ? parsedLyrics.findIndex((line, i) => {
-      const nextLine = parsedLyrics[i + 1];
-      const effectiveTime = smoothTime;
-      return effectiveTime >= line.time && (!nextLine || effectiveTime < nextLine.time);
+      const next = parsedLyrics[i + 1];
+      return smoothTime >= line.time && (!next || smoothTime < next.time);
     })
     : -1;
 
   useEffect(() => {
-    if (showLyrics && activeLineRef.current) {
+    if (showLyrics && activeLineRef.current)
       activeLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
   }, [currentLineIndex, showLyrics]);
 
+  /* ── Mount / keyboard ───────────────────────────────────────────── */
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
@@ -97,10 +84,7 @@ export default function FullScreenPlayer() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const handleClose = () => {
-    setVisible(false);
-    setTimeout(() => setShowFullScreenPlayer(false), 380);
-  };
+  const handleClose = () => { setVisible(false); setTimeout(() => setShowFullScreenPlayer(false), 420); };
 
   const seekTo = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!progressRef.current || duration === 0) return;
@@ -117,195 +101,470 @@ export default function FullScreenPlayer() {
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const displayProgress = hoverProgress !== null ? hoverProgress : progressPct;
 
+  /* ── Derive a subtle accent color heuristic (warm rose) ─────────── */
+  const ACCENT = '#C1344A';
+  const ACCENT_BG = '#FDF0F2';
+  const ACCENT_SOFT = 'rgba(193,52,74,0.12)';
+
   return (
     <>
       <style>{`
 
 
+        /* ── Keyframes ── */
+        @keyframes fspFadeUp {
+          from { opacity:0; transform:translateY(20px) scale(0.985); }
+          to   { opacity:1; transform:translateY(0)    scale(1);     }
+        }
+        @keyframes lyricsReveal {
+          from { opacity:0; transform:translateX(24px); }
+          to   { opacity:1; transform:translateX(0);    }
+        }
         @keyframes vinylSpin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          from { transform:rotate(0deg); }
+          to   { transform:rotate(360deg); }
         }
-        @keyframes fspIn {
-          from { opacity: 0; transform: translateY(24px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes artFloat {
+          0%,100% { transform:translateY(0px); }
+          50%      { transform:translateY(-6px); }
         }
-        @keyframes lyricsSlideIn {
-          from { opacity: 0; transform: translateX(28px); }
-          to { opacity: 1; transform: translateX(0); }
+        @keyframes pulseGlow {
+          0%,100% { box-shadow: 0 20px 80px rgba(193,52,74,0.12), 0 4px 24px rgba(0,0,0,0.08); }
+          50%      { box-shadow: 0 28px 100px rgba(193,52,74,0.2),  0 4px 32px rgba(0,0,0,0.10); }
         }
-        @keyframes pulseRing {
-          0%, 100% { transform: scale(1); opacity: 0.4; }
-          50% { transform: scale(1.05); opacity: 0.2; }
+        @keyframes spinnerFade {
+          0%   { opacity: 0.15; }
+          50%  { opacity: 0.55; }
+          100% { opacity: 0.15; }
         }
-        .fsp-overlay { animation: fspIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .fsp-lyrics-panel { animation: lyricsSlideIn 0.5s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        .fsp-progress-bar:hover .fsp-thumb { opacity: 1 !important; transform: scale(1) !important; }
-        .fsp-progress-bar:hover .fsp-fill { background: #fff !important; }
-        .fsp-vinyl { animation: vinylSpin 3s linear infinite; animation-play-state: paused; }
-        .fsp-vinyl.playing { animation-play-state: running; }
-        .control-btn { transition: all 0.18s cubic-bezier(0.4,0,0.2,1) !important; }
-        .control-btn:hover { transform: scale(1.12) !important; }
-        .play-btn { transition: all 0.18s cubic-bezier(0.4,0,0.2,1) !important; }
-        .play-btn:hover { transform: scale(1.06) !important; box-shadow: 0 0 0 8px rgba(255,255,255,0.08) !important; }
-        .play-btn:active { transform: scale(0.97) !important; }
+
+        /* ── Base overlay ── */
+        .fsp-root {
+          position: fixed; inset: 0; z-index: 9999;
+          background: #FAFAF9;
+          display: flex; align-items: center; justify-content: center;
+          animation: fspFadeUp 0.42s cubic-bezier(0.16,1,0.3,1) both;
+          font-family: var(--font-sans);
+          overflow: hidden;
+        }
+
+        /* Subtle warm gradient wash behind art */
+        .fsp-root::before {
+          content:'';
+          position:absolute;
+          top:-30%; left:-20%;
+          width:70%; height:80%;
+          background: radial-gradient(ellipse, rgba(193,52,74,0.06) 0%, transparent 70%);
+          pointer-events:none;
+        }
+        .fsp-root::after {
+          content:'';
+          position:absolute;
+          bottom:-20%; right:-10%;
+          width:60%; height:60%;
+          background: radial-gradient(ellipse, rgba(120,80,200,0.04) 0%, transparent 70%);
+          pointer-events:none;
+        }
+
+        /* ── Close button ── */
+        .fsp-close {
+          position:absolute; top:28px; left:32px; z-index:20;
+          display:flex; align-items:center; gap:7px;
+          background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.07);
+          border-radius:100px; padding:8px 16px;
+          cursor:pointer; color:rgba(0,0,0,0.45);
+          font-family: var(--font-sans); font-size:12.5px; font-weight:450; letter-spacing:0.02em;
+          transition:all 0.18s; backdrop-filter:blur(8px);
+        }
+        .fsp-close:hover { background:rgba(0,0,0,0.07); color:rgba(0,0,0,0.75); }
+
+        .fsp-back-lib {
+          position:absolute; top:28px; right:32px; z-index:20;
+          display:flex; align-items:center; gap:7px;
+          background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.07);
+          border-radius:100px; padding:8px 16px;
+          cursor:pointer; color:rgba(0,0,0,0.45);
+          font-family: var(--font-sans); font-size:12.5px; font-weight:450; letter-spacing:0.02em;
+          transition:all 0.18s; backdrop-filter:blur(8px);
+        }
+        .fsp-back-lib:hover { 
+          background: color-mix(in srgb, var(--accent) 8%, transparent);
+          color: var(--accent);
+          border-color: color-mix(in srgb, var(--accent) 20%, transparent);
+        }
+
+        /* ── Layout ── */
+        .fsp-layout {
+          position:relative; z-index:1;
+          display:flex; align-items:flex-start; gap:52px;
+          width:100%; max-width:960px;
+          padding:0 48px;
+          transition:max-width 0.5s cubic-bezier(0.16,1,0.3,1);
+        }
+        .fsp-layout.no-lyrics { max-width:480px; }
+
+        /* ── Left panel ── */
+        .fsp-left {
+          display:flex; flex-direction:column; align-items:center;
+          gap:28px; flex:0 0 auto; width:360px;
+        }
+
+        /* ── Album art wrapper ── */
+        .fsp-art-wrap {
+          position:relative;
+          width:272px; height:272px;
+          animation: artFloat 6s ease-in-out infinite;
+        }
+        .fsp-art-wrap.playing {
+          animation: artFloat 6s ease-in-out infinite, pulseGlow 3s ease-in-out infinite;
+        }
+
+        /* Vinyl disc */
+        .fsp-vinyl {
+          width:272px; height:272px; border-radius:50%;
+          background: conic-gradient(from 0deg,
+            #1a1a1a 0%, #222 15%, #161616 30%,
+            #222 45%, #1a1a1a 60%, #1c1c1c 75%, #1a1a1a 100%);
+          box-shadow:
+            0 32px 80px rgba(0,0,0,0.22),
+            0 8px 24px rgba(0,0,0,0.12),
+            inset 0 0 0 1px rgba(255,255,255,0.06);
+          animation:vinylSpin 3.5s linear infinite;
+          animation-play-state:paused;
+        }
+        .fsp-vinyl.playing { animation-play-state:running; }
+
+        /* Album art cutout */
+        .fsp-art-center {
+          position:absolute;
+          inset:16%;
+          border-radius:50%;
+          overflow:hidden;
+          border:3px solid rgba(0,0,0,0.55);
+          box-shadow:inset 0 0 16px rgba(0,0,0,0.4);
+        }
+        .fsp-art-placeholder {
+          width:100%; height:100%;
+          display:flex; align-items:center; justify-content:center;
+          background:#2a2a2a;
+          font-size:36px; font-family: var(--font-display);
+          color:rgba(255,255,255,0.2);
+        }
+        /* Center spindle */
+        .fsp-spindle {
+          position:absolute; top:50%; left:50%;
+          transform:translate(-50%,-50%);
+          width:10px; height:10px; border-radius:50%;
+          background:#111; border:1.5px solid rgba(255,255,255,0.12); z-index:2;
+        }
+        /* Vinyl grooves */
+        .fsp-groove {
+          position:absolute; border-radius:50%;
+          border:1px solid rgba(255,255,255,0.025); pointer-events:none;
+        }
+
+        /* ── Track info ── */
+        .fsp-track-info { text-align:center; width:100%; padding:0 8px; }
+        .fsp-title {
+          font-family: var(--font-display);
+          font-size: 28px; font-weight: 500; font-style: italic;
+          color:#111; letter-spacing:-0.4px; line-height:1.2;
+          margin:0 0 8px;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .fsp-artist {
+          font-family: var(--font-sans);
+          font-size:12px; font-weight:500; letter-spacing:0.1em;
+          text-transform:uppercase; color:rgba(0,0,0,0.38);
+          margin:0;
+        }
+
+        /* ── Controls card ── */
+        .fsp-card {
+          width:100%;
+          background:#fff;
+          border:1px solid rgba(0,0,0,0.07);
+          border-radius:20px;
+          padding:22px 24px 20px;
+          box-shadow:0 2px 20px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+          display:flex; flex-direction:column; gap:18px;
+        }
+
+        /* ── Progress bar ── */
+        .fsp-progress-wrap {
+          width:100%; height:22px;
+          display:flex; align-items:center; cursor:pointer;
+          position:relative;
+        }
+        .fsp-progress-track {
+          width:100%; height:3px;
+          background:rgba(0,0,0,0.08); border-radius:99px;
+          position:relative; overflow:visible;
+        }
+        .fsp-progress-fill {
+          height:100%; border-radius:99px;
+          background: #111;
+          transition:width 0.25s linear, background 0.2s;
+          position:relative;
+        }
+        .fsp-progress-wrap:hover .fsp-progress-fill { background:${ACCENT}; }
+        .fsp-progress-thumb {
+          position:absolute; top:50%;
+          transform:translate(-50%,-50%) scale(0);
+          width:12px; height:12px; border-radius:50%;
+          background:${ACCENT};
+          opacity:0; transition:opacity 0.15s, transform 0.15s;
+          box-shadow:0 2px 8px rgba(193,52,74,0.35);
+        }
+        .fsp-progress-wrap:hover .fsp-progress-thumb {
+          opacity:1 !important; transform:translate(-50%,-50%) scale(1) !important;
+        }
+        .fsp-time {
+          display:flex; justify-content:space-between; margin-top:4px;
+        }
+        .fsp-time span {
+          font-family: var(--font-mono);
+          font-size:10.5px; font-weight:400; letter-spacing:0.06em;
+          color:rgba(0,0,0,0.3);
+        }
+
+        /* ── Main controls ── */
+        .fsp-controls {
+          display:flex; align-items:center; justify-content:space-between;
+        }
+
+        /* Icon buttons (shuffle, repeat, etc.) */
+        .fsp-icon-btn {
+          display:flex; align-items:center; justify-content:center;
+          border:none; background:transparent;
+          border-radius:50%; cursor:pointer;
+          transition:all 0.16s cubic-bezier(0.4,0,0.2,1);
+          color:rgba(0,0,0,0.3);
+        }
+        .fsp-icon-btn:hover { background:rgba(0,0,0,0.05); color:rgba(0,0,0,0.75); transform:scale(1.1); }
+        .fsp-icon-btn.active { color:#111; }
+        .fsp-icon-btn.active-accent { color:${ACCENT}; background:${ACCENT_SOFT}; }
+        .fsp-icon-btn:active { transform:scale(0.92); }
+
+        /* Skip buttons */
+        .fsp-skip-btn {
+          width:40px; height:40px;
+          display:flex; align-items:center; justify-content:center;
+          border:none; background:transparent; border-radius:50%;
+          cursor:pointer; color:rgba(0,0,0,0.6);
+          transition:all 0.16s cubic-bezier(0.4,0,0.2,1);
+        }
+        .fsp-skip-btn:hover { background:rgba(0,0,0,0.05); color:#111; transform:scale(1.08); }
+        .fsp-skip-btn:active { transform:scale(0.94); }
+
+        /* Play/Pause */
+        .fsp-play-btn {
+          width:56px; height:56px; border-radius:50%;
+          background:#111; border:none; cursor:pointer;
+          display:flex; align-items:center; justify-content:center;
+          box-shadow:0 6px 24px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.12);
+          transition:all 0.18s cubic-bezier(0.4,0,0.2,1);
+          position:relative; overflow:hidden;
+        }
+        .fsp-play-btn::before {
+          content:''; position:absolute; inset:0; border-radius:50%;
+          background:rgba(255,255,255,0.05);
+          transition:opacity 0.18s;
+          opacity:0;
+        }
+        .fsp-play-btn:hover {
+          transform:scale(1.07);
+          box-shadow:0 10px 36px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .fsp-play-btn:hover::before { opacity:1; }
+        .fsp-play-btn:active { transform:scale(0.96); }
+
+        /* ── Bottom actions ── */
+        .fsp-actions {
+          display:flex; align-items:center; justify-content:space-between;
+        }
+        .fsp-action-group { display:flex; gap:2px; }
+
+        /* Lyrics toggle button */
+        .fsp-lyrics-toggle {
+          display:flex; align-items:center; gap:6px;
+          border:1px solid rgba(0,0,0,0.1);
+          border-radius:100px; padding:5px 14px;
+          cursor:pointer; background:transparent;
+          font-family: var(--font-sans);
+          font-size:11.5px; font-weight:450; letter-spacing:0.04em;
+          color:rgba(0,0,0,0.4);
+          transition:all 0.18s;
+        }
+        .fsp-lyrics-toggle.on {
+          background:${ACCENT_BG};
+          border-color:rgba(193,52,74,0.18);
+          color:${ACCENT};
+        }
+        .fsp-lyrics-toggle:hover:not(.on) { background:rgba(0,0,0,0.04); color:rgba(0,0,0,0.65); }
+
+        /* ── Lyrics panel ── */
+        .fsp-lyrics-panel {
+          flex:1; display:flex; flex-direction:column;
+          min-width:0; align-self:stretch;
+          animation:lyricsReveal 0.5s 0.08s cubic-bezier(0.16,1,0.3,1) both;
+        }
+        .fsp-lyrics-header {
+          font-family: var(--font-display);
+          font-size:11px; font-weight:700;
+          letter-spacing:0.14em; text-transform:uppercase;
+          color:rgba(0,0,0,0.28); margin:0 0 16px 4px;
+        }
+        .fsp-lyrics-scroll-wrap { position:relative; flex:1; min-height:0; }
+
+        /* Fade gradients top/bottom */
+        .fsp-lyrics-scroll-wrap::before,
+        .fsp-lyrics-scroll-wrap::after {
+          content:''; position:absolute; left:0; right:0; z-index:2; pointer-events:none;
+        }
+        .fsp-lyrics-scroll-wrap::before {
+          top:0; height:60px;
+          background:linear-gradient(to bottom, #FAFAF9, transparent);
+        }
+        .fsp-lyrics-scroll-wrap::after {
+          bottom:0; height:80px;
+          background:linear-gradient(to top, #FAFAF9, transparent);
+        }
+
+        .fsp-lyrics-scroll {
+          height:100%; max-height:480px; overflow-y:auto;
+          padding:52px 12px 72px 4px;
+          display:flex; flex-direction:column; gap:0;
+          scrollbar-width:none;
+        }
+        .fsp-lyrics-scroll::-webkit-scrollbar { display:none; }
+
+        /* Lyric lines */
+        .lyric-line {
+          font-family: var(--font-display);
+          font-size:22px; line-height:1.55;
+          padding:5px 6px; border-radius:8px;
+          cursor:pointer;
+          transition:all 0.32s cubic-bezier(0.4,0,0.2,1);
+          user-select:none;
+        }
+        .lyric-line--active {
+          font-size:26px; font-weight:500;
+          color:#111; letter-spacing:-0.2px;
+          padding:7px 6px;
+        }
+        .lyric-line--recent-past { color:rgba(0,0,0,0.45); }
+        .lyric-line--past        { color:rgba(0,0,0,0.2);  }
+        .lyric-line--upcoming    { color:rgba(0,0,0,0.5);  }
+        .lyric-line--future      { color:rgba(0,0,0,0.18); }
+        .lyric-line--plain       { color:rgba(0,0,0,0.55); }
+
+        .lyric-line:hover:not(.lyric-line--active) { color:rgba(0,0,0,0.7); background:rgba(0,0,0,0.03); }
+
+        /* Loading state */
+        .fsp-lyrics-loading {
+          display:flex; align-items:center; justify-content:center;
+          flex:1; flex-direction:column; gap:14px;
+          padding:40px 0;
+        }
+        .fsp-spinner {
+          width:24px; height:24px; position:relative;
+        }
+        .fsp-spinner span {
+          position:absolute; width:4px; height:4px;
+          border-radius:50%; background:rgba(0,0,0,0.25);
+        }
+        .fsp-loading-text {
+          font-family: var(--font-sans);
+          font-size:12px; color:rgba(0,0,0,0.3);
+          letter-spacing:0.05em;
+        }
+
+        /* Empty state */
+        .fsp-empty {
+          flex:1; display:flex; flex-direction:column;
+          align-items:center; justify-content:center;
+          gap:10px; opacity:0.4; padding:48px 0;
+        }
+        .fsp-empty span {
+          font-family: var(--font-sans);
+          font-size:13px; color:rgba(0,0,0,0.45);
+          letter-spacing:0.03em;
+        }
+
+        /* ── Divider line in lyrics panel ── */
+        .fsp-divider {
+          width:32px; height:1.5px;
+          background:rgba(0,0,0,0.1);
+          border-radius:99px;
+          margin:0 0 20px 4px;
+        }
       `}</style>
 
-      <div
-        className="fsp-overlay"
-        style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        {/* Layered background */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-          {currentTrack.coverUrl && (
-            <Image
-              src={currentTrack.coverUrl} alt=""
-              fill unoptimized
-              style={{ objectFit: 'cover', filter: 'blur(120px) brightness(0.2) saturate(2)', transform: 'scale(1.4)' }}
-            />
-          )}
-          {/* Dark vignette */}
-          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.92) 100%)' }} />
-          {/* Grain texture */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'0.04\'/%3E%3C/svg%3E")',
-            backgroundRepeat: 'repeat', backgroundSize: '200px 200px', opacity: 0.3, pointerEvents: 'none',
-          }} />
-        </div>
+      <div className="fsp-root">
 
-        {/* Close button */}
-        <button
-          onClick={handleClose}
-          style={{
-            position: 'absolute', top: 28, left: 32, zIndex: 10,
-            background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 99, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8,
-            cursor: 'pointer', color: 'rgba(255,255,255,0.7)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 400, letterSpacing: '0.02em',
-            transition: 'all 0.18s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.13)'; e.currentTarget.style.color = '#fff'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
-        >
-          <ChevronDown size={15} />
+        {/* Close / collapse */}
+        <button className="fsp-close bouncy-hover" onClick={handleClose}>
+          <ChevronDown size={14} />
           Now Playing
         </button>
 
-        {/* Main layout */}
-        <div style={{
-          position: 'relative', zIndex: 1,
-          display: 'flex', alignItems: 'stretch', gap: 48,
-          width: '100%', maxWidth: showLyrics ? 960 : 480,
-          padding: '0 40px',
-          transition: 'max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}>
+        {/* Back to Library */}
+        <button 
+          className="fsp-back-lib bouncy-hover" 
+          onClick={() => {
+            setActiveView('library');
+            handleClose();
+          }}
+        >
+          <Library size={14} />
+          Library
+        </button>
 
-          {/* LEFT: Art + Controls */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32, flex: '0 0 auto', width: 380 }}>
+        {/* ── Main layout ── */}
+        <div className={`fsp-layout${showLyrics ? '' : ' no-lyrics'}`}>
 
-            {/* Vinyl record art */}
-            <div style={{ position: 'relative', width: 280, height: 280 }}>
-              {/* Glow ring */}
-              {isPlaying && (
-                <div className="pulseRing" style={{
-                  position: 'absolute', inset: -12, borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)',
-                  animation: 'pulseRing 2.5s ease-in-out infinite',
-                }} />
-              )}
-              {/* Vinyl disc */}
-              <div
-                className={`fsp-vinyl${isPlaying ? ' playing' : ''}`}
-                style={{
-                  width: 280, height: 280, borderRadius: '50%', position: 'relative',
-                  background: 'conic-gradient(from 0deg, #111 0%, #1a1a1a 25%, #0d0d0d 50%, #1a1a1a 75%, #111 100%)',
-                  boxShadow: '0 32px 80px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.05)',
-                }}
-              >
+          {/* ════ LEFT: Art + Controls ════ */}
+          <div className="fsp-left">
+
+            {/* Vinyl art */}
+            <div className={`fsp-art-wrap${isPlaying ? ' playing' : ''}`}>
+              <div className={`fsp-vinyl${isPlaying ? ' playing' : ''}`}>
                 {/* Grooves */}
-                {[40, 55, 70, 85, 100].map(r => (
-                  <div key={r} style={{
-                    position: 'absolute',
-                    inset: `${r}px`,
-                    borderRadius: '50%',
-                    border: '1px solid rgba(255,255,255,0.03)',
-                    pointerEvents: 'none',
-                  }} />
+                {[38, 52, 66, 80, 96].map(inset => (
+                  <div key={inset} className="fsp-groove" style={{ inset }} />
                 ))}
-                {/* Album art center label */}
-                <div style={{
-                  position: 'absolute',
-                  inset: '15%',
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  border: '3px solid rgba(0,0,0,0.8)',
-                  boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)',
-                }}>
+                {/* Center art label */}
+                <div className="fsp-art-center">
                   {currentTrack.coverUrl ? (
-                    <Image src={currentTrack.coverUrl} alt={currentTrack.title} fill style={{ objectFit: 'cover' }} unoptimized />
+                    <Image
+                      src={currentTrack.coverUrl} alt={currentTrack.title}
+                      fill style={{ objectFit: 'cover' }} unoptimized
+                    />
                   ) : (
-                    <div style={{
-                      width: '100%', height: '100%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: '#1a1a1a',
-                      fontSize: 40, fontFamily: 'Instrument Serif, serif',
-                      color: 'rgba(255,255,255,0.15)',
-                    }}>
+                    <div className="fsp-art-placeholder">
                       {currentTrack.title.charAt(0)}
                     </div>
                   )}
                 </div>
-                {/* Center hole */}
-                <div style={{
-                  position: 'absolute', top: '50%', left: '50%',
-                  transform: 'translate(-50%,-50%)',
-                  width: 10, height: 10, borderRadius: '50%',
-                  background: '#000', border: '1px solid rgba(255,255,255,0.1)',
-                  zIndex: 2,
-                }} />
+                <div className="fsp-spindle" />
               </div>
             </div>
 
             {/* Track info */}
-            <div style={{ textAlign: 'center', width: '100%' }}>
-              <h2 style={{
-                fontFamily: 'Instrument Serif, serif',
-                fontSize: 30, fontWeight: 400, fontStyle: 'italic',
-                color: '#ffffff', letterSpacing: '-0.3px', lineHeight: 1.15,
-                marginBottom: 8,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                {currentTrack.title}
-              </h2>
-              <p style={{
-                fontFamily: 'DM Sans, sans-serif',
-                fontSize: 14, color: 'rgba(255,255,255,0.45)',
-                fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase',
-              }}>
-                {currentTrack.artist}
-              </p>
+            <div className="fsp-track-info">
+              <h2 className="fsp-title">{currentTrack.title}</h2>
+              <p className="fsp-artist">{currentTrack.artist}</p>
             </div>
 
             {/* Glass controls card */}
-            <div style={{
-              width: '100%',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 20,
-              padding: '24px 28px',
-              backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-              display: 'flex', flexDirection: 'column', gap: 20,
-            }}>
-              {/* Progress bar */}
+            <div className="fsp-card">
+
+              {/* Progress */}
               <div>
                 <div
                   ref={progressRef}
-                  className="fsp-progress-bar"
+                  className="fsp-progress-wrap"
                   onClick={seekTo}
                   onMouseMove={e => {
                     if (!progressRef.current || duration === 0) return;
@@ -313,182 +572,144 @@ export default function FullScreenPlayer() {
                     setHoverProgress(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)));
                   }}
                   onMouseLeave={() => setHoverProgress(null)}
-                  style={{ width: '100%', height: 24, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                 >
-                  <div style={{
-                    width: '100%', height: 3, background: 'rgba(255,255,255,0.1)', borderRadius: 99,
-                    position: 'relative', overflow: 'visible',
-                  }}>
+                  <div className="fsp-progress-track">
                     <div
-                      className="fsp-fill"
-                      style={{
-                        height: '100%', width: `${displayProgress}%`,
-                        background: hoverProgress !== null ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.7)',
-                        borderRadius: 99,
-                        transition: hoverProgress !== null ? 'none' : 'width 0.25s linear, background 0.2s',
-                        position: 'relative',
-                      }}
+                      className="fsp-progress-fill"
+                      style={{ width: `${displayProgress}%` }}
                     />
-                    {/* Scrub thumb */}
                     <div
-                      className="fsp-thumb"
-                      style={{
-                        position: 'absolute', top: '50%',
-                        left: `${displayProgress}%`,
-                        transform: 'translate(-50%, -50%) scale(0)',
-                        width: 13, height: 13, borderRadius: '50%',
-                        background: '#fff', opacity: 0,
-                        transition: 'opacity 0.18s, transform 0.18s',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
-                      }}
+                      className="fsp-progress-thumb"
+                      style={{ left: `${displayProgress}%`, opacity: 0 }}
                     />
                   </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'DM Mono, monospace', letterSpacing: '0.05em' }}>
-                    {formatDuration(currentTime)}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'DM Mono, monospace', letterSpacing: '0.05em' }}>
-                    {formatDuration(duration)}
-                  </span>
+                <div className="fsp-time">
+                  <span>{formatDuration(currentTime)}</span>
+                  <span>{formatDuration(duration)}</span>
                 </div>
               </div>
 
-              {/* Main controls */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <IconBtn onClick={toggleShuffle} active={shuffle} title="Shuffle" size="sm">
-                  <Shuffle size={16} />
-                </IconBtn>
-
-                <IconBtn onClick={playPrev} title="Previous" size="md">
-                  <SkipBack size={20} fill="currentColor" />
-                </IconBtn>
-
+              {/* Controls row */}
+              <div className="fsp-controls">
+                {/* Shuffle */}
                 <button
-                  className="play-btn"
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  style={{
-                    width: 58, height: 58, borderRadius: '50%',
-                    background: '#ffffff',
-                    border: 'none', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                  }}
+                  className={`fsp-icon-btn${shuffle ? ' active-accent' : ''}`}
+                  style={{ width: 34, height: 34 }}
+                  onClick={toggleShuffle}
+                  title="Shuffle"
                 >
+                  <Shuffle size={15} />
+                </button>
+
+                {/* Prev */}
+                <button className="fsp-skip-btn" onClick={playPrev} title="Previous">
+                  <SkipBack size={20} fill="currentColor" />
+                </button>
+
+                {/* Play/Pause */}
+                <button className="fsp-play-btn" onClick={() => setIsPlaying(!isPlaying)}>
                   {isPlaying
-                    ? <Pause size={22} color="#000" fill="#000" />
-                    : <Play size={22} color="#000" fill="#000" style={{ marginLeft: 2 }} />
+                    ? <Pause size={21} color="#fff" fill="#fff" />
+                    : <Play size={21} color="#fff" fill="#fff" style={{ marginLeft: 2 }} />
                   }
                 </button>
 
-                <IconBtn onClick={playNext} title="Next" size="md">
+                {/* Next */}
+                <button className="fsp-skip-btn" onClick={playNext} title="Next">
                   <SkipForward size={20} fill="currentColor" />
-                </IconBtn>
+                </button>
 
-                <IconBtn onClick={toggleRepeat} active={repeat !== 'off'} title={`Repeat: ${repeat}`} size="sm">
-                  {repeat === 'one' ? <Repeat1 size={16} /> : <Repeat size={16} />}
-                </IconBtn>
+                {/* Repeat */}
+                <button
+                  className={`fsp-icon-btn${repeat !== 'off' ? ' active-accent' : ''}`}
+                  style={{ width: 34, height: 34 }}
+                  onClick={toggleRepeat}
+                  title={`Repeat: ${repeat}`}
+                >
+                  {repeat === 'one' ? <Repeat1 size={15} /> : <Repeat size={15} />}
+                </button>
               </div>
 
               {/* Bottom action row */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <IconBtn
+              <div className="fsp-actions">
+                <div className="fsp-action-group">
+                  {/* Like */}
+                  <button
+                    className={`fsp-icon-btn${isLiked ? ' active-accent' : ''}`}
+                    style={{ width: 32, height: 32 }}
                     onClick={() => toggleFavorite(currentTrack.id)}
-                    title="Like"
-                    size="sm"
-                    active={isLiked}
-                    activeColor="#f87171"
+                    title={isLiked ? 'Unlike' : 'Like'}
                   >
-                    <Heart size={15} fill={isLiked ? '#f87171' : 'none'} />
-                  </IconBtn>
+                    <Heart size={14} fill={isLiked ? ACCENT : 'none'} />
+                  </button>
 
+                  {/* Download (search tracks only) */}
                   {isSearchTrack && !isDownloaded && (
-                    <IconBtn onClick={() => processDownload(currentTrack.sourceUrl)} title="Download" size="sm">
-                      <Download size={15} />
-                    </IconBtn>
+                    <button
+                      className="fsp-icon-btn"
+                      style={{ width: 32, height: 32 }}
+                      onClick={() => processDownload(currentTrack.sourceUrl)}
+                      title="Download"
+                    >
+                      <Download size={14} />
+                    </button>
                   )}
 
-                  <IconBtn
+                  {/* Queue */}
+                  <button
+                    className="fsp-icon-btn"
+                    style={{ width: 32, height: 32 }}
                     onClick={() => { handleClose(); setTimeout(() => setActiveView('queue'), 400); }}
                     title="Queue"
-                    size="sm"
                   >
-                    <ListMusic size={15} />
-                  </IconBtn>
+                    <ListMusic size={14} />
+                  </button>
                 </div>
 
+                {/* Lyrics toggle */}
                 <button
-                  onClick={() => setShowLyrics(!showLyrics)}
+                  className={`fsp-lyrics-toggle${showLyrics ? ' on' : ''}`}
+                  onClick={() => setShowLyrics(v => !v)}
                   title={showLyrics ? 'Hide lyrics' : 'Show lyrics'}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    background: showLyrics ? 'rgba(255,255,255,0.1)' : 'transparent',
-                    border: `1px solid ${showLyrics ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)'}`,
-                    borderRadius: 99, padding: '5px 12px',
-                    cursor: 'pointer',
-                    color: showLyrics ? '#fff' : 'rgba(255,255,255,0.4)',
-                    fontFamily: 'DM Sans, sans-serif',
-                    fontSize: 12, fontWeight: 400, letterSpacing: '0.04em',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => { if (!showLyrics) e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
-                  onMouseLeave={e => { if (!showLyrics) e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
                 >
-                  {showLyrics ? <Music size={12} /> : <AlignLeft size={12} />}
-                  {showLyrics ? 'Art' : 'Lyrics'}
+                  {showLyrics ? <Music size={11} /> : <AlignLeft size={11} />}
+                  {showLyrics ? 'Art view' : 'Lyrics'}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: Lyrics panel */}
+          {/* ════ RIGHT: Lyrics panel ════ */}
           {showLyrics && (
-            <div
-              className="fsp-lyrics-panel lyrics-panel"
-              style={{
-                flex: 1, display: 'flex', flexDirection: 'column',
-                minWidth: 0, alignSelf: 'stretch',
-              }}
-            >
-              <p className="lyrics-panel-header">Lyrics</p>
+            <div className="fsp-lyrics-panel">
+              <p className="fsp-lyrics-header">Lyrics</p>
+              <div className="fsp-divider" />
 
-              <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-                <div
-                  ref={lyricsContainerRef}
-                  className="lyrics-scroll-container"
-                  style={{
-                    height: '100%', maxHeight: 480,
-                    overflowY: 'auto',
-                    display: 'flex', flexDirection: 'column',
-                    padding: '60px 8px 60px 4px',
-                    gap: 0,
-                  }}
-                >
+              <div className="fsp-lyrics-scroll-wrap">
+                <div ref={lyricsContainerRef} className="fsp-lyrics-scroll">
                   {isLoadingLyrics ? (
-                    <div className="lyrics-loading">
-                      <span>Finding lyrics…</span>
+                    <div className="fsp-lyrics-loading">
+                      <div className="fsp-loading-text">Finding lyrics…</div>
                     </div>
                   ) : lyrics ? (
                     parsedLyrics ? (
                       parsedLyrics.map((line, i) => {
                         const isActive = i === currentLineIndex;
                         const isPast = i < currentLineIndex;
-                        const isRecentPast = isPast && currentLineIndex - i <= 2;
+                        const isRecent = isPast && currentLineIndex - i <= 2;
                         const isUpcoming = !isPast && !isActive && i - currentLineIndex <= 2;
-
-                        let lineClass = 'lyric-line';
-                        if (isActive) lineClass += ' lyric-line--active';
-                        else if (isRecentPast) lineClass += ' lyric-line--recent-past';
-                        else if (isPast) lineClass += ' lyric-line--past';
-                        else if (isUpcoming) lineClass += ' lyric-line--upcoming';
-                        else lineClass += ' lyric-line--future';
-
+                        let cls = 'lyric-line';
+                        if (isActive) cls += ' lyric-line--active';
+                        else if (isRecent) cls += ' lyric-line--recent-past';
+                        else if (isPast) cls += ' lyric-line--past';
+                        else if (isUpcoming) cls += ' lyric-line--upcoming';
+                        else cls += ' lyric-line--future';
                         return (
                           <div
                             key={i}
                             ref={isActive ? activeLineRef : null}
-                            className={lineClass}
+                            className={cls}
                             onClick={() => {
                               const audio = document.querySelector('audio');
                               if (audio) { audio.currentTime = line.time; setCurrentTime(line.time); }
@@ -505,10 +726,10 @@ export default function FullScreenPlayer() {
                         </div>
                       ))
                     ) : (
-                      <EmptyState label="Lyrics not available for this track" />
+                      <LyricsEmpty label="Lyrics not available for this track" />
                     )
                   ) : (
-                    <EmptyState label="No lyrics found" />
+                    <LyricsEmpty label="No lyrics found" />
                   )}
                 </div>
               </div>
@@ -520,51 +741,13 @@ export default function FullScreenPlayer() {
   );
 }
 
-// ─── Sub-components ────────────────────────────────────────────────────────
+/* ─── Sub-components ──────────────────────────────────────────────────────── */
 
-function EmptyState({ label }: { label: string }) {
+function LyricsEmpty({ label }: { label: string }) {
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, opacity: 0.4 }}>
-      <Music size={28} color="rgba(255,255,255,0.4)" />
-      <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.03em' }}>
-        {label}
-      </span>
+    <div className="fsp-empty">
+      <Music size={24} color="rgba(0,0,0,0.25)" />
+      <span>{label}</span>
     </div>
-  );
-}
-
-function IconBtn({
-  children, onClick, active, title, size, activeColor,
-}: {
-  children: React.ReactNode; onClick: () => void;
-  active?: boolean; title?: string;
-  size?: 'sm' | 'md';
-  activeColor?: string;
-}) {
-  const dim = size === 'md' ? 40 : 34;
-  const activeCol = activeColor || '#ffffff';
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      className="control-btn"
-      style={{
-        width: dim, height: dim,
-        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
-        border: 'none', borderRadius: '50%', cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: active ? activeCol : 'rgba(255,255,255,0.4)',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-        e.currentTarget.style.color = active ? activeCol : 'rgba(255,255,255,0.85)';
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = active ? 'rgba(255,255,255,0.08)' : 'transparent';
-        e.currentTarget.style.color = active ? activeCol : 'rgba(255,255,255,0.4)';
-      }}
-    >
-      {children}
-    </button>
   );
 }

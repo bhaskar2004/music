@@ -90,7 +90,6 @@ app.prepare().then(() => {
       console.log(`[Socket] ${socket.id} joined party: ${partyId}`);
 
       // Send current room state to the joining user
-      const state = getRoomState(partyId);
       if (state) {
         socket.emit('party_state', {
           partyId,
@@ -98,6 +97,7 @@ app.prepare().then(() => {
           trackId: state.trackId,
           positionMs: getEstimatedPosition(partyId),
           isPlaying: state.isPlaying,
+          timestamp: Date.now(),
         });
       }
 
