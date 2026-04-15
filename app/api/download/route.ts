@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
+import { Readable } from 'stream';
 import YTDlpWrap from 'yt-dlp-wrap';
 import * as musicMetadata from 'music-metadata';
 
@@ -344,30 +345,38 @@ export async function GET(req: NextRequest) {
 
   ensureAudioDir();
 
-  const files = fs.readdirSync(AUDIO_DIR).filter((f) => f.startsWith(sanitized));
-  if (!files.length) {
-    return new Response('File not found', { status: 404 });
+  try {
+    const allFiles = await fs.promises.readdir(AUDIO_DIR);
+    const files = allFiles.filter((f) => f.startsWith(sanitized));
+    
+    if (!files.length) {
+      return new Response('File not found', { status: 404 });
+    }
+
+    const filename = files[0];
+    const filePath = path.join(AUDIO_DIR, filename);
+    const stats = await fs.promises.stat(filePath);
+
+    const nodeStream = fs.createReadStream(filePath);
+    const contentType = filename.endsWith('.mp3') ? 'audio/mpeg' :
+                        filename.endsWith('.m4a') ? 'audio/mp4' :
+                        filename.endsWith('.opus') ? 'audio/opus' :
+                        'application/octet-stream';
+
+    return new Response(Readable.toWeb(nodeStream) as any, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': stats.size.toString(),
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'X-Accel-Buffering': 'no',
+        'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  } catch (err) {
+    console.error(`[DOWNLOAD] GET error for ${id}:`, err);
+    return new Response('Internal server error', { status: 500 });
   }
-
-  const filename = files[0];
-  const filePath = path.join(AUDIO_DIR, filename);
-  const stats = fs.statSync(filePath);
-  const fileBuffer = fs.readFileSync(filePath);
-
-  const contentType = filename.endsWith('.mp3') ? 'audio/mpeg' :
-                      filename.endsWith('.m4a') ? 'audio/mp4' :
-                      filename.endsWith('.opus') ? 'audio/opus' :
-                      'application/octet-stream';
-
-  return new Response(fileBuffer, {
-    headers: {
-      'Content-Type': contentType,
-      'Content-Length': stats.size.toString(),
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
 }
 
 // ── OPTIONS — CORS preflight ─────────────────────────────────────────────

@@ -1,74 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import { promises as fsp } from 'fs';
+import { Readable } from 'stream';
 
 const AUDIO_DIR = path.join(process.cwd(), 'public', 'audio');
 const LIBRARY_PATH = path.join(process.cwd(), 'data', 'library.json');
 
+// In-memory cache for library metadata
+let libraryCache: any[] | null = null;
+let lastCacheUpdate = 0;
+const CACHE_TTL = 30 * 1000; // 30 seconds
+
+async function getLibrary() {
+  const now = Date.now();
+  if (libraryCache && (now - lastCacheUpdate < CACHE_TTL)) {
+    return libraryCache;
+  }
+  
+  try {
+    const data = await fsp.readFile(LIBRARY_PATH, 'utf-8');
+    libraryCache = JSON.parse(data);
+    lastCacheUpdate = now;
+    return libraryCache;
+  } catch (err) {
+    console.error('[STREAM] Error loading library:', err);
+    return [];
+  }
+}
+
 // Sanitize ID to prevent path traversal attacks
 function isValidId(id: string): boolean {
   return /^[a-f0-9-]{36}$/.test(id);
-}
-
-/** Convert a Node.js Readable into a web ReadableStream with backpressure. */
-function nodeStreamToWeb(nodeStream: fs.ReadStream): ReadableStream<Uint8Array> {
-  return new ReadableStream({
-    start(controller) {
-      // Pause immediately — we pull on demand
-      nodeStream.pause();
-
-      nodeStream.on('error', (err) => {
-        try { controller.error(err); } catch { /* already closed */ }
-        nodeStream.destroy();
-      });
-
-      nodeStream.on('end', () => {
-        try { controller.close(); } catch { /* already closed */ }
-      });
-    },
-
-    pull(controller) {
-      return new Promise<void>((resolve) => {
-        const chunk = nodeStream.read();
-        if (chunk !== null) {
-          controller.enqueue(new Uint8Array(chunk));
-          resolve();
-          return;
-        }
-        // No data available yet — wait for 'readable'
-        const onReadable = () => {
-          cleanup();
-          const data = nodeStream.read();
-          if (data !== null) {
-            controller.enqueue(new Uint8Array(data));
-          }
-          resolve();
-        };
-        const onEnd = () => {
-          cleanup();
-          try { controller.close(); } catch { /* already closed */ }
-          resolve();
-        };
-        const onError = (err: Error) => {
-          cleanup();
-          try { controller.error(err); } catch { /* already closed */ }
-          resolve();
-        };
-        const cleanup = () => {
-          nodeStream.removeListener('readable', onReadable);
-          nodeStream.removeListener('end', onEnd);
-          nodeStream.removeListener('error', onError);
-        };
-        nodeStream.on('readable', onReadable);
-        nodeStream.on('end', onEnd);
-        nodeStream.on('error', onError);
-      });
-    },
-
-    cancel() {
-      nodeStream.destroy();
-    },
-  });
 }
 
 const CORS_HEADERS = {
@@ -88,79 +51,73 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  // Validate the ID format
   if (!isValidId(id)) {
     return NextResponse.json({ error: 'Invalid track ID' }, { status: 400 });
   }
 
-  let library: Array<{ id: string; filename: string }>;
-  try {
-    library = JSON.parse(fs.readFileSync(LIBRARY_PATH, 'utf-8'));
-  } catch {
-    return NextResponse.json({ error: 'Library not available' }, { status: 500 });
-  }
-
+  const library = await getLibrary();
   const track = library.find((t) => t.id === id);
 
   if (!track) {
     return NextResponse.json({ error: 'Track not found' }, { status: 404 });
   }
 
-  // Ensure filename doesn't contain path traversal
   const safeFilename = path.basename(track.filename);
   const filePath = path.join(AUDIO_DIR, safeFilename);
 
-  // Verify the resolved path is still within AUDIO_DIR
-  if (!filePath.startsWith(AUDIO_DIR)) {
-    return NextResponse.json({ error: 'Invalid file path' }, { status: 400 });
-  }
+  try {
+    const stats = await fsp.stat(filePath);
+    const fileSize = stats.size;
+    const range = req.headers.get('range');
 
-  if (!fs.existsSync(filePath)) {
-    return NextResponse.json({ error: 'File not found' }, { status: 404 });
-  }
+    const headers = new Headers({
+      'Accept-Ranges': 'bytes',
+      'Content-Type': 'audio/mpeg',
+      'X-Accel-Buffering': 'no',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      ...CORS_HEADERS,
+    });
 
-  const stat = fs.statSync(filePath);
-  const fileSize = stat.size;
-  const range = req.headers.get('range');
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      if (isNaN(start) || start < 0 || start >= fileSize || end >= fileSize || start > end) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { 'Content-Range': `bytes */${fileSize}`, ...CORS_HEADERS },
+        });
+      }
 
-    // Validate range
-    if (isNaN(start) || start < 0 || start >= fileSize || end >= fileSize || start > end) {
-      return new NextResponse(null, {
-        status: 416,
-        headers: { 'Content-Range': `bytes */${fileSize}`, ...CORS_HEADERS },
+      const chunkSize = end - start + 1;
+      const nodeStream = fs.createReadStream(filePath, { start, end });
+      
+      headers.set('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+      headers.set('Content-Length', chunkSize.toString());
+
+      console.log(`[STREAM] Partial stream: ${track.title} (${start}-${end})`);
+
+      return new NextResponse(Readable.toWeb(nodeStream) as any, {
+        status: 206,
+        headers,
       });
     }
 
-    const chunkSize = end - start + 1;
-    const stream = fs.createReadStream(filePath, { start, end });
+    const nodeStream = fs.createReadStream(filePath);
+    headers.set('Content-Length', fileSize.toString());
 
-    return new NextResponse(nodeStreamToWeb(stream), {
-      status: 206,
-      headers: {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunkSize.toString(),
-        'Content-Type': 'audio/mpeg',
-        'X-Accel-Buffering': 'no',
-        ...CORS_HEADERS,
-      },
+    console.log(`[STREAM] Full stream: ${track.title}`);
+
+    return new NextResponse(Readable.toWeb(nodeStream) as any, {
+      headers,
     });
+
+  } catch (err: any) {
+    if (err.code === 'ENOENT') {
+      return NextResponse.json({ error: 'File not found on disk' }, { status: 404 });
+    }
+    console.error(`[STREAM] Unexpected error for ${id}:`, err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-
-  const stream = fs.createReadStream(filePath);
-
-  return new NextResponse(nodeStreamToWeb(stream), {
-    headers: {
-      'Content-Length': fileSize.toString(),
-      'Content-Type': 'audio/mpeg',
-      'Accept-Ranges': 'bytes',
-      'X-Accel-Buffering': 'no',
-      ...CORS_HEADERS,
-    },
-  });
 }

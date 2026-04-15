@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
+import { Readable } from 'stream';
 
 const binDir = path.join(process.cwd(), 'bin');
 const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
@@ -133,35 +134,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Read the upstream body via a reader and re-emit as a new ReadableStream
-    // to ensure proper streaming without full-body buffering.
-    const upstream = response.body;
-    if (!upstream) {
-      return NextResponse.json(
-        { error: 'Empty upstream response' },
-        { status: 502, headers: CORS_HEADERS }
-      );
-    }
-
-    const reader = upstream.getReader();
-    const streamBody = new ReadableStream({
-      async pull(controller) {
-        try {
-          const { done, value } = await reader.read();
-          if (done) {
-            controller.close();
-          } else {
-            controller.enqueue(value);
-          }
-        } catch (err) {
-          controller.error(err);
-        }
-      },
-      cancel() {
-        reader.cancel().catch(() => {});
-      },
-    });
-
     const headers = new Headers();
     const contentType = response.headers.get('Content-Type') || 'audio/mpeg';
     headers.set('Content-Type', contentType);
@@ -182,7 +154,7 @@ export async function GET(req: NextRequest) {
       headers.set(key, val);
     }
 
-    return new NextResponse(streamBody, {
+    return new NextResponse(Readable.toWeb(upstream as any) as any, {
       status: response.status,
       headers,
     });
