@@ -6,9 +6,16 @@ const LRCLIB_BASE = 'https://lrclib.net/api';
 const UA_HEADER   = { 'User-Agent': 'WavelengthMusicApp/1.0 (https://github.com/bhaskar2004/music-app)' };
 
 // Noise words to strip when cleaning strings for matching
-const NOISE_RE = /\b(official|video|audio|full|song|lyrics|hd|4k|high\s?res|track|vevo|records|series|music|original|remaster(?:ed)?|explicit|clean|version|edit|feat\.?|ft\.?|with)\b/gi;
+const NOISE_RE = /\b(official|video|audio|full|song|lyrics|hd|4k|high\s?res|track|vevo|records|series|music|original|remaster(?:ed)?|explicit|clean|version|edit|feat\.?|ft\.?|with|channel|topic|presents|productions?|records|music\s?video|lyric\s?video|7\s?clouds)\b/gi;
 // Bracketed/parenthesised annotations
 const BRACKET_RE = /[\(\[].*?[\)\]]/g;
+
+// Basic Latin -> Cyrillic map (one-way for search hints)
+const LATIN_TO_CYRILLIC: Record<string, string> = {
+  'a': 'а', 'b': 'б', 'v': 'в', 'g': 'г', 'd': 'д', 'e': 'е', 'z': 'з', 'i': 'и',
+  'k': 'к', 'l': 'л', 'm': 'м', 'n': 'н', 'o': 'о', 'p': 'п', 'r': 'р', 's': 'с',
+  't': 'т', 'u': 'у', 'f': 'ф', 'h': 'х', 'y': 'ы'
+};
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -45,10 +52,27 @@ function tokenSimilarity(a: string, b: string): number {
   return (overlap * 2) / (tokA.size + tokB.size);
 }
 
-/** True if the text contains Indic scripts (Devanagari, Kannada, Telugu, etc.). */
+/** True if the text contains non-latin scripts (Devanagari, Cyrillic, etc.). */
 function containsNativeScript(text: string | null | undefined): boolean {
   if (!text) return false;
-  return /[\u0900-\u097F\u0C80-\u0CFF\u0C00-\u0C7F\u0B80-\u0BFF\u0980-\u09FF\u0D00-\u0D7F]/.test(text);
+  // Ranges for Devanagari, Kannada, Telugu, Tamil, Bengali, Malayalam, Cyrillic
+  return /[\u0900-\u097F\u0C80-\u0CFF\u0C00-\u0C7F\u0B80-\u0BFF\u0980-\u09FF\u0D00-\u0D7F\u0400-\u04FF]/.test(text);
+}
+
+/** Check if an artist name looks like a common YouTube channel tag. */
+function isSpammyArtist(artist: string): boolean {
+  const a = artist.toLowerCase();
+  return /\b(clouds|lyrics?|channel|topic|records|vevo|productions?|presents|official)\b/.test(a) || /\d+\s*clouds/i.test(a);
+}
+
+/** Rough transliteration to Cyrillic to help finding Russian tracks from Latin inputs. */
+function maybeTransliterate(text: string): string {
+  let s = text.toLowerCase();
+  // Multi-char mappings
+  s = s.replace(/shch/g, 'щ').replace(/sh/g, 'ш').replace(/ch/g, 'ч').replace(/zh/g, 'ж');
+  s = s.replace(/yu/g, 'ю').replace(/ya/g, 'я').replace(/yo/g, 'ё').replace(/iy/g, 'ий');
+  // Single-char mappings
+  return s.split('').map(char => LATIN_TO_CYRILLIC[char] || char).join('');
 }
 
 // ─── Query builder ────────────────────────────────────────────────────────────
@@ -63,11 +87,13 @@ function buildQueries(rawTitle: string, rawArtist: string): QuerySpec[] {
   const cTitle  = normalise(rawTitle);
   const cArtist = normalise(rawArtist);
   const pArtist = normalise(primaryArtist(rawArtist));
+  const artistSpammy = isSpammyArtist(rawArtist);
 
   // Derive extra title variants from "Title - Subtitle | Source" patterns
-  const segments       = rawTitle.split(/\s*[\|:]\s*|\s+-\s+/);
-  const segZero        = normalise(segments[0]);
-  const firstTwoSegs   = segments.length > 1 ? normalise(`${segments[0]} ${segments[1]}`) : '';
+  const segments = rawTitle.split(/\s*[\-\|:]\s*/).map(s => s.trim()).filter(Boolean);
+  const seg0 = segments.length > 0 ? normalise(segments[0]) : '';
+  const seg1 = segments.length > 1 ? normalise(segments[1]) : '';
+  const titleSegs = segments.length > 1 ? normalise(`${segments[0]} ${segments[1]}`) : '';
 
   const specs: QuerySpec[] = [];
 
@@ -75,20 +101,31 @@ function buildQueries(rawTitle: string, rawArtist: string): QuerySpec[] {
     if (searchQ.length > 2) specs.push({ titleHint, artistHint, searchQ });
   };
 
-  // Best: primary artist + cleaned title
-  add(cTitle, pArtist, `${pArtist} ${cTitle}`.trim());
-  // Full artist + cleaned title
-  if (cArtist !== pArtist) add(cTitle, cArtist, `${cArtist} ${cTitle}`.trim());
-  // Reversed order
-  add(cTitle, cArtist, `${cTitle} ${pArtist}`.trim());
-  // Title-only
+  // 1. If artist is spammy AND title looks like "Artist - Track", prioritize that extraction
+  if (artistSpammy && seg0 && seg1) {
+    add(seg1, seg0, `${seg0} ${seg1}`.trim());
+    add(seg1, seg0, maybeTransliterate(`${seg0} ${seg1}`).trim());
+  }
+
+  // 2. Best standard: primary artist + cleaned title
+  if (!artistSpammy) {
+    add(cTitle, pArtist, `${pArtist} ${cTitle}`.trim());
+  }
+
+  // 3. Segment variants
+  if (titleSegs) add(titleSegs, '', titleSegs);
+  if (seg0 && seg1) add(seg1, seg0, `${seg0} ${seg1}`.trim());
+  
+  // 4. Fallbacks
+  add(cTitle, artistSpammy ? '' : pArtist, `${artistSpammy ? '' : pArtist} ${cTitle}`.trim());
   add(cTitle, '', cTitle);
-  // Segment variants
-  if (firstTwoSegs)              add(firstTwoSegs, pArtist, `${pArtist} ${firstTwoSegs}`.trim());
-  if (segZero && segZero !== cTitle) add(segZero, pArtist, `${pArtist} ${segZero}`.trim());
-  // Raw-ish (strip brackets only — last resort)
-  const semiRaw = rawTitle.replace(BRACKET_RE, '').trim().toLowerCase();
-  if (semiRaw !== cTitle)        add(semiRaw, rawArtist, `${rawArtist} ${semiRaw}`.trim());
+
+  // 5. Native script fallbacks for all current search strings
+  const currentQs = specs.map(s => s.searchQ);
+  for (const q of currentQs) {
+    const trans = maybeTransliterate(q);
+    if (trans !== q) add(cTitle, '', trans);
+  }
 
   // Deduplicate by searchQ
   const seen = new Set<string>();
@@ -176,23 +213,33 @@ async function searchGet(
   durationSecs: number | undefined,
 ): Promise<{ result: LrclibResult; score: number } | null> {
   try {
-    const url = `${LRCLIB_BASE}/search?q=${encodeURIComponent(spec.searchQ)}`;
-    const res = await fetch(url, { headers: UA_HEADER });
-    if (!res.ok) return null;
-    const results: LrclibResult[] = await res.json();
-    if (!Array.isArray(results) || results.length === 0) return null;
+    // Try both general query and specific fields for maximum hit rate
+    const endpoints = [
+      `${LRCLIB_BASE}/search?q=${encodeURIComponent(spec.searchQ)}`,
+      `${LRCLIB_BASE}/search?track_name=${encodeURIComponent(spec.titleHint)}${spec.artistHint ? `&artist_name=${encodeURIComponent(spec.artistHint)}` : ''}`
+    ];
 
-    let best: LrclibResult = results[0];
-    let bestScore = -Infinity;
+    let bestRes: { result: LrclibResult; score: number } | null = null;
 
-    for (const r of results) {
-      const s = scoreResult(r, spec.titleHint, spec.artistHint, durationSecs);
-      if (s > bestScore) { bestScore = s; best = r; }
-      // Short-circuit: near-perfect score, no need to keep scanning
-      if (bestScore >= 88) break;
+    for (const url of endpoints) {
+      if (url.includes('artist_name=%20') || url.includes('track_name=%20')) continue;
+      
+      const res = await fetch(url, { headers: UA_HEADER });
+      if (!res.ok) continue;
+      const results: LrclibResult[] = await res.json();
+      if (!Array.isArray(results) || results.length === 0) continue;
+
+      for (const r of results) {
+        const s = scoreResult(r, spec.titleHint, spec.artistHint, durationSecs);
+        if (!bestRes || s > bestRes.score) {
+          bestRes = { result: r, score: s };
+        }
+        if (s >= 88) break;
+      }
+      if (bestRes && bestRes.score >= 88) break;
     }
 
-    return { result: best, score: bestScore };
+    return bestRes;
   } catch {
     return null;
   }
