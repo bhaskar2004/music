@@ -5,6 +5,7 @@ import { formatDuration } from '@/lib/utils';
 import { Play, Music2, Trash2, GripVertical } from 'lucide-react';
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { CoverImage } from './CoverImage';
 
 const PLACEHOLDER_COLORS = [
   'var(--surface2)', 'var(--surface3)', 'color-mix(in srgb, var(--surface) 80%, var(--accent) 5%)'
@@ -216,13 +217,12 @@ function QueueRow({
         flexShrink: 0, position: 'relative', overflow: 'hidden',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {track.coverUrl ? (
-          <Image src={track.coverUrl} alt={track.title} fill style={{ objectFit: 'cover' }} unoptimized />
-        ) : (
-          <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-faint)' }}>
-            {track.title.charAt(0)}
-          </span>
-        )}
+        <CoverImage
+          coverUrl={track.coverUrl}
+          sourceUrl={track.sourceUrl}
+          title={track.title}
+          fallbackFontSize={16}
+        />
         {isActive && (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ display: 'flex', gap: 2, height: 14, alignItems: 'flex-end' }}>

@@ -6,6 +6,7 @@ import { formatDuration, formatDate } from '@/lib/utils';
 import { Play, Pause, MoreHorizontal, Trash2, ExternalLink, Heart, Folder as FolderIcon, ListPlus, PlayCircle, Check, Square } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
+import { CoverImage } from '@/components/CoverImage';
 
 interface TrackCardProps {
   track: Track;
@@ -111,28 +112,12 @@ export default function TrackCard({ track, index }: TrackCardProps) {
           boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
         }}
       >
-        {track.coverUrl ? (
-          <Image
-            src={track.coverUrl.startsWith('/') ? track.coverUrl : `/api/proxy/image?url=${encodeURIComponent(track.coverUrl)}`}
-            alt={track.title}
-            fill
-            style={{ objectFit: 'cover' }}
-            unoptimized
-          />
-        ) : (
-          <div
-            style={{
-              fontFamily: 'var(--font-sans)',
-              fontSize: 28,
-              fontWeight: 800,
-              color: 'var(--text-faint)',
-              userSelect: 'none',
-              opacity: 0.3,
-            }}
-          >
-            {track.title.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <CoverImage
+          coverUrl={track.coverUrl}
+          sourceUrl={track.sourceUrl}
+          title={track.title}
+          fallbackFontSize={28}
+        />
 
         {/* Play overlay */}
         <div

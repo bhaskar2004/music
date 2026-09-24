@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import { CoverImage } from './CoverImage';
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
 const fmt = (ts: number) =>
@@ -352,9 +353,12 @@ export default function PlayTogetherView() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={s.thumb}>
-                    {currentTrack.coverUrl
-                      ? <Image src={currentTrack.coverUrl.startsWith('/') ? currentTrack.coverUrl : `/api/proxy/image?url=${encodeURIComponent(currentTrack.coverUrl)}`} alt="" fill style={{ objectFit: 'cover' }} unoptimized />
-                      : <div style={s.thumbEmpty}><Music2 size={16} /></div>}
+                    <CoverImage
+                      coverUrl={currentTrack.coverUrl}
+                      sourceUrl={currentTrack.sourceUrl}
+                      title={currentTrack.title}
+                      fallbackFontSize={16}
+                    />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={s.trackTitle}>{currentTrack.title}</p>
@@ -446,9 +450,12 @@ export default function PlayTogetherView() {
                     <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: isLast ? 'none' : '1px solid var(--border)' }}>
                       <span style={{ fontSize: 11, color: 'var(--text-faint)', width: 16, textAlign: 'center' as const, flexShrink: 0 }}>{i + 1}</span>
                       <div style={{ ...s.thumb, width: 38, height: 38, borderRadius: 6, flexShrink: 0, cursor: 'pointer' }} onClick={() => queuePlay(t)}>
-                        {t.coverUrl
-                          ? <Image src={t.coverUrl.startsWith('http') ? `/api/proxy/image?url=${encodeURIComponent(t.coverUrl)}` : t.coverUrl} alt="" fill style={{ objectFit: 'cover' }} unoptimized />
-                          : <div style={s.thumbEmpty}><PlayCircle size={14} /></div>}
+                        <CoverImage
+                          coverUrl={t.coverUrl}
+                          sourceUrl={t.sourceUrl}
+                          title={t.title}
+                          fallbackFontSize={14}
+                        />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ ...s.trackTitle, fontSize: 13 }}>{t.title}</p>

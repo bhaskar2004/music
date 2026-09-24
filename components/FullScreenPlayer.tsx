@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useDownloadProcessor } from '@/hooks/useDownloadProcessor';
 import Image from 'next/image';
+import { CoverImage } from './CoverImage';
 import AudioVisualizer from './AudioVisualizer';
 import { extractAccentColor } from '@/lib/colorUtils';
 
@@ -560,17 +561,12 @@ export default function FullScreenPlayer() {
                 ))}
                 {/* Center art label */}
                 <div className="fsp-art-center">
-                  {currentTrack.coverUrl ? (
-                    <Image
-                      src={currentTrack.coverUrl.startsWith('/') ? currentTrack.coverUrl : `/api/proxy/image?url=${encodeURIComponent(currentTrack.coverUrl)}`}
-                      alt={currentTrack.title}
-                      fill style={{ objectFit: 'cover' }} unoptimized
-                    />
-                  ) : (
-                    <div className="fsp-art-placeholder">
-                      {currentTrack.title.charAt(0)}
-                    </div>
-                  )}
+                  <CoverImage
+                    coverUrl={currentTrack.coverUrl}
+                    sourceUrl={currentTrack.sourceUrl}
+                    title={currentTrack.title}
+                    fallbackFontSize={36}
+                  />
                 </div>
                 <div className="fsp-spindle" />
               </div>
@@ -741,17 +737,12 @@ export default function FullScreenPlayer() {
                                 onClick={() => setCurrentTrack(track)}
                               >
                                 <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
-                                  {track.coverUrl ? (
-                                    <Image 
-                                      src={track.coverUrl.startsWith('/') ? track.coverUrl : `/api/proxy/image?url=${encodeURIComponent(track.coverUrl)}`} 
-                                      alt={track.title} 
-                                      fill 
-                                      className="object-cover" 
-                                      unoptimized 
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-black/10 flex items-center justify-center"><Music size={16} /></div>
-                                  )}
+                                  <CoverImage
+                                    coverUrl={track.coverUrl}
+                                    sourceUrl={track.sourceUrl}
+                                    title={track.title}
+                                    fallbackFontSize={16}
+                                  />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h4 className="text-sm font-semibold truncate leading-tight">{track.title}</h4>

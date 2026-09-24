@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import path from 'path';
-import fs from 'fs';
 import { spawn } from 'child_process';
-import { Readable } from 'stream';
 import { getYtDlpBinaryPath, YT_DLP_CLIENT_ARGS } from '@/lib/yt-dlp-helper';
 
 // Simple in-memory cache for direct URLs
@@ -20,11 +17,7 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const videoId = searchParams.get('v');
-  console.log(`[YT-STREAM] Received request for videoId: ${videoId} from ${req.headers.get('user-agent')}`);
-
+export async function handleYouTubeStream(videoId: string, req: NextRequest): Promise<NextResponse> {
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
     return NextResponse.json({ error: 'Invalid or missing YouTube Video ID' }, { status: 400 });
   }
@@ -83,19 +76,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── Prefetch mode: only warm the URL cache, don't stream ──
+  // Prefetch mode
+  const { searchParams } = new URL(req.url);
   const prefetch = searchParams.get('prefetch');
   if (prefetch === '1') {
-    console.log(`[YT-STREAM] Prefetch complete for ${videoId}`);
-    return NextResponse.json(
-      { ok: true, videoId, cached: true },
-      { headers: CORS_HEADERS }
-    );
+    return NextResponse.json({ ok: true, videoId, cached: true }, { headers: CORS_HEADERS });
   }
 
   try {
     const proxyHeaders: Record<string, string> = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Referer': 'https://www.youtube.com/',
     };
     if (range) {
@@ -104,7 +94,7 @@ export async function GET(req: NextRequest) {
 
     const response = await fetch(cleanDirectUrl, {
       headers: proxyHeaders,
-      cache: 'no-store',  // Prevent Next.js from buffering/caching
+      cache: 'no-store',
     });
 
     if (!response.ok && response.status !== 206) {
@@ -131,7 +121,6 @@ export async function GET(req: NextRequest) {
     headers.set('Cache-Control', 'public, max-age=3600');
     headers.set('X-Accel-Buffering', 'no');
 
-    // Merge CORS headers
     for (const [key, val] of Object.entries(CORS_HEADERS)) {
       headers.set(key, val);
     }
@@ -148,4 +137,10 @@ export async function GET(req: NextRequest) {
       { status: 500, headers: CORS_HEADERS }
     );
   }
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const videoId = searchParams.get('v') || '';
+  return handleYouTubeStream(videoId, req);
 }

@@ -4,6 +4,7 @@ import { useMusicStore } from '@/store/musicStore';
 import { formatDuration } from '@/lib/utils';
 import { Clock, Play, Shuffle, Trash2, Music2 } from 'lucide-react';
 import Image from 'next/image';
+import { CoverImage } from './CoverImage';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -135,13 +136,12 @@ function RecentRow({ track, playedAt, index, onPlay }: {
     >
       {/* Cover */}
       <div style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--surface2)', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
-        {track.coverUrl ? (
-          <Image src={track.coverUrl} alt={track.title} fill style={{ objectFit: 'cover' }} unoptimized />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Music2 size={18} color="var(--text-faint)" />
-          </div>
-        )}
+        <CoverImage
+          coverUrl={track.coverUrl}
+          sourceUrl={track.sourceUrl}
+          title={track.title}
+          fallbackFontSize={16}
+        />
         {isActive && isPlaying && (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ display: 'flex', gap: 2, height: 14, alignItems: 'flex-end' }}>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
+import { CoverImage } from './CoverImage';
 import { Track } from '@/types';
 import { formatDuration } from '@/lib/utils';
 
@@ -462,17 +463,12 @@ export default function LibraryView() {
                         width: 40, height: 40, borderRadius: 8, overflow: 'hidden',
                         position: 'relative', flexShrink: 0, background: 'var(--surface3)'
                       }}>
-                        {track.coverUrl ? (
-                          <Image
-                            src={track.coverUrl.startsWith('/') ? track.coverUrl : `/api/proxy/image?url=${encodeURIComponent(track.coverUrl)}`}
-                            alt={track.title}
-                            fill style={{ objectFit: 'cover' }} unoptimized
-                          />
-                        ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Music2 size={16} color="var(--text-faint)" />
-                          </div>
-                        )}
+                        <CoverImage
+                          coverUrl={track.coverUrl}
+                          sourceUrl={track.sourceUrl}
+                          title={track.title}
+                          fallbackFontSize={16}
+                        />
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{

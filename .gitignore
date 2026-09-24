@@ -46,6 +46,7 @@ next-env.d.ts
 !/data/library.json
 !/data/playlists.json
 /public/audio/*
+!/public/audio/*_cover.jpg
 !/public/audio/.gitkeep
 /.gemini/
 /cloudflared

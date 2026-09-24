@@ -4,6 +4,7 @@ import fs from 'fs';
 import { promises as fsp } from 'fs';
 import { Readable } from 'stream';
 import { libraryManager } from '@/lib/library-manager';
+import { handleYouTubeStream } from '@/app/api/stream/youtube/route';
 
 const AUDIO_DIR = path.join(process.cwd(), 'public', 'audio');
 
@@ -100,7 +101,7 @@ export async function GET(
           if (shortMatch) videoId = shortMatch[1];
         }
         if (videoId) {
-          return NextResponse.redirect(new URL(`/api/stream/youtube?v=${videoId}`, req.url), 307);
+          return handleYouTubeStream(videoId, req);
         }
       }
       return NextResponse.json({ error: 'File not found on disk' }, { status: 404 });

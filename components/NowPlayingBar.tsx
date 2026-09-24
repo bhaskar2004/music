@@ -9,6 +9,7 @@ import {
   ListMusic, Heart, Maximize2, Music2, Radio, Users,
 } from 'lucide-react';
 import Image from 'next/image';
+import { CoverImage } from './CoverImage';
 import SleepTimerDropdown from './SleepTimerDropdown';
 import { emitProgress, getSocketId } from '@/lib/syncService';
 
@@ -329,17 +330,12 @@ export default function NowPlayingBar() {
             }}
             title="Open full-screen player"
           >
-            {currentTrack.coverUrl ? (
-              <Image
-                src={currentTrack.coverUrl.startsWith('/') ? currentTrack.coverUrl : `/api/proxy/image?url=${encodeURIComponent(currentTrack.coverUrl)}`}
-                alt={currentTrack.title}
-                fill style={{ objectFit: 'cover' }} unoptimized
-              />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, color: 'var(--text-faint)', opacity: 0.3 }}>
-                {currentTrack.title.charAt(0)}
-              </div>
-            )}
+            <CoverImage
+              coverUrl={currentTrack.coverUrl}
+              sourceUrl={currentTrack.sourceUrl}
+              title={currentTrack.title}
+              fallbackFontSize={24}
+            />
             {/* Expand overlay on hover */}
             <div style={{
               position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)',
