@@ -3,31 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { promises as fsp } from 'fs';
 import { Readable } from 'stream';
+import { libraryManager } from '@/lib/library-manager';
 
 const AUDIO_DIR = path.join(process.cwd(), 'public', 'audio');
-const LIBRARY_PATH = path.join(process.cwd(), 'data', 'library.json');
-
-// In-memory cache for library metadata
-let libraryCache: any[] | null = null;
-let lastCacheUpdate = 0;
-const CACHE_TTL = 30 * 1000; // 30 seconds
-
-async function getLibrary() {
-  const now = Date.now();
-  if (libraryCache && (now - lastCacheUpdate < CACHE_TTL)) {
-    return libraryCache;
-  }
-  
-  try {
-    const data = await fsp.readFile(LIBRARY_PATH, 'utf-8');
-    libraryCache = JSON.parse(data);
-    lastCacheUpdate = now;
-    return libraryCache;
-  } catch (err) {
-    console.error('[STREAM] Error loading library:', err);
-    return [];
-  }
-}
 
 // Sanitize ID to prevent path traversal attacks
 function isValidId(id: string): boolean {
@@ -55,8 +33,9 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid track ID' }, { status: 400 });
   }
 
-  const library = await getLibrary();
-  const track = (library || []).find((t: any) => t.id === id);
+  // Use LibraryManager for optimized lookup
+  const tracks = await libraryManager.getTracks();
+  const track = tracks.find((t) => t.id === id);
 
   if (!track) {
     return NextResponse.json({ error: 'Track not found' }, { status: 404 });
@@ -96,8 +75,6 @@ export async function GET(
       headers.set('Content-Range', `bytes ${start}-${end}/${fileSize}`);
       headers.set('Content-Length', chunkSize.toString());
 
-      console.log(`[STREAM] Partial stream: ${track.title} (${start}-${end})`);
-
       return new NextResponse(Readable.toWeb(nodeStream) as any, {
         status: 206,
         headers,
@@ -106,8 +83,6 @@ export async function GET(
 
     const nodeStream = fs.createReadStream(filePath);
     headers.set('Content-Length', fileSize.toString());
-
-    console.log(`[STREAM] Full stream: ${track.title}`);
 
     return new NextResponse(Readable.toWeb(nodeStream) as any, {
       headers,

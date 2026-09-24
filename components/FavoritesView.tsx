@@ -109,12 +109,12 @@ export default function FavoritesView() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-              gap: 14,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(176px, 1fr))',
+              gap: 18,
             }}
           >
             {favoriteTracks.map((track, i) => (
-              <TrackCard key={track.id} track={track} index={i} />
+              <TrackCard key={`${track.id}-${i}`} track={track} index={i} />
             ))}
           </div>
         )}

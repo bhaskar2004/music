@@ -3,29 +3,28 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMusicStore } from '@/store/musicStore';
 import { detectPlatform } from '@/lib/utils';
-import { X, Link, Download } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
+import { X, Link, Download, DownloadCloud } from 'lucide-react';
 import { useDownloadProcessor } from '@/hooks/useDownloadProcessor';
 
 export default function DownloadModal() {
-  const { showDownloadModal, setShowDownloadModal, addDownload, updateDownload, addTrack, setActiveView, playlists, activePlaylistId } =
+  const { showDownloadModal, setShowDownloadModal, setActiveView, playlists, activePlaylistId } =
     useMusicStore();
-  const { processDownload } = useDownloadProcessor();
+  const { processBulkDownload } = useDownloadProcessor();
 
   const [url, setUrl] = useState('');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('none');
+  const [isProcessing, setIsProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus & reset on open
   useEffect(() => {
     if (showDownloadModal) {
       setTimeout(() => inputRef.current?.focus(), 80);
       setUrl('');
       setSelectedPlaylistId(activePlaylistId || 'none');
+      setIsProcessing(false);
     }
   }, [showDownloadModal, activePlaylistId]);
 
-  // Escape to close
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowDownloadModal(false); };
     window.addEventListener('keydown', fn);
@@ -33,11 +32,12 @@ export default function DownloadModal() {
   }, [setShowDownloadModal]);
 
   function handleClose() {
+    if (isProcessing) return;
     setShowDownloadModal(false);
   }
 
   async function handleDownload() {
-    if (!url.trim()) return;
+    if (!url.trim() || isProcessing) return;
 
     const urls = url
       .split(/[\n,]+/)
@@ -46,62 +46,24 @@ export default function DownloadModal() {
 
     if (urls.length === 0) return;
 
-    const { library, downloads } = useMusicStore.getState();
-    const existingUrls = new Set([
-      ...library.map(t => t.sourceUrl),
-      ...downloads.map(d => d.url)
-    ]);
+    setIsProcessing(true);
 
-    const urlsToProcess = urls.filter(u => {
-      if (existingUrls.has(u)) {
-        console.log(`[UI] Skipping duplicate URL: ${u}`);
-        return false;
-      }
-      return true;
-    });
-
-    if (urlsToProcess.length === 0) {
+    try {
+      // Use the new bulk processor which is much more efficient
+      await processBulkDownload(urls);
+      
+      setUrl('');
       setShowDownloadModal(false);
-      return;
+      setActiveView('downloads');
+    } catch (err) {
+      console.error('[DownloadModal] Bulk error:', err);
+      // Fallback or error UI could go here
+    } finally {
+      setIsProcessing(false);
     }
-
-    // Dispatch to background and UX reset
-    setUrl('');
-    setShowDownloadModal(false);
-    setActiveView('downloads');
-
-    const processAll = async () => {
-      for (const currentUrl of urlsToProcess) {
-        let urlsToDownload: string[] = [currentUrl];
-
-        try {
-          const pRes = await fetch('/api/playlist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: currentUrl }),
-          });
-          if (pRes.ok) {
-            const data = await pRes.json();
-            if (data.urls && data.urls.length > 0) {
-              urlsToDownload = data.urls;
-            }
-          }
-        } catch {
-          // Fallback to strict single download if playlist parser fails
-        }
-
-        for (const videoUrl of urlsToDownload) {
-          const playlistIdStr = selectedPlaylistId !== 'none' ? selectedPlaylistId : undefined;
-          await processDownload(videoUrl, playlistIdStr);
-        }
-      }
-    };
-
-    processAll();
   }
 
   const platform = url ? detectPlatform(url) : null;
-
   if (!showDownloadModal) return null;
 
   return (
@@ -109,134 +71,110 @@ export default function DownloadModal() {
       style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
-      {/* Backdrop */}
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }} />
 
-      {/* Panel */}
       <div
         className="animate-slide-up glass-panel"
         style={{
           position: 'relative', width: '100%', maxWidth: 520, margin: 20,
-          borderRadius: 'var(--radius-lg)', padding: 32,
-          boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+          borderRadius: 24, padding: 32,
+          boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
           border: '1px solid var(--border)',
+          background: 'var(--surface)',
         }}
       >
-        {/* Close */}
-        <button onClick={handleClose}
+        <button onClick={handleClose} disabled={isProcessing}
           style={{
-            position: 'absolute', top: 16, right: 16,
-            background: 'var(--surface)', border: '1px solid color-mix(in srgb, var(--border) 40%, transparent)',
-            borderRadius: 8, width: 32, height: 32,
+            position: 'absolute', top: 20, right: 20,
+            background: 'var(--surface2)', border: 'none',
+            borderRadius: 12, width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--text-muted)', transition: 'all 0.15s',
+            cursor: 'pointer', color: 'var(--text-faint)', transition: 'all 0.15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)'; e.currentTarget.style.color = 'var(--text)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
         >
-          <X size={14} />
+          <X size={16} />
         </button>
 
-        {/* Header */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
             <div style={{
-              width: 36, height: 36,
+              width: 44, height: 44,
               background: 'var(--brand-gradient)',
-              borderRadius: 10,
+              borderRadius: 14,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#000',
-              boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
+              boxShadow: '0 8px 20px var(--accent-glow)',
             }}>
-              <Download size={16} />
+              <DownloadCloud size={20} strokeWidth={2.5} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.4px' }}>Add from URL</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>YouTube, SoundCloud, Bandcamp & more</div>
+              <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: '-0.5px' }}>Add to Library</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>Paste one or more links to start downloading.</div>
             </div>
           </div>
         </div>
 
-        {/* URL Input */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'var(--surface)',
+          background: 'var(--surface2)',
           border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)', padding: '12px 14px', marginBottom: 16,
+          borderRadius: 16, padding: '16px', marginBottom: 20,
           transition: 'all 0.2s',
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)',
         }}>
-          <Link size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <Link size={14} color="var(--accent)" />
+            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Source Links</span>
+          </div>
           <textarea
             ref={inputRef as any}
             value={url}
+            disabled={isProcessing}
             onChange={e => setUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleDownload(); } }}
-            placeholder="Paste one or more URLs (one per line or separated by commas)..."
+            placeholder="https://youtube.com/watch?v=...&#10;https://soundcloud.com/..."
             style={{
-              flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 12,
-              minHeight: 60, resize: 'none', padding: '4px 0',
+              width: '100%', background: 'transparent', border: 'none', outline: 'none',
+              color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 13,
+              minHeight: 120, resize: 'none', lineHeight: 1.6,
             }}
           />
           {platform && (
-            <span style={{
-              fontSize: 10, fontWeight: 600, color: 'var(--accent)',
-              background: 'var(--accent-dim)', padding: '2px 8px',
-              borderRadius: 4, fontFamily: 'var(--font-mono)', flexShrink: 0,
-            }}>{platform}</span>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', background: 'var(--accent-dim)', padding: '3px 10px', borderRadius: 6, textTransform: 'uppercase' }}>
+                {platform} Detected
+              </span>
+            </div>
           )}
         </div>
 
-        {/* Playlist Selection */}
-        {playlists.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
-              Target Playlist
-            </label>
-            <div style={{ position: 'relative' }}>
-              <select
-                value={selectedPlaylistId}
-                onChange={e => setSelectedPlaylistId(e.target.value)}
-                style={{
-                  width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius)', padding: '12px 14px', color: 'var(--text)',
-                  fontSize: 13, outline: 'none', fontFamily: 'var(--font-sans)', cursor: 'pointer',
-                  appearance: 'none', fontWeight: 600,
-                }}
-              >
-                <option value="none">No Playlist (Default)</option>
-                {playlists.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-faint)', fontSize: 10 }}>▼</div>
-            </div>
-          </div>
-        )}
-
-        {/* Submit Button */}
         <button
           onClick={handleDownload}
-          disabled={!url.trim()}
+          disabled={!url.trim() || isProcessing}
           className="tap-active"
           style={{
-            width: '100%', padding: '14px',
-            background: url.trim() ? 'var(--brand-gradient)' : 'var(--surface3)',
-            color: url.trim() ? '#000' : 'var(--text-faint)',
-            border: 'none', borderRadius: 'var(--radius)',
-            fontFamily: 'var(--font-sans)', fontWeight: 800, fontSize: 14,
-            cursor: !url.trim() ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            transition: 'all 0.2s',
-            boxShadow: url.trim() ? '0 8px 24px rgba(0,0,0,0.3)' : 'none',
+            width: '100%', padding: '16px',
+            background: url.trim() && !isProcessing ? 'var(--brand-gradient)' : 'var(--surface3)',
+            color: url.trim() && !isProcessing ? '#000' : 'var(--text-faint)',
+            border: 'none', borderRadius: 16,
+            fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15,
+            cursor: !url.trim() || isProcessing ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            boxShadow: url.trim() && !isProcessing ? '0 12px 28px var(--accent-glow)' : 'none',
           }}
         >
-          <Download size={16} />
-          Start Download
+          {isProcessing ? (
+            <div className="spinner" style={{ width: 20, height: 20, border: '3px solid rgba(0,0,0,0.1)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          ) : (
+            <>
+              <Download size={18} strokeWidth={2.5} />
+              Start Bulk Download
+            </>
+          )}
         </button>
 
-        <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 11, marginTop: 14, fontFamily: 'var(--font-mono)' }}>
-          Downloads automatically queue and run in parallel
+        <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 11, marginTop: 20, fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
+          Tasks are processed in the background with a max concurrency of 3.
         </p>
       </div>
     </div>

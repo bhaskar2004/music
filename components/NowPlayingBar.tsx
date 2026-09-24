@@ -6,10 +6,11 @@ import { formatDuration } from '@/lib/utils';
 import {
   Play, Pause, SkipBack, SkipForward,
   Volume2, VolumeX, Shuffle, Repeat, Repeat1,
-  ListMusic, Heart, Maximize2, Music2, Radio,
+  ListMusic, Heart, Maximize2, Music2, Radio, Users,
 } from 'lucide-react';
 import Image from 'next/image';
 import SleepTimerDropdown from './SleepTimerDropdown';
+import { emitProgress, getSocketId } from '@/lib/syncService';
 
 const PLACEHOLDER_COLORS = [
   'var(--surface2)', 'var(--surface3)', 'color-mix(in srgb, var(--surface) 80%, var(--accent) 5%)'
@@ -46,6 +47,8 @@ export default function NowPlayingBar() {
     pendingSeek,
     setPendingSeek,
     partyId,
+    partyMembersList,
+    memberProgress,
   } = useMusicStore();
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -55,6 +58,8 @@ export default function NowPlayingBar() {
   const [localTime, setLocalTime] = useState(0);
   const [muted, setMuted] = useState(false);
   const [isCrossfading, setIsCrossfading] = useState(false);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [hoverX, setHoverX] = useState<number>(0);
   const lastTrackIdRef = useRef<string | null>(null);
   const listenIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -261,6 +266,18 @@ export default function NowPlayingBar() {
       window.removeEventListener('mouseup', onUp);
     };
   }, [dragging, duration]);
+
+  // Periodic progress broadcast for sync visualization
+  useEffect(() => {
+    if (!partyId || !isPlaying) return;
+    const int = setInterval(() => {
+      if (duration > 0) {
+        emitProgress(currentTime / duration);
+      }
+    }, 3000);
+    return () => clearInterval(int);
+  }, [partyId, isPlaying, currentTime, duration]);
+
   const displayTime = dragging ? localTime : currentTime;
   const progressPct = duration > 0 ? (displayTime / duration) * 100 : 0;
   const bgColor = PLACEHOLDER_COLORS[0];
@@ -314,7 +331,8 @@ export default function NowPlayingBar() {
           >
             {currentTrack.coverUrl ? (
               <Image
-                src={currentTrack.coverUrl} alt={currentTrack.title}
+                src={currentTrack.coverUrl.startsWith('/') ? currentTrack.coverUrl : `/api/proxy/image?url=${encodeURIComponent(currentTrack.coverUrl)}`}
+                alt={currentTrack.title}
                 fill style={{ objectFit: 'cover' }} unoptimized
               />
             ) : (
@@ -340,8 +358,26 @@ export default function NowPlayingBar() {
               fontWeight: 800, fontSize: 16, fontFamily: 'var(--font-sans)',
               color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden',
               textOverflow: 'ellipsis', marginBottom: 2, letterSpacing: '-0.4px',
+              display: 'flex', alignItems: 'center', gap: 8
             }}>
               {currentTrack.title}
+              {isPlaying && (
+                <div style={{ display: 'flex', gap: 2, height: 12, alignItems: 'flex-end', flexShrink: 0, marginLeft: 2 }} title="Playing">
+                  <div className="eq-bar" style={{ height: '100%', width: 2.5 }} />
+                  <div className="eq-bar" style={{ height: '65%', width: 2.5 }} />
+                  <div className="eq-bar" style={{ height: '90%', width: 2.5 }} />
+                </div>
+              )}
+              {partyId && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                  padding: '2px 6px', borderRadius: 6,
+                }}>
+                  <div className="party-banner-dot" style={{ width: 6, height: 6 }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)' }}>SYNC</span>
+                </div>
+              )}
             </div>
             <div style={{
               fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-sans)',
@@ -366,8 +402,34 @@ export default function NowPlayingBar() {
           </button>
         </div>
 
+        {/* Mobile quick controls */}
+        <div className="mobile-only" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleFavorite(currentTrack.id); }}
+            className="tap-active"
+            aria-label={isLiked ? 'Remove from favorites' : 'Add to favorites'}
+            style={{ background: 'transparent', border: 'none', padding: 8, color: isLiked ? 'var(--accent)' : 'var(--text-faint)', cursor: 'pointer' }}
+          >
+            <Heart size={18} fill={isLiked ? 'var(--accent)' : 'none'} strokeWidth={isLiked ? 0 : 2} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
+            className="tap-active"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            style={{
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'var(--text)', border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--bg)', cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            }}
+          >
+            {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
+          </button>
+        </div>
+
         {/* Center — Controls + Seek */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%' }}>
+        <div className="desktop-only" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%' }}>
           {/* Playback buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <ControlBtn onClick={toggleShuffle} active={shuffle} title="Shuffle" ariaLabel={`Shuffle ${shuffle ? 'on' : 'off'}`} className="desktop-only">
@@ -412,7 +474,7 @@ export default function NowPlayingBar() {
           </div>
 
           {/* Seek bar */}
-          <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 580 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 580 }}>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', width: 44, textAlign: 'right', flexShrink: 0, fontWeight: 600 }}>
               {formatDuration(displayTime)}
             </span>
@@ -420,11 +482,67 @@ export default function NowPlayingBar() {
               ref={progressRef}
               onMouseDown={handleProgressMouseDown}
               onClick={handleProgressClick}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                setHoverTime(ratio * duration);
+                setHoverX(e.clientX - rect.left);
+              }}
+              onMouseLeave={() => setHoverTime(null)}
               role="slider" aria-label="Seek" aria-valuemin={0} aria-valuemax={Math.round(duration)} aria-valuenow={Math.round(displayTime)} tabIndex={0}
               className={`seek-bar-container ${dragging ? 'dragging' : ''}`}
+              style={{ position: 'relative' }}
             >
               <div className="seek-bar-fill" style={{ width: `${progressPct}%`, transition: dragging ? 'none' : 'all 0.1s linear' }} />
               <div className="seek-handle" style={{ left: `${progressPct}%`, transition: dragging ? 'none' : 'left 0.1s linear' }} />
+              
+              {/* Hover Timestamp Tooltip */}
+              {hoverTime !== null && duration > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  left: hoverX,
+                  bottom: 'calc(100% + 8px)',
+                  transform: 'translateX(-50%)',
+                  background: 'var(--surface3)',
+                  color: 'var(--text)',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: 'var(--font-mono)',
+                  pointerEvents: 'none',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                  border: '1px solid var(--border)',
+                  whiteSpace: 'nowrap',
+                  zIndex: 20,
+                }}>
+                  {formatDuration(hoverTime)}
+                </div>
+              )}
+
+              {/* Member Avatars on Seek Bar */}
+              {partyId && partyMembersList.map(m => {
+                if (m.socketId === getSocketId()) return null;
+                const pos = (memberProgress[m.socketId] ?? 0) * 100;
+                return (
+                  <div 
+                    key={m.socketId}
+                    title={m.displayName}
+                    style={{
+                      position: 'absolute', left: `${pos}%`, top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: 14, height: 14, borderRadius: '50%',
+                      background: m.color, border: '2px solid var(--bg)',
+                      zIndex: 10, transition: 'left 1s ease-in-out',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 8, fontWeight: 900, color: '#fff'
+                    }}
+                  >
+                    {m.displayName.charAt(0).toUpperCase()}
+                  </div>
+                );
+              })}
             </div>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', width: 44, flexShrink: 0, fontWeight: 600 }}>
               {formatDuration(duration)}
@@ -519,48 +637,78 @@ function ControlBtn({ children, onClick, active, title, ariaLabel, className }: 
 }
 
 function EmptyBar() {
+  const { library, playAll, shufflePlay, setActiveView } = useMusicStore();
+
   return (
-    <div style={{
-      height: 88,
-      margin: '0 20px 20px 20px',
-      borderRadius: 24,
-      background: 'color-mix(in srgb, var(--surface) 60%, transparent)',
-      backdropFilter: 'blur(40px)',
-      WebkitBackdropFilter: 'blur(40px)',
-      border: '1px solid var(--border)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-      gap: 32,
-      padding: '0 24px',
-      boxShadow: '0 12px 40px rgba(0,0,0,0.06)'
-    }}>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Music2 size={24} color="var(--text-faint)" opacity={0.3} />
+    <div
+      className="empty-bar-container desktop-only"
+      style={{
+        height: 88,
+        margin: '0 20px 20px 20px',
+        borderRadius: 24,
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(32px) saturate(1.8)',
+        WebkitBackdropFilter: 'blur(32px) saturate(1.8)',
+        border: '1px solid var(--glass-border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexShrink: 0,
+        padding: '0 28px',
+        boxShadow: 'var(--card-shadow)',
+        transition: 'all 0.3s ease',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{
+          width: 50, height: 50, borderRadius: 14,
+          background: 'var(--surface2)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          border: '1px solid var(--border)'
+        }}>
+          <Music2 size={22} color="var(--accent)" />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ height: 16, width: 140, background: 'var(--surface2)', borderRadius: 4 }} />
-          <div style={{ height: 12, width: 90, background: 'var(--surface2)', borderRadius: 4 }} />
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.2px' }}>
+            No Track Selected
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            {library.length > 0 ? `${library.length} songs available in your library` : 'Explore music to begin playing'}
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, opacity: 0.3, pointerEvents: 'none' }}>
-        <SkipBack size={20} />
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Play size={22} color="var(--bg)" fill="var(--bg)" style={{ marginLeft: 4 }} />
-        </div>
-        <SkipForward size={20} />
-      </div>
-
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', opacity: 0.3, pointerEvents: 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Maximize2 size={18} />
-          <ListMusic size={18} />
-          <Volume2 size={18} />
-          <div style={{ width: 100, height: 4, background: 'var(--surface2)', borderRadius: 2 }} />
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {library.length > 0 ? (
+          <button
+            onClick={() => shufflePlay(library)}
+            className="tap-active"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'var(--brand-gradient)', color: '#000',
+              border: 'none', borderRadius: 99,
+              padding: '10px 20px', fontSize: 13, fontWeight: 800,
+              cursor: 'pointer', boxShadow: '0 4px 16px var(--accent-glow)'
+            }}
+          >
+            <Play size={14} fill="currentColor" />
+            Shuffle Library
+          </button>
+        ) : (
+          <button
+            onClick={() => setActiveView('search')}
+            className="tap-active"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'var(--brand-gradient)', color: '#000',
+              border: 'none', borderRadius: 99,
+              padding: '10px 20px', fontSize: 13, fontWeight: 800,
+              cursor: 'pointer', boxShadow: '0 4px 16px var(--accent-glow)'
+            }}
+          >
+            Discover Music
+          </button>
+        )}
       </div>
     </div>
   );

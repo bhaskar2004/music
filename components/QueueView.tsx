@@ -137,7 +137,7 @@ export default function QueueView() {
               const absoluteIndex = currentIdx + 1 + i;
               return (
                 <div
-                  key={track.id}
+                  key={`${track.id}-${absoluteIndex}`}
                   draggable
                   onDragStart={() => handleDragStart(absoluteIndex)}
                   onDragOver={(e) => handleDragOver(e, absoluteIndex)}

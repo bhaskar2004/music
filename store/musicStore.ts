@@ -2,10 +2,10 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Track, DownloadJob, Playlist, RecentPlay, ListeningStats, SleepTimerState, Lyrics } from '@/types';
+import { Track, DownloadJob, Playlist, RecentPlay, ListeningStats, SleepTimerState, Lyrics, ChatMessage, PartyMember } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
-type ViewId = 'library' | 'search' | 'queue' | 'downloads' | 'favorites' | 'history' | 'stats' | 'settings';
+type ViewId = 'together' | 'library' | 'search' | 'queue' | 'downloads' | 'favorites' | 'history' | 'stats' | 'settings';
 
 interface MusicStore {
   // Library & Playlists
@@ -89,6 +89,28 @@ interface MusicStore {
   setSelectedTrack: (t: Track | null) => void;
   showFullScreenPlayer: boolean;
   setShowFullScreenPlayer: (v: boolean) => void;
+
+  // Party Chat & Members
+  partyChatMessages: ChatMessage[];
+  addChatMessage: (msg: ChatMessage) => void;
+  clearChat: () => void;
+  partyMembersList: PartyMember[];
+  setPartyMembersList: (members: PartyMember[]) => void;
+  displayName: string;
+  setDisplayName: (name: string) => void;
+
+  // Advanced Party Features
+  partyVotes: Record<string, number>;
+  setPartyVotes: (votes: Record<string, number>) => void;
+  partyVibe: 'default' | 'neon' | 'sunset' | 'ocean' | 'forest';
+  setPartyVibe: (vibe: 'default' | 'neon' | 'sunset' | 'ocean' | 'forest') => void;
+  isHostOnly: boolean;
+  setIsHostOnly: (v: boolean) => void;
+  liveReactions: Array<{ id: string; type: string; senderName: string }>;
+  addLiveReaction: (reaction: { id: string; type: string; senderName: string }) => void;
+  clearLiveReactions: () => void;
+  memberProgress: Record<string, number>;
+  setMemberProgress: (socketId: string, progress: number) => void;
 
   // Selection
   selectedTrackIds: string[];
@@ -424,15 +446,33 @@ export const useMusicStore = create<MusicStore>()(
       }),
 
       downloads: [],
-      addDownload: (job) => set((s) => ({ downloads: [job, ...s.downloads] })),
+      addDownload: (job) => set((s) => ({ 
+        downloads: s.downloads.some(d => d.id === job.id) 
+          ? s.downloads 
+          : [job, ...s.downloads] 
+      })),
       updateDownload: (id, updates) =>
-        set((s) => ({
-          downloads: s.downloads.map((d) => (d.id === id ? { ...d, ...updates } : d)),
-        })),
+        set((s) => {
+          const exists = s.downloads.some((d) => d.id === id);
+          if (!exists) {
+            // Upsert: Create a new job entry if it doesn't exist
+            const newJob: DownloadJob = {
+              id,
+              url: (updates as any).url || 'Pending URL...',
+              status: updates.status || 'pending',
+              progress: updates.progress || 0,
+              ...updates as any
+            };
+            return { downloads: [newJob, ...s.downloads] };
+          }
+          return {
+            downloads: s.downloads.map((d) => (d.id === id ? { ...d, ...updates } : d)),
+          };
+        }),
       removeDownload: (id) =>
         set((s) => ({ downloads: s.downloads.filter((d) => d.id !== id) })),
 
-      activeView: 'library',
+      activeView: 'together',
       setActiveView: (v) => set({ activeView: v }),
       showDownloadModal: false,
       setShowDownloadModal: (v) => set({ showDownloadModal: v }),
@@ -448,6 +488,30 @@ export const useMusicStore = create<MusicStore>()(
       setSelectedTrack: (t) => set({ selectedTrack: t }),
       showFullScreenPlayer: false,
       setShowFullScreenPlayer: (v) => set({ showFullScreenPlayer: v }),
+
+      // Party Chat & Members
+      partyChatMessages: [],
+      addChatMessage: (msg) => set((s) => ({
+        partyChatMessages: [...s.partyChatMessages, msg].slice(-100),
+      })),
+      clearChat: () => set({ partyChatMessages: [] }),
+      partyMembersList: [],
+      setPartyMembersList: (members) => set({ partyMembersList: members }),
+      displayName: '',
+      setDisplayName: (name) => set({ displayName: name }),
+
+      // Advanced Party Features
+      partyVotes: {},
+      setPartyVotes: (votes) => set({ partyVotes: votes }),
+      partyVibe: 'default',
+      setPartyVibe: (vibe) => set({ partyVibe: vibe }),
+      isHostOnly: false,
+      setIsHostOnly: (v) => set({ isHostOnly: v }),
+      liveReactions: [],
+      addLiveReaction: (r) => set((s) => ({ liveReactions: [...s.liveReactions, r].slice(-20) })),
+      clearLiveReactions: () => set({ liveReactions: [] }),
+      memberProgress: {},
+      setMemberProgress: (sid, p) => set((s) => ({ memberProgress: { ...s.memberProgress, [sid]: p } })),
 
       // Selection
       selectedTrackIds: [],
@@ -629,6 +693,7 @@ export const useMusicStore = create<MusicStore>()(
         crossfadeDuration: state.crossfadeDuration,
         theme: state.theme,
         isAutoplayEnabled: state.isAutoplayEnabled,
+        displayName: state.displayName,
       }),
     }
   )

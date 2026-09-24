@@ -66,13 +66,35 @@ export default function TrackCard({ track, index }: TrackCardProps) {
         cursor: 'pointer',
         position: 'relative',
         zIndex: hovered || menuOpen ? 50 : 1,
-        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        background: hovered || isActive ? 'var(--surface2)' : 'transparent',
-        boxShadow: hovered ? '0 20px 48px rgba(0,0,0,0.18)' : 'none',
+        transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        background: hovered || isActive ? 'var(--surface2)' : 'var(--surface)',
+        border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+        boxShadow: isActive ? '0 0 20px var(--accent-glow)' : hovered ? 'var(--card-shadow)' : 'none',
       }}
       className={`animate-fade-in bouncy-hover ${isActive ? 'neon-border' : ''}`}
       onClick={handlePlay}
     >
+      {/* Quick Favorite on top left */}
+      <button
+        onClick={(e) => { e.stopPropagation(); toggleFavorite(track.id); }}
+        className="tap-active"
+        style={{
+          position: 'absolute', top: 18, left: 18,
+          width: 30, height: 30, borderRadius: 8,
+          background: 'var(--glass-bg)',
+          border: '1px solid var(--border)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', zIndex: 15,
+          opacity: hovered || isFav ? 1 : 0,
+          transition: 'all 0.15s ease',
+          color: isFav ? 'var(--accent)' : 'var(--text-faint)',
+        }}
+        title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+      >
+        <Heart size={14} fill={isFav ? 'var(--accent)' : 'none'} strokeWidth={isFav ? 0 : 2} />
+      </button>
       {/* Cover Art */}
       <div
         style={{
@@ -91,7 +113,7 @@ export default function TrackCard({ track, index }: TrackCardProps) {
       >
         {track.coverUrl ? (
           <Image
-            src={track.coverUrl}
+            src={track.coverUrl.startsWith('/') ? track.coverUrl : `/api/proxy/image?url=${encodeURIComponent(track.coverUrl)}`}
             alt={track.title}
             fill
             style={{ objectFit: 'cover' }}

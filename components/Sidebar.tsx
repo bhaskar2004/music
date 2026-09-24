@@ -4,12 +4,13 @@ import { useMusicStore } from '@/store/musicStore';
 import {
   Library, ListMusic, Download, Plus, Music2, Heart,
   Folder as FolderIcon, Trash2, Search, Clock, BarChart2,
-  Settings, RefreshCcw, Users,
+  Settings, RefreshCcw, Users, Sun, Moon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
 const navItems = [
+  { id: 'together' as const, label: 'Play Together', icon: Users },
   { id: 'library' as const, label: 'Library', icon: Library },
   { id: 'search' as const, label: 'Search', icon: Search },
   { id: 'favorites' as const, label: 'Favorites', icon: Heart },
@@ -28,6 +29,8 @@ export default function Sidebar() {
     setShowPartyModal,
     partyId,
     partyMembers,
+    theme,
+    setTheme,
   } = useMusicStore();
 
   const [newPlaylistName, setNewPlaylistName] = useState('');
@@ -224,32 +227,42 @@ export default function Sidebar() {
                   }
                 }}
               >
-                <Icon
-                  size={15}
-                  strokeWidth={active ? 2.2 : 1.7}
-                  style={{
-                    color: active ? 'var(--accent)' : 'inherit',
-                    flexShrink: 0,
-                    transition: 'color 0.18s',
-                  }}
-                />
-                <span style={{ flex: 1 }}>{label}</span>
-                {badge && (
-                  <span style={{
-                    background: active
-                      ? 'var(--accent)'
-                      : 'color-mix(in srgb, var(--border) 80%, transparent)',
-                    color: active ? '#fff' : 'var(--text-muted)',
-                    borderRadius: 99,
-                    fontSize: 9.5,
-                    fontWeight: 700,
-                    padding: '1px 7px',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    letterSpacing: '0.03em',
-                  }}>
-                    {badge}
-                  </span>
-                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Icon
+                      size={15}
+                      strokeWidth={active ? 2.2 : 1.7}
+                      style={{
+                        color: active ? 'var(--accent)' : 'inherit',
+                        flexShrink: 0,
+                        transition: 'color 0.18s',
+                      }}
+                    />
+                    <span>{label}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {id === 'together' && partyId && (
+                      <div className="party-banner-dot" style={{ width: 6, height: 6 }} />
+                    )}
+                    {badge && (
+                      <span style={{
+                        background: active
+                          ? 'var(--accent)'
+                          : 'color-mix(in srgb, var(--border) 80%, transparent)',
+                        color: active ? '#fff' : 'var(--text-muted)',
+                        borderRadius: 99,
+                        fontSize: 9.5,
+                        fontWeight: 700,
+                        padding: '1px 7px',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        letterSpacing: '0.03em',
+                      }}>
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </button>
             );
           })}
@@ -410,6 +423,56 @@ export default function Sidebar() {
           borderTop: '1px solid color-mix(in srgb, var(--border) 40%, transparent)',
           display: 'flex', flexDirection: 'column', gap: 14,
         }}>
+          {partyId && (
+            <div
+              className="tap-active"
+              onClick={() => setActiveView('together')}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                color: 'var(--accent)',
+                border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)',
+                borderRadius: 10,
+                fontFamily: 'var(--font-display)',
+                fontWeight: 700, fontSize: 13,
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
+                letterSpacing: '0.02em',
+                boxShadow: '0 0 16px color-mix(in srgb, var(--accent) 15%, transparent)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 18%, transparent)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 12%, transparent)';
+              }}
+            >
+              <Users size={15} strokeWidth={2.4} color="var(--accent)" />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ lineHeight: 1 }}>Live Session</div>
+                <div style={{ fontSize: 10, color: 'var(--text)', opacity: 0.8, marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+                  CODE: {partyId}
+                </div>
+              </div>
+              {partyMembers > 0 && (
+                <span style={{
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  borderRadius: 99,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  padding: '1px 7px',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  marginLeft: 'auto',
+                }}>
+                  {partyMembers}
+                </span>
+              )}
+            </div>
+          )}
+
           <button
             className="sidebar-add-btn tap-active"
             onClick={() => setShowDownloadModal(true)}
@@ -439,75 +502,54 @@ export default function Sidebar() {
             Add Music
           </button>
 
-          <button
-            className="sidebar-add-btn tap-active"
-            onClick={() => setShowPartyModal(true)}
-            aria-label="Listen Together"
-            style={{
-              width: '100%', padding: '10px 16px',
-              background: partyId
-                ? 'color-mix(in srgb, var(--accent) 12%, transparent)'
-                : 'var(--surface2)',
-              color: partyId ? 'var(--accent)' : 'var(--text)',
-              border: partyId
-                ? '1px solid color-mix(in srgb, var(--accent) 40%, transparent)'
-                : '1px solid color-mix(in srgb, var(--border) 60%, transparent)',
-              borderRadius: 10,
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700, fontSize: 13,
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
-              letterSpacing: '0.02em',
-              boxShadow: partyId ? '0 0 16px color-mix(in srgb, var(--accent) 15%, transparent)' : 'none',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = partyId
-                ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
-                : 'var(--surface3)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = partyId
-                ? 'color-mix(in srgb, var(--accent) 12%, transparent)'
-                : 'var(--surface2)';
-            }}
-          >
-            <Users size={15} strokeWidth={2.4} color="var(--accent)" />
-            {partyId ? (
-              <>
-                Party Active
-                {partyMembers > 0 && (
-                  <span style={{
-                    background: 'var(--accent)',
-                    color: '#fff',
-                    borderRadius: 99,
-                    fontSize: 10,
-                    fontWeight: 800,
-                    padding: '1px 7px',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    marginLeft: 2,
-                  }}>
-                    {partyMembers}
-                  </span>
-                )}
-              </>
-            ) : (
-              'Listen Together'
-            )}
-          </button>
+
 
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '2px 4px',
           }}>
-            <Music2 size={10} style={{ color: 'var(--text-faint)', opacity: 0.5 }} />
-            <span style={{
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: 9.5, fontWeight: 500,
-              color: 'var(--text-faint)', opacity: 0.5,
-              letterSpacing: '0.08em',
-            }}>
-              WAVELENGTH v2.5
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Music2 size={11} style={{ color: 'var(--text-faint)', opacity: 0.6 }} />
+              <span style={{
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: 9.5, fontWeight: 600,
+                color: 'var(--text-faint)', opacity: 0.6,
+                letterSpacing: '0.08em',
+              }}>
+                WAVELENGTH v2.5
+              </span>
+            </div>
+
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="tap-active"
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+              style={{
+                background: 'var(--surface2)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '4px 8px',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 11,
+                fontWeight: 600,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--text)';
+                e.currentTarget.style.borderColor = 'var(--border-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-muted)';
+                e.currentTarget.style.borderColor = 'var(--border)';
+              }}
+            >
+              {theme === 'light' ? <Moon size={12} color="var(--accent)" /> : <Sun size={12} color="var(--accent)" />}
+              <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
+            </button>
           </div>
         </div>
       </aside>

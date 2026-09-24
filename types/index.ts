@@ -67,3 +67,17 @@ export interface PlayerState {
   shuffle: boolean;
   repeat: 'off' | 'one' | 'all';
 }
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface PartyMember {
+  socketId: string;
+  displayName: string;
+  color: string;
+}

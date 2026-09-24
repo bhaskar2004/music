@@ -5,9 +5,12 @@ import TrackCard from './TrackCard';
 import {
   Plus, Search, Music2, ArrowUpDown, Play, Shuffle,
   X, ListPlus, Trash2, ChevronDown, RefreshCcw,
+  LayoutGrid, List, Heart, Clock, MoreHorizontal,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { Track } from '@/types';
+import { formatDuration } from '@/lib/utils';
 
 type SortOption = 'recent' | 'title' | 'artist' | 'duration';
 
@@ -33,10 +36,12 @@ export default function LibraryView() {
     library, setShowDownloadModal, playlists,
     playAll, shufflePlay, activePlaylistId,
     isSelectionMode, setSelectionMode, selectedTrackIds, clearSelection, moveSelectedToPlaylist,
+    currentTrack, isPlaying, setCurrentTrack, setIsPlaying, setQueue, favorites, toggleFavorite,
   } = useMusicStore();
 
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('recent');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isAddingSongs, setIsAddingSongs] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -339,6 +344,37 @@ export default function LibraryView() {
                   </div>
                 )}
               </div>
+
+              {/* View Switcher (Grid vs List) */}
+              <div style={{
+                display: 'flex', alignItems: 'center', background: 'var(--surface2)',
+                borderRadius: 8, padding: 2, border: '1px solid var(--border)'
+              }}>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  style={{
+                    background: viewMode === 'grid' ? 'var(--surface)' : 'transparent',
+                    border: 'none', borderRadius: 6, padding: '5px 8px', cursor: 'pointer',
+                    color: viewMode === 'grid' ? 'var(--accent)' : 'var(--text-muted)',
+                    display: 'flex', alignItems: 'center', transition: 'all 0.15s ease'
+                  }}
+                  title="Grid View"
+                >
+                  <LayoutGrid size={14} />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  style={{
+                    background: viewMode === 'list' ? 'var(--surface)' : 'transparent',
+                    border: 'none', borderRadius: 6, padding: '5px 8px', cursor: 'pointer',
+                    color: viewMode === 'list' ? 'var(--accent)' : 'var(--text-muted)',
+                    display: 'flex', alignItems: 'center', transition: 'all 0.15s ease'
+                  }}
+                  title="List View"
+                >
+                  <List size={14} />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -352,7 +388,7 @@ export default function LibraryView() {
             <EmptyState onAdd={() => setShowDownloadModal(true)} />
           ) : filtered.length === 0 ? (
             <NoResults query={search} onClear={() => setSearch('')} />
-          ) : (
+          ) : viewMode === 'grid' ? (
             <div
               className="lib-grid"
               style={{
@@ -362,8 +398,131 @@ export default function LibraryView() {
               }}
             >
               {filtered.map((track, i) => (
-                <TrackCard key={track.id} track={track} index={i} />
+                <TrackCard key={`${track.id}-${i}`} track={track} index={i} />
               ))}
+            </div>
+          ) : (
+            <div className="lib-list" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {/* List table header */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '40px 1fr 1fr 100px 60px',
+                padding: '8px 16px', fontSize: 11, fontWeight: 700,
+                color: 'var(--text-faint)', borderBottom: '1px solid var(--border)',
+                letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)'
+              }}>
+                <span>#</span>
+                <span>Title</span>
+                <span className="desktop-only">Album</span>
+                <span className="desktop-only" style={{ textAlign: 'right' }}>Time</span>
+                <span style={{ textAlign: 'center' }}>Fav</span>
+              </div>
+
+              {filtered.map((track, i) => {
+                const isTrackActive = currentTrack?.id === track.id;
+                const isTrackFav = favorites.includes(track.id);
+
+                return (
+                  <div
+                    key={`${track.id}-${i}`}
+                    onClick={() => {
+                      if (isTrackActive) {
+                        setIsPlaying(!isPlaying);
+                      } else {
+                        setCurrentTrack(track);
+                        setQueue(filtered);
+                        setIsPlaying(true);
+                      }
+                    }}
+                    style={{
+                      display: 'grid', gridTemplateColumns: '40px 1fr 1fr 100px 60px',
+                      alignItems: 'center', padding: '10px 16px', borderRadius: 12,
+                      background: isTrackActive ? 'var(--surface2)' : 'transparent',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
+                      border: isTrackActive ? '1px solid var(--accent)' : '1px solid transparent',
+                    }}
+                    onMouseEnter={(e) => { if (!isTrackActive) e.currentTarget.style.background = 'var(--surface2)'; }}
+                    onMouseLeave={(e) => { if (!isTrackActive) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {/* Index or Equalizer */}
+                    <div style={{ display: 'flex', alignItems: 'center', color: isTrackActive ? 'var(--accent)' : 'var(--text-faint)', fontSize: 13, fontFamily: 'var(--font-mono)' }}>
+                      {isTrackActive && isPlaying ? (
+                        <div style={{ display: 'flex', gap: 2, height: 12, alignItems: 'flex-end' }}>
+                          <div className="eq-bar" style={{ height: '100%', width: 2 }} />
+                          <div className="eq-bar" style={{ height: '60%', width: 2 }} />
+                          <div className="eq-bar" style={{ height: '90%', width: 2 }} />
+                        </div>
+                      ) : (
+                        <span>{i + 1}</span>
+                      )}
+                    </div>
+
+                    {/* Title & Artist */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, paddingRight: 12 }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 8, overflow: 'hidden',
+                        position: 'relative', flexShrink: 0, background: 'var(--surface3)'
+                      }}>
+                        {track.coverUrl ? (
+                          <Image
+                            src={track.coverUrl.startsWith('/') ? track.coverUrl : `/api/proxy/image?url=${encodeURIComponent(track.coverUrl)}`}
+                            alt={track.title}
+                            fill style={{ objectFit: 'cover' }} unoptimized
+                          />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Music2 size={16} color="var(--text-faint)" />
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          fontWeight: 700, fontSize: 14, color: isTrackActive ? 'var(--accent)' : 'var(--text)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}>
+                          {track.title}
+                        </div>
+                        <div style={{
+                          fontSize: 12, color: 'var(--text-muted)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}>
+                          {track.artist}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Album */}
+                    <div className="desktop-only" style={{
+                      fontSize: 13, color: 'var(--text-muted)',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      paddingRight: 12
+                    }}>
+                      {track.album || 'Single'}
+                    </div>
+
+                    {/* Duration */}
+                    <div className="desktop-only" style={{
+                      fontSize: 12, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)',
+                      textAlign: 'right'
+                    }}>
+                      {formatDuration(track.duration)}
+                    </div>
+
+                    {/* Favorite */}
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(track.id); }}
+                        style={{
+                          background: 'transparent', border: 'none', cursor: 'pointer',
+                          color: isTrackFav ? 'var(--accent)' : 'var(--text-faint)',
+                          padding: 6, display: 'flex'
+                        }}
+                      >
+                        <Heart size={16} fill={isTrackFav ? 'var(--accent)' : 'none'} strokeWidth={isTrackFav ? 0 : 2} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

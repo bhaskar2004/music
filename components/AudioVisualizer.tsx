@@ -12,11 +12,14 @@ interface AudioVisualizerProps {
  * Premium Audio Visualizer component
  * Uses a multi-layered pulse effect synchronized with the audio frequency.
  */
+// Shared singleton audio graph to prevent "HTMLMediaElement already connected" errors
+let sharedContext: AudioContext | null = null;
+let sharedAnalyser: AnalyserNode | null = null;
+let sharedSource: MediaElementAudioSourceNode | null = null;
+let connectedElement: HTMLAudioElement | null = null;
+
 export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const contextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const { currentAccentColor } = useMusicStore();
 
   useEffect(() => {
@@ -33,17 +36,27 @@ export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualiz
       if (!audio) return;
 
       try {
-        if (!contextRef.current) {
-          contextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-          analyserRef.current = contextRef.current.createAnalyser();
-          analyserRef.current.fftSize = 128;
-          
-          sourceRef.current = contextRef.current.createMediaElementSource(audio);
-          sourceRef.current.connect(analyserRef.current);
-          analyserRef.current.connect(contextRef.current.destination);
+        if (!sharedContext || sharedContext.state === 'closed') {
+          sharedContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          sharedAnalyser = sharedContext.createAnalyser();
+          sharedAnalyser.fftSize = 128;
+        }
+
+        if (sharedContext.state === 'suspended' && isPlaying) {
+          sharedContext.resume();
+        }
+
+        if (connectedElement !== audio && sharedContext && sharedAnalyser) {
+          if (sharedSource) {
+            try { sharedSource.disconnect(); } catch (_) {}
+          }
+          sharedSource = sharedContext.createMediaElementSource(audio);
+          sharedSource.connect(sharedAnalyser);
+          sharedAnalyser.connect(sharedContext.destination);
+          connectedElement = audio;
         }
       } catch (e) {
-        console.warn('[Visualizer] AudioContext init failed:', e);
+        // Fallback gracefully without breaking UI
       }
     };
 
@@ -62,9 +75,9 @@ export default function AudioVisualizer({ isPlaying, size = 300 }: AudioVisualiz
       }
 
       ctx.clearRect(0, 0, width, height);
-      if (analyserRef.current) {
-        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(dataArray);
+      if (sharedAnalyser) {
+        const dataArray = new Uint8Array(sharedAnalyser.frequencyBinCount);
+        sharedAnalyser.getByteFrequencyData(dataArray);
         const sum = dataArray.reduce((acc, val) => acc + val, 0);
         intensity = sum / dataArray.length / 255;
       }

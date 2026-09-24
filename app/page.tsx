@@ -51,52 +51,55 @@ export default function LandingPage() {
         }}>
           <div className="landing-badge">
             <span className="landing-badge-dot" />
-            Free &amp; Open Source
+            Real-Time Sync Ready
           </div>
           <h1 className="landing-h1">
-            Your music.<br />
-            <span className="landing-h1-accent">Your rules.</span>
+            Music is better<br />
+            <span className="landing-h1-accent">Together.</span>
           </h1>
           <p className="landing-subtitle">
-            Download from YouTube, SoundCloud &amp; more. Build your personal library.
-            No ads, no subscriptions, no compromises.
+            Create a room, invite your friends, and listen in perfect sync. 
+            Anyone can add to the queue, chat, and control playback in real-time.
           </p>
-          <div className="landing-hero-actions">
-            <Link href="/player" className="landing-cta-primary">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                <polygon points="5,3 19,12 5,21" />
+          <div className="landing-hero-actions" style={{ flexDirection: 'column', gap: 24, alignItems: 'center' }}>
+            <Link href="/player" className="landing-cta-primary" style={{ padding: '20px 48px', fontSize: 18 }}>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
-              Launch Wavelength
+              Start a Session
             </Link>
-            <a
-              href="https://github.com/bhaskar2004/music/actions/runs/23938991850/artifacts/6256729553"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="landing-cta-secondary"
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 2v2" /><path d="M7 22v-3" /><path d="M17 22v-3" /><path d="M12 12v4" /><path d="M11 2v2" /><path d="M5 10a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V10Z" /><path d="M9 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" /><path d="M15 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
-              </svg>
-              Download APK
-            </a>
-            <a href="#features" className="landing-cta-secondary">
-              Explore Features
-            </a>
+            
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <Link href="/player" className="landing-cta-secondary">
+                Solo Library
+              </Link>
+              <a
+                href="https://github.com/bhaskar2004/music/actions/runs/23938991850/artifacts/6256729553"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="landing-cta-secondary"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 2v2" /><path d="M7 22v-3" /><path d="M17 22v-3" /><path d="M12 12v4" /><path d="M11 2v2" /><path d="M5 10a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V10Z" /><path d="M9 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" /><path d="M15 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
+                </svg>
+                Download APK
+              </a>
+            </div>
           </div>
           <div className="landing-stats">
             <div className="landing-stat">
-              <div className="landing-stat-value">100%</div>
-              <div className="landing-stat-label">Free forever</div>
+              <div className="landing-stat-value">Sync</div>
+              <div className="landing-stat-label">Ultra-low latency</div>
             </div>
             <div className="landing-stat-divider" />
             <div className="landing-stat">
-              <div className="landing-stat-value">Local</div>
-              <div className="landing-stat-label">Files on your device</div>
+              <div className="landing-stat-value">Queue</div>
+              <div className="landing-stat-label">Collaborative lists</div>
             </div>
             <div className="landing-stat-divider" />
             <div className="landing-stat">
-              <div className="landing-stat-value">Zero</div>
-              <div className="landing-stat-label">Ads &amp; tracking</div>
+              <div className="landing-stat-value">Chat</div>
+              <div className="landing-stat-label">Real-time interaction</div>
             </div>
           </div>
         </div>
@@ -112,42 +115,42 @@ export default function LandingPage() {
             </h2>
           </div>
           <div className="landing-features-grid">
-            <FeatureCard
-              icon={<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7,10 12,15 17,10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>}
-              title="Instant Download"
-              description="Paste any YouTube or SoundCloud URL. Audio downloads in seconds to your local library."
-              accent="#06C167"
-            />
-            <FeatureCard
-              icon={<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polygon points="10,8 16,12 10,16" fill="currentColor" /></svg>}
-              title="Premium Player"
-              description="Full-screen mode, crossfade, sleep timer, and a silky-smooth playback experience."
-              accent="#6366f1"
-            />
-            <FeatureCard
-              icon={<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></svg>}
-              title="Smart Library"
-              description="Folders, favorites, sorting, search — organize your collection the way you want."
-              accent="#f59e0b"
-            />
-            <FeatureCard
-              icon={<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" /></svg>}
-              title="Listening Stats"
-              description="Track your listening habits with beautiful analytics and play count charts."
-              accent="#ec4899"
-            />
-            <FeatureCard
-              icon={<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>}
-              title="Customizable"
-              description="Light mode, dark mode, crossfade settings, keyboard shortcuts — make it yours."
-              accent="#14b8a6"
-            />
-            <FeatureCard
-              icon={<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>}
-              title="Private & Secure"
-              description="No cloud, no accounts, no data collection. Your music stays on your device."
-              accent="#8b5cf6"
-            />
+            <div className="landing-feature-card">
+              <div className="landing-feature-icon" style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)' }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+              </div>
+              <h3 className="landing-feature-title">Perfect Sync</h3>
+              <p className="landing-feature-desc">Everyone in the party hears the exact same beat at the exact same moment.</p>
+            </div>
+            <div className="landing-feature-card">
+              <div className="landing-feature-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1' }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </div>
+              <h3 className="landing-feature-title">Shared Queue</h3>
+              <p className="landing-feature-desc">Anyone can search and add tracks to the party queue. Build the perfect playlist together.</p>
+            </div>
+            <div className="landing-feature-card">
+              <div className="landing-feature-icon" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#ec4899' }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <h3 className="landing-feature-title">Live Chat</h3>
+              <p className="landing-feature-desc">React to tracks and talk with your friends without ever leaving the player.</p>
+            </div>
+            <div className="landing-feature-card">
+              <div className="landing-feature-icon" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </div>
+              <h3 className="landing-feature-title">Instant Download</h3>
+              <p className="landing-feature-desc">Paste a link and the audio is ready in seconds. Build your library while you listen.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -160,11 +163,23 @@ export default function LandingPage() {
             <h2 className="landing-h2">Three steps. That&apos;s it.</h2>
           </div>
           <div className="landing-steps">
-            <StepCard num="01" title="Paste a URL" description="Drop any YouTube, SoundCloud, or Bandcamp link into the app." />
+            <div className="landing-step-card">
+              <div className="landing-step-num">1</div>
+              <h3 className="landing-step-title">Create a room</h3>
+              <p className="landing-step-desc">Click &quot;Start a Session&quot; to instantly get a 6-digit room code.</p>
+            </div>
             <div className="landing-step-arrow">→</div>
-            <StepCard num="02" title="Download" description="Audio is extracted and saved locally in high quality." />
+            <div className="landing-step-card">
+              <div className="landing-step-num">2</div>
+              <h3 className="landing-step-title">Share the code</h3>
+              <p className="landing-step-desc">Friends enter your code to join from any browser, no account needed.</p>
+            </div>
             <div className="landing-step-arrow">→</div>
-            <StepCard num="03" title="Enjoy" description="Play, organize, and listen — offline, forever." />
+            <div className="landing-step-card">
+              <div className="landing-step-num">3</div>
+              <h3 className="landing-step-title">Listen together</h3>
+              <p className="landing-step-desc">Search for music, build a shared queue, chat, and vibe in sync.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -172,17 +187,12 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="landing-section landing-cta-section">
         <div className="landing-section-inner" style={{ textAlign: 'center' }}>
-          <h2 className="landing-h2" style={{ marginBottom: 16 }}>
-            Ready to own<br />your music?
-          </h2>
-          <p className="landing-subtitle" style={{ maxWidth: 440, margin: '0 auto 40px' }}>
-            Stop renting. Start building a library that&apos;s truly yours.
+          <h2 className="landing-h2" style={{ marginBottom: 24 }}>Ready to start a session?</h2>
+          <p className="landing-subtitle" style={{ margin: '0 auto 40px' }}>
+            No sign-ups. No subscriptions. Just pure, synchronized music with your friends.
           </p>
-          <Link href="/player" className="landing-cta-primary landing-cta-large">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <polygon points="5,3 19,12 5,21" />
-            </svg>
-            Get Started — It&apos;s Free
+          <Link href="/player" className="landing-cta-primary" style={{ margin: '0 auto', display: 'inline-flex', padding: '20px 48px', fontSize: 18 }}>
+            Start a Session
           </Link>
         </div>
       </section>

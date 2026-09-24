@@ -24,6 +24,9 @@ interface PartyStatePayload {
   trackId?: string;
   positionMs?: number;
   isPlaying?: boolean;
+  isHostOnly?: boolean;
+  vibe?: string;
+  hostId?: string;
   timestamp?: number;
 }
 
@@ -65,9 +68,13 @@ export function connectSyncService(): void {
   socket.on('connect', () => {
     console.log('[SyncService] ✓ Connected', socket?.id);
     // Re-join after reconnect
-    const partyId = useMusicStore.getState().partyId;
+    const store = useMusicStore.getState();
+    const partyId = store.partyId;
     if (partyId) {
       socket!.emit('join_party', partyId);
+      if (store.displayName) {
+        socket!.emit('member_info', { displayName: store.displayName });
+      }
     }
   });
 
@@ -97,6 +104,52 @@ export function connectSyncService(): void {
     if (data?.count !== undefined) {
       useMusicStore.getState().setPartyMembers(data.count);
     }
+  });
+
+  // ── Member list updates (with names & colors) ───────────────────────────
+  socket.on('party_members_list', (data: { partyId: string; members: Array<{ socketId: string; displayName: string; color: string }> }) => {
+    if (data?.members) {
+      useMusicStore.getState().setPartyMembersList(data.members);
+    }
+  });
+
+  // ── Chat messages ───────────────────────────────────────────────────────
+  socket.on('chat_message', (data: { partyId: string; message: import('@/types').ChatMessage }) => {
+    if (data?.message) {
+      useMusicStore.getState().addChatMessage(data.message);
+    }
+  });
+
+  // ── Queue additions from other members ──────────────────────────────────
+  socket.on('queue_add', (data: { partyId: string; track: Record<string, unknown> }) => {
+    if (data?.track) {
+      const track = _normalizeTrack(data.track);
+      if (track) {
+        useMusicStore.getState().addToQueue(track);
+      }
+    }
+  });
+
+  // ── Reactions ───────────────────────────────────────────────────────────
+  socket.on('member_reaction', (data: { type: string; senderName: string; id: string }) => {
+    useMusicStore.getState().addLiveReaction(data);
+  });
+
+  // ── Voting ──────────────────────────────────────────────────────────────
+  socket.on('votes_update', (data: { partyId: string; votes: Record<string, number> }) => {
+    useMusicStore.getState().setPartyVotes(data.votes);
+  });
+
+  // ── Room Settings ───────────────────────────────────────────────────────
+  socket.on('room_settings_update', (data: { isHostOnly: boolean; vibe: any; hostId?: string }) => {
+    const store = useMusicStore.getState();
+    store.setIsHostOnly(data.isHostOnly);
+    if (data.vibe) store.setPartyVibe(data.vibe);
+  });
+
+  // ── Member Progress ─────────────────────────────────────────────────────
+  socket.on('member_progress_update', (data: { socketId: string; progressPct: number }) => {
+    useMusicStore.getState().setMemberProgress(data.socketId, data.progressPct);
   });
 }
 
@@ -189,6 +242,10 @@ function _applyPartyState(data: PartyStatePayload): void {
     } else {
       store.setIsPlaying(false);
     }
+    
+    if (data.isHostOnly !== undefined) store.setIsHostOnly(data.isHostOnly);
+    if (data.vibe) store.setPartyVibe(data.vibe as any);
+
     setTimeout(() => { isHandlingSync = false; }, 300);
   };
 
@@ -206,6 +263,9 @@ export function joinSyncParty(partyId: string): void {
 
   if (socket?.connected) {
     socket.emit('join_party', partyId);
+    if (useMusicStore.getState().displayName) {
+      socket.emit('member_info', { displayName: useMusicStore.getState().displayName });
+    }
   }
   // If not connected yet, the 'connect' handler will join once ready
 }
@@ -217,12 +277,80 @@ export function leaveSyncParty(): void {
   }
   useMusicStore.getState().setPartyId(null);
   useMusicStore.getState().setPartyMembers(0);
+  useMusicStore.getState().setPartyMembersList([]);
+  useMusicStore.getState().clearChat();
 }
 
 export function generatePartyCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
+
+/** Send a chat message to the current party room. */
+export function sendChatMessage(text: string): void {
+  const store = useMusicStore.getState();
+  if (!socket?.connected || !store.partyId || !text.trim()) return;
+
+  socket.emit('chat_message', {
+    partyId: store.partyId,
+    message: {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      text: text.trim(),
+      senderId: socket.id,
+      senderName: store.displayName || `User ${socket.id?.slice(0, 4)}`,
+      timestamp: Date.now(),
+    },
+  });
+}
+
+/** Send display name to the server. */
+export function sendMemberInfo(displayName: string): void {
+  if (!socket?.connected) return;
+  socket.emit('member_info', { displayName });
+}
+
+/** Get this client's socket ID. */
+export function getSocketId(): string | null {
+  return socket?.id ?? null;
+}
+
+/** Broadcast a queue addition to the party room. */
+export function broadcastQueueAdd(track: Record<string, unknown>): void {
+  const store = useMusicStore.getState();
+  if (!socket?.connected || !store.partyId) return;
+  socket.emit('queue_add', { partyId: store.partyId, track });
+}
+
+/** Emit a reaction. */
+export function emitReaction(type: string): void {
+  const store = useMusicStore.getState();
+  if (!socket?.connected || !store.partyId) return;
+  socket.emit('member_reaction', { partyId: store.partyId, type });
+}
+
+/** Emit a vote for a track. */
+export function emitVote(trackId: string): void {
+  const store = useMusicStore.getState();
+  if (!socket?.connected || !store.partyId) return;
+  socket.emit('vote_track', { partyId: store.partyId, trackId });
+}
+
+/** Update room settings (Host only). */
+export function emitRoomSettings(isHostOnly: boolean, vibe: string): void {
+  const store = useMusicStore.getState();
+  if (!socket?.connected || !store.partyId) return;
+  socket.emit('update_room_settings', { partyId: store.partyId, isHostOnly, vibe });
+}
+
+/** Emit local progress. */
+export function emitProgress(progressPct: number): void {
+  const store = useMusicStore.getState();
+  if (!socket?.connected || !store.partyId) return;
+  socket.emit('member_progress', { partyId: store.partyId, progressPct });
+}
+
+
+
 
 // ─── Broadcast ────────────────────────────────────────────────────────────────
 

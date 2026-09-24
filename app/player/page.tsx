@@ -18,6 +18,7 @@ import StatsView from '@/components/StatsView';
 import SettingsView from '@/components/SettingsView';
 import FullScreenPlayer from '@/components/FullScreenPlayer';
 import PartyModal from '@/components/PartyModal';
+import PlayTogetherView from '@/components/PlayTogetherView';
 import {
   connectSyncService,
   startSyncBroadcasting,
@@ -25,24 +26,71 @@ import {
 } from '@/lib/syncService';
 
 export default function Home() {
-  const { fetchLibrary, activeView, showFullScreenPlayer, theme } = useMusicStore();
+  const { fetchLibrary, activeView, showFullScreenPlayer, theme, updateDownload, addTrack, partyId, partyMembersList } = useMusicStore();
   const [loading, setLoading] = useState(true);
   const unsubBroadcastRef = useRef<(() => void) | null>(null);
 
   // Fetch library + connect sync
   useEffect(() => {
     fetchLibrary().finally(() => setLoading(false));
-
-    // Connect socket and start listening for party events
     connectSyncService();
-
-    // Subscribe store → broadcast (returns cleanup fn)
     unsubBroadcastRef.current = startSyncBroadcasting();
+
+    // ── Global Download Events ──
+    const eventSource = new EventSource('/api/download/events');
+    
+    const safeParse = (data: string) => {
+      if (!data || data === 'undefined') return null;
+      try { return JSON.parse(data); } catch { return null; }
+    };
+
+    eventSource.addEventListener('update', (e) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (!data) return;
+      updateDownload(data.id, { 
+        url: data.url,
+        status: data.status,
+        progress: data.progress 
+      });
+    });
+
+    eventSource.addEventListener('progress', (e) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (!data) return;
+      updateDownload(data.id, { 
+        url: data.url,
+        progress: data.percent, 
+        status: 'downloading' 
+      });
+    });
+
+    eventSource.addEventListener('status', (e) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (!data) return;
+      updateDownload(data.id, { 
+        url: data.url,
+        status: data.stage === 'processing' ? 'processing' : 'downloading' 
+      });
+    });
+
+    eventSource.addEventListener('done', (e) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (!data) return;
+      addTrack(data.track);
+      updateDownload(data.id, { status: 'done', progress: 100, track: data.track });
+    });
+
+    eventSource.addEventListener('error', (e) => {
+      const data = safeParse((e as MessageEvent).data);
+      if (!data) return;
+      updateDownload(data.id, { status: 'error', error: data.message });
+    });
 
     return () => {
       unsubBroadcastRef.current?.();
+      eventSource.close();
     };
-  }, [fetchLibrary]);
+  }, [fetchLibrary, updateDownload, addTrack]);
 
   // Apply theme
   useEffect(() => {
@@ -62,13 +110,9 @@ export default function Home() {
         case 'Space':
           e.preventDefault();
           setIsPlaying(!isPlaying);
-          // Broadcast play/pause if in a party
           if (partyId) {
             const audio = document.querySelector('audio') as HTMLAudioElement | null;
-            broadcastPlayback(
-              !isPlaying ? 'play' : 'pause',
-              (audio?.currentTime ?? currentTime) * 1000,
-            );
+            broadcastPlayback(!isPlaying ? 'play' : 'pause', (audio?.currentTime ?? currentTime) * 1000);
           }
           break;
         case 'ArrowRight':
@@ -89,20 +133,6 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Broadcast seek events from the audio element to the party room
-  useEffect(() => {
-    const audio = document.querySelector('audio') as HTMLAudioElement | null;
-    if (!audio) return;
-
-    const onSeeked = () => {
-      const { partyId } = useMusicStore.getState();
-      if (partyId) broadcastPlayback('seek', audio.currentTime * 1000);
-    };
-
-    audio.addEventListener('seeked', onSeeked);
-    return () => audio.removeEventListener('seeked', onSeeked);
-  });
-
   return (
     <ErrorBoundary>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
@@ -110,10 +140,34 @@ export default function Home() {
           <Sidebar />
           <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
             <MobileHeader />
+            {partyId && activeView !== 'together' && (
+              <div className="party-banner">
+                <div className="party-banner-dot" />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Live Session
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  Code: <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>{partyId}</span>
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-faint)', marginLeft: 'auto' }}>
+                  {partyMembersList.length} member{partyMembersList.length !== 1 ? 's' : ''}
+                </span>
+                <button
+                  onClick={() => useMusicStore.getState().setActiveView('together')}
+                  style={{
+                    background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 99,
+                    padding: '4px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', marginLeft: 12
+                  }}
+                >
+                  View
+                </button>
+              </div>
+            )}
             {loading ? (
               <LoadingSkeleton />
             ) : (
               <>
+                {activeView === 'together' && <PlayTogetherView />}
                 {activeView === 'library' && <LibraryView />}
                 {activeView === 'search' && <SearchView />}
                 {activeView === 'favorites' && <FavoritesView />}

@@ -5,6 +5,10 @@ import { NextRequest, NextResponse } from 'next/server';
 const LRCLIB_BASE = 'https://lrclib.net/api';
 const UA_HEADER   = { 'User-Agent': 'WavelengthMusicApp/1.0 (https://github.com/bhaskar2004/music-app)' };
 
+// Negative cache for 404s (key: searchQ, value: timestamp)
+const NEGATIVE_CACHE = new Map<string, number>();
+const NEGATIVE_CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
 // Noise words to strip when cleaning strings for matching
 const NOISE_RE = /\b(official|video|audio|full|song|lyrics|hd|4k|high\s?res|track|vevo|records|series|music|original|remaster(?:ed)?|explicit|clean|version|edit|feat\.?|ft\.?|with|channel|topic|presents|productions?|records|music\s?video|lyric\s?video|7\s?clouds)\b/gi;
 // Bracketed/parenthesised annotations
@@ -278,33 +282,48 @@ export async function GET(req: NextRequest) {
 
   // ── 2. Search with scored ranking ────────────────────────────────────────
   const queries = buildQueries(rawTitle, rawArtist);
-  console.log(`[LYRICS] Direct miss — running ${queries.length} search queries`);
+  
+  // Filter out queries in Negative Cache
+  const now = Date.now();
+  const freshQueries = queries.filter(q => {
+    const cached = NEGATIVE_CACHE.get(q.searchQ);
+    if (cached && now - cached < NEGATIVE_CACHE_TTL) return false;
+    return true;
+  });
 
-  // SCORE_THRESHOLD: if a query returns a result scoring this high, accept it
-  // immediately without trying remaining queries.
-  const ACCEPT_THRESHOLD = 72;
+  if (freshQueries.length === 0) {
+    return NextResponse.json({ error: 'Lyrics not found (cached)' }, { status: 404 });
+  }
 
-  let globalBest:  LrclibResult | null = null;
-  let globalScore  = -Infinity;
+  console.log(`[LYRICS] Direct miss — running ${freshQueries.length} search queries in parallel`);
 
-  for (const spec of queries) {
-    console.log(`[LYRICS] Search: "${spec.searchQ}"`);
-    const hit = await searchGet(spec, durationSecs);
+  const results = await Promise.all(
+    freshQueries.map(spec => searchGet(spec, durationSecs))
+  );
+
+  let globalBest: LrclibResult | null = null;
+  let globalScore = -Infinity;
+
+  for (const hit of results) {
     if (!hit) continue;
 
     if (hit.score > globalScore) {
       globalScore = hit.score;
-      globalBest  = hit.result;
-      console.log(`[LYRICS] New best (score ${hit.score.toFixed(1)}): "${hit.result.trackName}" by "${hit.result.artistName}"`);
-    }
-
-    if (globalScore >= ACCEPT_THRESHOLD) {
-      console.log(`[LYRICS] Accepting result above threshold (${globalScore.toFixed(1)})`);
-      break;
+      globalBest = hit.result;
     }
   }
 
-  if (globalBest) return lyricResponse(globalBest);
+  // Also handle negative cache for failed queries
+  results.forEach((hit, i) => {
+    if (!hit) {
+      NEGATIVE_CACHE.set(freshQueries[i].searchQ, now);
+    }
+  });
+
+  if (globalBest && globalScore >= 60) {
+    console.log(`[LYRICS] Found best result (score ${globalScore.toFixed(1)}): "${globalBest.trackName}"`);
+    return lyricResponse(globalBest);
+  }
 
   return NextResponse.json({ error: 'Lyrics not found' }, { status: 404 });
 }

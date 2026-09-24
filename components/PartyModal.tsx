@@ -6,7 +6,7 @@ import { X, Users, Copy, CheckCircle2, LogOut, Wifi, WifiOff } from 'lucide-reac
 import { useState, useEffect } from 'react';
 
 export default function PartyModal() {
-  const { showPartyModal, setShowPartyModal, partyId, partyMembers } = useMusicStore();
+  const { showPartyModal, setShowPartyModal, partyId, partyMembers, setActiveView } = useMusicStore();
   const [joinCode, setJoinCode] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -29,6 +29,8 @@ export default function PartyModal() {
   const handleHost = () => {
     const code = generatePartyCode();
     joinSyncParty(code);
+    setActiveView('together');
+    setShowPartyModal(false);
   };
 
   const handleJoin = (e: React.FormEvent) => {
@@ -36,6 +38,8 @@ export default function PartyModal() {
     if (joinCode.trim().length > 0) {
       joinSyncParty(joinCode.trim().toUpperCase());
       setJoinCode('');
+      setActiveView('together');
+      setShowPartyModal(false);
     }
   };
 

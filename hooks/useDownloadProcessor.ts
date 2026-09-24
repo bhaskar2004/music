@@ -12,8 +12,6 @@ export function useDownloadProcessor() {
     // ── Pre-check: Is it already in the library? ──────────────────────
     const { library } = useMusicStore.getState();
     if (library.some(t => t.sourceUrl === videoUrl)) {
-      console.log(`[DL] Skipping download for ${videoUrl} - already in library`);
-      // We still update the job to 'done' in case a stale job was being retried
       if (existingJobId) {
         const track = library.find(t => t.sourceUrl === videoUrl);
         updateDownload(jobId, { status: 'done', progress: 100, track });
@@ -27,31 +25,19 @@ export function useDownloadProcessor() {
       updateDownload(jobId, { status: 'pending', progress: 0, error: undefined });
     }
 
-    let res: Response;
     try {
-      res = await fetch('/api/download', {
+      const res = await fetch('/api/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: videoUrl, folderId }),
       });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Network error';
-      updateDownload(jobId, { status: 'error', error: msg });
-      return;
-    }
 
-    if (!res.body) {
-      updateDownload(jobId, { status: 'error', error: 'No response body' });
-      return;
-    }
+      if (!res.body) throw new Error('No response body');
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-    updateDownload(jobId, { status: 'downloading', progress: 0 });
-
-    try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -62,7 +48,6 @@ export function useDownloadProcessor() {
 
         for (const frame of frames) {
           if (!frame.trim()) continue;
-
           let eventName = 'message';
           let dataLine = '';
 
@@ -72,41 +57,50 @@ export function useDownloadProcessor() {
           }
 
           if (!dataLine) continue;
-          let payload: any;
-          try {
-            payload = JSON.parse(dataLine);
-          } catch {
-            continue;
-          }
+          const payload = JSON.parse(dataLine);
 
           switch (eventName) {
             case 'status':
-              if (payload.stage === 'downloading') {
-                updateDownload(jobId, { status: 'downloading' });
-              } else if (payload.stage === 'processing') {
-                updateDownload(jobId, { status: 'processing' });
-              }
+              updateDownload(jobId, { status: payload.stage === 'processing' ? 'processing' : 'downloading' });
               break;
             case 'progress':
-              updateDownload(jobId, { progress: payload.percent as number });
+              updateDownload(jobId, { progress: payload.percent });
               break;
-            case 'done': {
-              const track = payload.track;
-              addTrack(track);
-              updateDownload(jobId, { status: 'done', progress: 100, track });
+            case 'done':
+              addTrack(payload.track);
+              updateDownload(jobId, { status: 'done', progress: 100, track: payload.track });
               break;
-            }
             case 'error':
-              updateDownload(jobId, { status: 'error', error: payload.message || 'Unknown error' });
+              updateDownload(jobId, { status: 'error', error: payload.message });
               break;
           }
         }
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Stream error';
-      updateDownload(jobId, { status: 'error', error: msg });
+    } catch (err: any) {
+      updateDownload(jobId, { status: 'error', error: err.message });
     }
   };
 
-  return { processDownload };
+  const processBulkDownload = async (urls: string[]) => {
+    try {
+      const res = await fetch('/api/download/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls }),
+      });
+      const data = await res.json();
+      
+      if (data.jobs) {
+        data.jobs.forEach((job: { url: string; id: string }) => {
+          addDownload({ id: job.id, url: job.url, status: 'pending', progress: 0 });
+        });
+      }
+      return data.jobs;
+    } catch (err) {
+      console.error('[BulkDownload] Failed:', err);
+      throw err;
+    }
+  };
+
+  return { processDownload, processBulkDownload };
 }
