@@ -1,8 +1,5 @@
-import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/app_state.dart';
@@ -776,22 +773,6 @@ class _CtrlBtn extends StatelessWidget {
 }
 
 
-class _ArtPlaceholder extends StatelessWidget {
-  final String title;
-  const _ArtPlaceholder({required this.title});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black,
-      child: Center(
-        child: Text(
-          title.isNotEmpty ? title[0].toUpperCase() : '♪',
-          style: const TextStyle(fontSize: 80, fontWeight: FontWeight.w900, color: Colors.white12),
-        ),
-      ),
-    );
-  }
-}
 
 class _BackgroundRadarPulse extends StatefulWidget {
   final Color color;

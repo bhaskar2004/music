@@ -166,7 +166,7 @@ class _WavelengthAppState extends State<WavelengthApp> {
       dividerTheme: DividerThemeData(
         color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE8E8E8),
       ),
-      pageTransitionsTheme: const PageTransitionsTheme(
+      pageTransitionsTheme: PageTransitionsTheme(
         builders: {
           TargetPlatform.android: CupertinoPageTransitionsBuilder(),
           TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
