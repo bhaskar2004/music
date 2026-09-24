@@ -48,3 +48,5 @@ next-env.d.ts
 /cloudflared
 /cloudflared-linux-amd64.deb
 /scratch/
+/dist-apk/
+*.apk
