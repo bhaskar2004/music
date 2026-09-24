@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.gitignore
+*.deb
+cloudflared*
+flutter_app_source
+wavelength_flutter_v2.zip
+bin/
+public/audio/
+scratch/
+Migration/
+tunnel-url.txt
