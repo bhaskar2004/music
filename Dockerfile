@@ -11,6 +11,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Pre-install latest yt-dlp binary directly into system path
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod a+rx /usr/local/bin/yt-dlp
+
 WORKDIR /app
 
 # Copy dependency manifests
@@ -19,11 +23,13 @@ COPY package.json package-lock.json ./
 # Install npm packages
 RUN npm ci
 
-# Copy project source files
+# Copy project source files (including initial data/library.json & playlists.json)
 COPY . .
 
-# Ensure storage directories exist
-RUN mkdir -p /app/data /app/public/audio /app/bin
+# Ensure storage directories exist and copy yt-dlp to local bin directory
+RUN mkdir -p /app/data /app/public/audio /app/bin && \
+    cp /usr/local/bin/yt-dlp /app/bin/yt-dlp && \
+    chmod a+rx /app/bin/yt-dlp
 
 # Build Next.js for production
 ENV NODE_ENV=production

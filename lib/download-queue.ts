@@ -6,10 +6,10 @@ import { v4 as uuidv4 } from 'uuid';
 import * as musicMetadata from 'music-metadata';
 import { Track, DownloadJob } from '@/types';
 import { libraryManager } from './library-manager';
+import { getYtDlpBinaryPath, YT_DLP_CLIENT_ARGS } from './yt-dlp-helper';
 
 const AUDIO_DIR = path.join(process.cwd(), 'public', 'audio');
 const BIN_DIR = path.join(process.cwd(), 'bin');
-const YT_DLP_PATH = path.join(BIN_DIR, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
 
 /**
  * DownloadQueue Manager
@@ -41,28 +41,8 @@ class DownloadQueue extends EventEmitter {
 
   private async getYtDlp(): Promise<YTDlpWrap> {
     if (this.ytDlp) return this.ytDlp;
-
-    if (!fs.existsSync(YT_DLP_PATH)) {
-      console.log('[DownloadQueue] Initializing yt-dlp engine...');
-      await YTDlpWrap.downloadFromGithub(YT_DLP_PATH);
-    }
-
-    this.ytDlp = new YTDlpWrap(YT_DLP_PATH);
-    
-    // Auto-update check (older than 7 days)
-    try {
-      const stats = fs.statSync(YT_DLP_PATH);
-      const daysOld = (Date.now() - stats.mtimeMs) / (1000 * 60 * 60 * 24);
-      if (daysOld > 7) {
-        console.log('[DownloadQueue] Updating yt-dlp...');
-        await this.ytDlp.execPromise(['-U']);
-        const now = new Date();
-        fs.utimesSync(YT_DLP_PATH, now, now);
-      }
-    } catch (e) {
-      console.warn('[DownloadQueue] Update check failed:', e);
-    }
-
+    const binaryPath = await getYtDlpBinaryPath();
+    this.ytDlp = new YTDlpWrap(binaryPath);
     return this.ytDlp;
   }
 
@@ -107,7 +87,7 @@ class DownloadQueue extends EventEmitter {
   private async runJob(job: DownloadJob) {
     try {
       const ytDlp = await this.getYtDlp();
-      const commonArgs = ['--no-playlist', '--no-warnings', '--no-check-certificates'];
+      const commonArgs = [...YT_DLP_CLIENT_ARGS];
 
       // 1. Fetch metadata
       this.emit('status', { id: job.id, url: job.url, stage: 'metadata', message: 'Fetching track info...' });

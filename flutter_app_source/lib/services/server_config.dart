@@ -51,8 +51,8 @@ class ServerConfig {
         final body = await response.transform(utf8.decoder).join();
         final url = body.trim().replaceAll(RegExp(r'/+$'), '');
 
-        if (url.startsWith('https://') && url.contains('trycloudflare.com')) {
-          debugPrint('[ServerConfig] ✓ Got tunnel URL: $url');
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          debugPrint('[ServerConfig] ✓ Got server URL from GitHub: $url');
           // Only update if it's different from what we have
           if (_cachedUrl != url) {
             _cachedUrl = url;

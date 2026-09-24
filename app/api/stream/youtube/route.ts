@@ -3,10 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import { Readable } from 'stream';
-
-const binDir = path.join(process.cwd(), 'bin');
-const binName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
-const YT_DLP_PATH = path.join(binDir, binName);
+import { getYtDlpBinaryPath, YT_DLP_CLIENT_ARGS } from '@/lib/yt-dlp-helper';
 
 // Simple in-memory cache for direct URLs
 const urlCache = new Map<string, { url: string; expires: number }>();
@@ -44,21 +41,16 @@ export async function GET(req: NextRequest) {
     console.log(`[YT-STREAM] Cache miss for ${videoId}, fetching new URL...`);
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     
-    const tryFetchUrl = async (useCookies: boolean) => {
+    const tryFetchUrl = async () => {
+      const binaryPath = await getYtDlpBinaryPath();
       const args = [
         url,
         '--get-url',
-        '-f', 'bestaudio',
-        '--no-playlist',
-        '--no-warnings',
-        '--no-check-certificates',
-        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+        '-f', 'bestaudio/best',
+        ...YT_DLP_CLIENT_ARGS,
       ];
-      if (useCookies) {
-        args.push('--cookies-from-browser', 'chrome');
-      }
 
-      const child = spawn(YT_DLP_PATH, args);
+      const child = spawn(binaryPath, args);
       let output = '';
       let error = '';
 
@@ -70,17 +62,7 @@ export async function GET(req: NextRequest) {
     };
 
     try {
-      // Attempt 1: Without cookies
-      let result = await tryFetchUrl(false);
-      
-      // Attempt 2: With cookies if needed
-      if (result.code !== 0 || !result.output) {
-        console.warn('[YT-STREAM] Initial fetch failed, trying with cookies...', result.error);
-        const cookieResult = await tryFetchUrl(true);
-        if (cookieResult.code === 0 && cookieResult.output) {
-          result = cookieResult;
-        }
-      }
+      const result = await tryFetchUrl();
 
       if (result.code !== 0 || !result.output) {
         console.error('[YT-STREAM] yt-dlp failed completely:', result.error);

@@ -90,6 +90,19 @@ export async function GET(
 
   } catch (err: any) {
     if (err.code === 'ENOENT') {
+      // Fallback: If local file is missing on the hosted server, stream directly from YouTube source
+      if (track.sourceUrl) {
+        let videoId = '';
+        const match = track.sourceUrl.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+        if (match) videoId = match[1];
+        else {
+          const shortMatch = track.sourceUrl.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+          if (shortMatch) videoId = shortMatch[1];
+        }
+        if (videoId) {
+          return NextResponse.redirect(new URL(`/api/stream/youtube?v=${videoId}`, req.url), 307);
+        }
+      }
       return NextResponse.json({ error: 'File not found on disk' }, { status: 404 });
     }
     console.error(`[STREAM] Unexpected error for ${id}:`, err);

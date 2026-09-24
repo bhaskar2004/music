@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_state.dart';
 import '../../services/server_config.dart';
 import '../../services/server_discovery.dart';
 
@@ -64,9 +66,10 @@ class _ServerSettingsDialogState extends State<ServerSettingsDialog> {
       setState(() {
         _isTesting = false;
         if (ok) {
-          _statusMessage = '✓ Connected successfully!';
+          _statusMessage = '✓ Connected successfully! Syncing library…';
           _isSuccess = true;
           ServerConfig.setBaseUrl(cleanUrl);
+          context.read<AppState>().syncWithServer();
         } else {
           _statusMessage = '✗ Failed to connect. Check IP/Port.';
           _isSuccess = false;

@@ -42,8 +42,11 @@ next-env.d.ts
 
 # project specific
 /bin/
-/data/
-/public/audio/
+/data/*
+!/data/library.json
+!/data/playlists.json
+/public/audio/*
+!/public/audio/.gitkeep
 /.gemini/
 /cloudflared
 /cloudflared-linux-amd64.deb
